@@ -85,9 +85,10 @@ class TestAdversarialReviewer(unittest.TestCase):
             ) as reviewer,
             patch("adversarial_review.batch_chunks", side_effect=lambda chunks: chunks),
         ):
-            report = review_diff(diff, ["tools/test_eval.py", "tools/eval.py"])
+            report = review_diff(diff, ["tools/test_eval.py", "tools/eval.py"], test_context="verified CI evidence")
         self.assertTrue(report["complete"])
         first = reviewer.call_args_list[0].args
+        self.assertTrue(all("verified CI evidence" in call.args[2] for call in reviewer.call_args_list))
         self.assertIn(dependency, reviewer.call_args_list[0].kwargs["supporting_context"])
         self.assertNotIn("CASES", first[0])
         self.assertTrue(all(a["file"] == "tools/test_eval.py" for a in first[3]))
