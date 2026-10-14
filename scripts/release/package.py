@@ -67,7 +67,7 @@ def assemble(parts, destination):
         shutil.copy2(ROOT/name,destination/name)
     (destination/'docs/assets').mkdir(parents=True)
     shutil.copy2(ROOT/'docs/assets/craig.png',destination/'docs/assets')
-    subprocess.run(['npm','ci','--omit=dev','--omit=optional','--ignore-scripts','--prefix',str(destination)],check=True)
+    subprocess.run(['npm','ci','--omit=dev','--omit=optional','--ignore-scripts','--bin-links=false','--prefix',str(destination)],check=True)
     package=json.loads((destination/'package.json').read_text())
     for key in ['dependencies','devDependencies','scripts','napi','bin','files']:
         package.pop(key,None)
