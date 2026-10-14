@@ -106,56 +106,64 @@ pub fn prepare() -> Result<PathBuf, String> {
         if promote_verified(&partial, &path, &artifact.sha256)? {
             continue;
         }
-        let offset = fs::metadata(&partial).map(|m| m.len()).unwrap_or(0);
         let url = format!(
             "https://github.com/yourmoodai/craig/releases/download/v{}/model-{}",
             env!("CARGO_PKG_VERSION"),
             artifact.file
         );
-        let mut request = client.get(url);
-        if offset > 0 {
-            request = request.header("Range", format!("bytes={offset}-"));
-        }
-        let response = request.send().map_err(|_| "download_failed")?;
-        if response.status() == reqwest::StatusCode::RANGE_NOT_SATISFIABLE {
-            fs::remove_file(&partial).map_err(|_| "cache_unavailable")?;
-            return Err("download_failed_retry".into());
-        }
-        let append = response.status() == reqwest::StatusCode::PARTIAL_CONTENT;
-        if !response.status().is_success()
-            || (append
-                && !response
-                    .headers()
-                    .get("content-range")
-                    .and_then(|v| v.to_str().ok())
-                    .is_some_and(|v| v.starts_with(&format!("bytes {offset}-"))))
-        {
-            return Err("download_failed".into());
-        }
-        let mut file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .append(append)
-            .truncate(!append)
-            .open(&partial)
-            .map_err(|_| "cache_unavailable")?;
-        let bytes = std::io::copy(&mut response.take(MAX_ARTIFACT + 1), &mut file)
-            .map_err(|_| "download_failed")?;
-        file.flush().map_err(|_| "cache_unavailable")?;
-        file.sync_all().map_err(|_| "cache_unavailable")?;
-        drop(file);
-        if bytes + if append { offset } else { 0 } > MAX_ARTIFACT
-            || digest(&partial)? != artifact.sha256
-        {
-            let _ = fs::remove_file(&partial);
-            return Err("model_checksum_mismatch".into());
-        }
+        download(&client, &url, &partial, &artifact.sha256)?;
         if path.exists() {
             fs::remove_file(&path).map_err(|_| "cache_unavailable")?;
         }
         fs::rename(partial, path).map_err(|_| "cache_unavailable")?;
     }
     Ok(dir)
+}
+
+fn download(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    partial: &Path,
+    expected: &str,
+) -> Result<(), String> {
+    let offset = fs::metadata(partial).map(|m| m.len()).unwrap_or(0);
+    let mut request = client.get(url);
+    if offset > 0 {
+        request = request.header("Range", format!("bytes={offset}-"));
+    }
+    let response = request.send().map_err(|_| "download_failed")?;
+    if response.status() == reqwest::StatusCode::RANGE_NOT_SATISFIABLE {
+        fs::remove_file(partial).map_err(|_| "cache_unavailable")?;
+        return Err("download_failed_retry".into());
+    }
+    let append = response.status() == reqwest::StatusCode::PARTIAL_CONTENT;
+    if !response.status().is_success()
+        || (append
+            && !response
+                .headers()
+                .get("content-range")
+                .and_then(|v| v.to_str().ok())
+                .is_some_and(|v| v.starts_with(&format!("bytes {offset}-"))))
+    {
+        return Err("download_failed".into());
+    }
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(append)
+        .truncate(!append)
+        .open(partial)
+        .map_err(|_| "cache_unavailable")?;
+    let bytes = std::io::copy(&mut response.take(MAX_ARTIFACT + 1), &mut file)
+        .map_err(|_| "download_failed")?;
+    file.flush().map_err(|_| "cache_unavailable")?;
+    file.sync_all().map_err(|_| "cache_unavailable")?;
+    drop(file);
+    if bytes + if append { offset } else { 0 } > MAX_ARTIFACT || digest(partial)? != expected {
+        let _ = fs::remove_file(partial);
+        return Err("model_checksum_mismatch".into());
+    }
+    Ok(())
 }
 
 fn promote_verified(partial: &Path, path: &Path, expected: &str) -> Result<bool, String> {
@@ -172,6 +180,73 @@ fn promote_verified(partial: &Path, path: &Path, expected: &str) -> Result<bool,
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn serve_once(response: &'static [u8]) -> (String, std::thread::JoinHandle<String>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/model", listener.local_addr().unwrap());
+        let thread = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            let mut request = Vec::new();
+            while !request.ends_with(b"\r\n\r\n") {
+                let mut byte = [0];
+                socket.read_exact(&mut byte).unwrap();
+                request.push(byte[0]);
+            }
+            socket.write_all(response).unwrap();
+            String::from_utf8(request).unwrap().to_lowercase()
+        });
+        (url, thread)
+    }
+
+    #[test]
+    fn downloads_resume_or_restart_and_reject_corruption() {
+        let client = reqwest::blocking::Client::builder()
+            .no_proxy()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let partial = dir.path().join("model.partial");
+        let expected = format!("{:x}", Sha256::digest(b"abcdef"));
+        for response in [
+            b"HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 3-5/6\r\nContent-Length: 3\r\n\r\ndef".as_slice(),
+            b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nabcdef".as_slice(),
+        ] {
+            fs::write(&partial, b"abc").unwrap();
+            let (url, server) = serve_once(response);
+            download(&client, &url, &partial, &expected).unwrap();
+            assert!(server.join().unwrap().contains("range: bytes=3-"));
+            assert_eq!(fs::read(&partial).unwrap(), b"abcdef");
+        }
+        for response in [
+            b"HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-2/6\r\nContent-Length: 3\r\n\r\nabc".as_slice(),
+            b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nwrong!".as_slice(),
+            b"HTTP/1.1 416 Range Not Satisfiable\r\nContent-Length: 0\r\n\r\n".as_slice(),
+        ] {
+            fs::write(&partial, b"abc").unwrap();
+            let (url, server) = serve_once(response);
+            assert!(download(&client, &url, &partial, &expected).is_err());
+            server.join().unwrap();
+        }
+        assert!(!partial.exists());
+    }
+
+    #[test]
+    fn truncated_download_retains_bytes_for_retry() {
+        let client = reqwest::blocking::Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let partial = dir.path().join("model.partial");
+        let (url, server) = serve_once(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nabc");
+        let expected = format!("{:x}", Sha256::digest(b"abcdef"));
+        assert!(download(&client, &url, &partial, &expected).is_err());
+        server.join().unwrap();
+        assert_eq!(fs::read(partial).unwrap(), b"abc");
+    }
     #[test]
     fn finished_download_survives_restart_without_network() {
         let dir = tempfile::tempdir().unwrap();

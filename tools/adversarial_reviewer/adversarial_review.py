@@ -359,8 +359,6 @@ def review_diff(diff, files, *, mock=False):
     report["total_chunks"] = len(chunks)
     if any(not header for header, _ in chunks):
         return {**report, "summary": "review incomplete: diff is missing file headers."}
-    if len(chunks) > MAX_CHUNKS:
-        return {**report, "summary": "review incomplete: diff exceeds the chunk budget."}
     if mock:
         disposition, findings, summary = run_heuristic_reviewer(diff, files)
         return {
@@ -372,6 +370,8 @@ def review_diff(diff, files, *, mock=False):
     file_chunks = chunks
     chunks = batch_chunks(file_chunks)
     report["total_chunks"] = len(chunks)
+    if len(chunks) > MAX_CHUNKS:
+        return {**report, "summary": "review incomplete: diff exceeds the chunk budget."}
     anchors = locations(diff)
     offset = 0
     inputs = []

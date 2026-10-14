@@ -334,6 +334,18 @@ class TestAdversarialReviewer(unittest.TestCase):
         self.assertEqual(report["disposition"], "COMMENT")
         self.assertEqual(len(report["omitted_binary_changes"]), 1)
 
+    def test_budget_counts_model_requests_after_batching(self):
+        diff = "".join(f"diff --git a/{n} b/{n}\n+change\n" for n in range(150))
+        with patch("adversarial_review.run_model_reviewer", return_value=("APPROVE", [], "checked text")) as runner:
+            report = review_diff(diff, [str(n) for n in range(150)])
+        self.assertTrue(report["complete"])
+        self.assertLess(runner.call_count, 128)
+        self.assertEqual(report["reviewed_lines"], len(diff.splitlines()))
+        with patch("adversarial_review.MAX_CHUNKS", 0), patch("adversarial_review.run_model_reviewer") as runner:
+            report = review_diff(diff, [str(n) for n in range(150)])
+        self.assertFalse(report["complete"])
+        runner.assert_not_called()
+
     def test_findings_from_any_chunk_prevent_approval(self):
         diff = "diff --git a/a b/a\n+one\ndiff --git a/b b/b\n+two\n"
         with (
