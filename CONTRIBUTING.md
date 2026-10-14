@@ -126,8 +126,10 @@ all targets, exercises the archive, and gates tag publication on installed-host 
 The generated release marketplace points at a checksummed ZIP; never point it at
 an unqualified candidate. Source archives are not installable release bundles.
 
-Kimi review is advisory. A complete clean review approves the current commit;
-findings or incomplete coverage comment without blocking request-changes reviews.
+Kimi reviews start with a 50–100 word overview and an actual approval or
+request-changes verdict. Qualified, complete, clean reviews with valid synthesis
+approve the current commit; findings or review failures request changes.
+Static documentation images are explicitly excluded from code-review coverage.
 See [reviewer verification](tools/adversarial_reviewer/README.md). Existing required
 human/PR approvals and stale-review dismissal remain in effect. The environment
 secret is `KIMI_API_KEY` in `default`; never put its value in code or logs.

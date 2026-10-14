@@ -71,9 +71,12 @@ for rollback. No release has qualified until these gates pass.
 
 Kimi is a CI-only adversarial reviewer, separate from local inference. Trusted
 base code reviews PR diffs as data; no PR executable receives review secrets.
-Complete clean current-head reviews may approve; findings, unqualified responses,
-binary omissions, stale heads, and incomplete coverage cannot approve. Advisory
-comments do not replace maintainer judgment or required technical checks.
+Qualified, complete, clean current-head reviews with a valid synthesized overview
+approve; findings and review failures request changes. Stale results are discarded.
+Non-executable PNG/JPEG/WebP files under `docs/assets` are disclosed exclusions;
+other binary omissions prevent approval. This can block merging when review
+infrastructure fails, preserving the distinction between a clean review and an
+unavailable one. Neither verdict replaces required technical checks.
 
 The tradeoff is a larger bundled runtime and a first-use network dependency.
 Subsequent use needs neither developer tooling nor a network connection. Release

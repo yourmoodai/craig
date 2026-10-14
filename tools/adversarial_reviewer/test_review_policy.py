@@ -10,8 +10,10 @@ ROOT=Path(__file__).resolve().parents[2]
 @unittest.skipUnless(shutil.which('node'),'node required')
 class ReviewPolicyTests(unittest.TestCase):
     def publish(self, **changes):
-        report={'commit_id':'head','qualified':True,'complete':True,'disposition':'APPROVE','findings':[],'body':'Reviewed all changes.'}
+        report={'commit_id':'head','qualified':True,'complete':True,'synthesis_complete':True,'overview':'word '*50,'review_failures':[],'disposition':'APPROVE','findings':[],'body':'**Verdict: Approved**'}
         report.update(changes.pop('report',{}))
+        clean=50 <= len(report['overview'].split()) <= 100 and report['qualified'] and report['complete'] and report['synthesis_complete'] and not report['review_failures'] and report['disposition']=='APPROVE' and not report['findings']
+        report['body']=changes.pop('body','**Verdict: '+('Approved' if clean else 'Request changes')+'**')
         case={'report':report,'head':'head','reviews':[],**changes}
         policy=textwrap.dedent((ROOT/'.github/workflows/adversarial-review.yml').read_text().rsplit('script: |\n',1)[1])
         harness='''
@@ -23,13 +25,18 @@ const require=()=>({readFileSync:()=>JSON.stringify(input.report)});
 const github={rest:{pulls:{get:async()=>({data:{state:'open',head:{sha:input.head}}}),listReviews:()=>{},createReview:async r=>calls.push(r)}},paginate:async()=>input.reviews};
 '''
         result=subprocess.run(['node','-e',harness+'\n(async()=>{'+policy+'\n})().then(()=>console.log(JSON.stringify(calls)));',json.dumps(case)],capture_output=True,text=True,timeout=10)
+        if case.get('invalid'):
+            self.assertNotEqual(result.returncode,0)
+            return []
         self.assertEqual(result.returncode,0,result.stderr)
         return json.loads(result.stdout)
     def test_clean_current_review_approves(self):
         self.assertEqual(self.publish()[0]['event'],'APPROVE')
-    def test_findings_and_incomplete_reviews_only_comment(self):
-        for patch in [{'findings':[{'title':'defect'}]},{'complete':False},{'qualified':False},{'disposition':'REQUEST_CHANGES'},{'disposition':'COMMENT'}]:
-            self.assertEqual(self.publish(report=patch)[0]['event'],'COMMENT')
+    def test_findings_and_incomplete_reviews_request_changes(self):
+        for patch in [{'findings':[{'title':'defect'}]},{'complete':False},{'qualified':False},{'synthesis_complete':False},{'overview':'short'},{'review_failures':['timeout']},{'disposition':'REQUEST_CHANGES'},{'disposition':'COMMENT'}]:
+            self.assertEqual(self.publish(report=patch)[0]['event'],'REQUEST_CHANGES')
+    def test_body_cannot_override_computed_verdict(self):
+        self.publish(report={'complete':False},body='**Verdict: Approved**',invalid=True)
     def test_stale_review_is_discarded(self):
         self.assertEqual(self.publish(head='new'),[])
         self.assertEqual(self.publish(report={'commit_id':'old'}),[])

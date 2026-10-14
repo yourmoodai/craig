@@ -341,16 +341,25 @@ def review_diff(diff, files, *, mock=False):
     if not diff.strip():
         return {**report, "summary": "review incomplete: no diff to assess."}
     omitted = []
+    excluded = []
     sections = re.split(r"(?=^diff --git )", diff, flags=re.MULTILINE)
     text_sections = []
     for section in sections:
         if re.search(r"^(Binary files .* differ|GIT binary patch)$", section, re.MULTILINE):
-            omitted.append(section.splitlines()[0])
+            header = section.splitlines()[0]
+            asset = re.fullmatch(r"diff --git a/(docs/assets/[^\n]+\.(?:png|jpg|jpeg|webp)) b/\1", header, re.IGNORECASE)
+            if asset and ".." not in Path(asset[1]).parts and not re.search(r"^.*mode (?!100644)\d+", section, re.MULTILINE):
+                excluded.append(asset[1])
+            else:
+                omitted.append(header)
         else:
             text_sections.append(section)
     diff = "".join(text_sections)
     report["omitted_binary_changes"] = omitted
+    report["excluded_assets"] = excluded
     if not diff.strip():
+        if excluded and not omitted:
+            return {**report, "complete": True, "disposition": "APPROVE", "summary": "only excluded documentation images changed."}
         return {**report, "summary": "review incomplete: binary changes require manual review."}
     try:
         chunks = split_diff(diff)
@@ -384,6 +393,8 @@ def review_diff(diff, files, *, mock=False):
 
     def assess(item):
         header, chunk, evidence = item
+        if time.monotonic() >= deadline:
+            return "COMMENT", [], "review incomplete: deadline exhausted; chunk not reviewed."
         try:
             return run_model_reviewer(
                 chunk,
@@ -396,7 +407,7 @@ def review_diff(diff, files, *, mock=False):
         except Exception:
             return "COMMENT", [], "review incomplete: chunk worker failed."
 
-    # Submit one bounded batch at a time so an incomplete result stops further spending.
+    # Keep independent coverage even when another chunk fails, within one deadline.
     with ThreadPoolExecutor(max_workers=REVIEW_WORKERS) as executor:
         for start in range(0, len(inputs), REVIEW_WORKERS):
             batch = inputs[start : start + REVIEW_WORKERS]
@@ -404,7 +415,6 @@ def review_diff(diff, files, *, mock=False):
             for index, item in enumerate(batch, start + 1):
                 print(f"reviewing chunk {index}/{len(chunks)}: {item[0]}", flush=True)
                 futures.append(executor.submit(assess, item))
-            incomplete = []
             for index, (item, future) in enumerate(zip(batch, futures), start + 1):
                 header, chunk, _ = item
                 disposition, findings, summary = future.result()
@@ -423,14 +433,7 @@ def review_diff(diff, files, *, mock=False):
                 if completed:
                     report["completed_chunks"] += 1
                     report["reviewed_lines"] += len(chunk.splitlines())
-                else:
-                    incomplete.append(summary)
-            if incomplete:
-                report["summary"] = (
-                    f"{incomplete[0]} completed {report['completed_chunks']}/{len(chunks)} chunks."
-                )
-                return report
-    report["complete"] = not omitted
+    report["complete"] = not omitted and report['completed_chunks'] == len(chunks)
     dispositions = {chunk["disposition"] for chunk in report["chunks"]}
     report["disposition"] = (
         "REQUEST_CHANGES"
@@ -440,51 +443,14 @@ def review_diff(diff, files, *, mock=False):
         else "APPROVE"
     )
     report["summary"] = (
-        f"reviewed all {report['total_lines']} diff lines across "
-        f"{len(files)} files in {len(chunks)} chunks. "
+        f"reviewed {report['reviewed_lines']} text diff lines across "
+        f"{report['completed_chunks']}/{len(chunks)} chunks. "
         "chunk coverage does not establish cross-file correctness."
     )
     if omitted:
         report["disposition"] = "COMMENT"
         report["summary"] = "review incomplete: textual changes assessed; binary changes require manual review: " + "; ".join(omitted)
     return report
-
-
-def format_markdown_summary(
-    disposition: str,
-    findings: List[Dict],
-    summary: str,
-    target: str,
-    duration: float,
-) -> str:
-    badge = {
-        "APPROVE": "✅ **APPROVE**",
-        "COMMENT": "💬 **COMMENT**",
-        "REQUEST_CHANGES": "❌ **REQUEST CHANGES**",
-    }.get(disposition, disposition)
-
-    lines = [
-        f"## 🛡️ Adversarial Code Review: {target}",
-        "",
-        f"**Verdict:** {badge} ({duration:.2f}s)",
-        "",
-        f"> {summary}",
-        "",
-    ]
-
-    if findings:
-        lines.append("### Findings")
-        for finding in findings:
-            lines.extend(
-                [
-                    f"- **[{finding.get('code', 'INV')}] {finding['title']}** (`{finding['file']}`)",
-                    f"  - Severity: `{finding['severity']}` | Category: `{finding['category']}`",
-                    f"  - {finding['details']}",
-                ]
-            )
-        lines.append("")
-
-    return "\n".join(lines)
 
 
 def main() -> int:
@@ -515,12 +481,11 @@ def main() -> int:
         f"auditing {len(relevant_files)} files and {len(diff.splitlines())} diff lines without truncation."
     )
     report = review_diff(diff, relevant_files, mock=args.mock)
-    disposition, findings, summary = report["disposition"], report["findings"], report["summary"]
     duration = time.monotonic() - start_time
-    md_summary = format_markdown_summary(disposition, findings, summary, args.target, duration)
-    for chunk in report["chunks"]:
-        md_summary += f"\n### chunk {chunk['index']}: {chunk['file']}\n\n{chunk['summary']}\n"
-    report.update(commit_id=commit, duration_seconds=duration, body=md_summary)
+    from reporting import finalize
+    report.update(commit_id=commit, duration_seconds=duration)
+    finalize(report, qualified=not args.mock, synthesize=not args.mock)
+    disposition, md_summary = report['disposition'], report['body']
 
     if args.summary_file:
         args.summary_file.parent.mkdir(parents=True, exist_ok=True)

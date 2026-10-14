@@ -23,7 +23,7 @@ jobs:
     environment:
       name: default
       deployment: false
-    timeout-minutes: 55
+    timeout-minutes: 60
     permissions:
       contents: read
       pull-requests: read
@@ -97,9 +97,12 @@ jobs:
               core.notice('stale review discarded'); return;
             }
             if (typeof report.body !== 'string' || !report.body.trim() || report.body.length > 60000 || /co-authored-by|generated-by|assisted-by|reviewed with|🤖/i.test(report.body)) throw Error('invalid review body');
-            const clean = report.qualified === true && report.complete === true && report.disposition === 'APPROVE' && Array.isArray(report.findings) && report.findings.length === 0;
-            const event = clean ? 'APPROVE' : 'COMMENT';
-            const state = clean ? 'APPROVED' : 'COMMENTED';
+            const words = typeof report.overview === 'string' ? report.overview.trim().split(/\s+/).length : 0;
+            const clean = words >= 50 && words <= 100 && report.qualified === true && report.complete === true && report.synthesis_complete === true && report.disposition === 'APPROVE' && Array.isArray(report.findings) && report.findings.length === 0 && Array.isArray(report.review_failures) && report.review_failures.length === 0;
+            const event = clean ? 'APPROVE' : 'REQUEST_CHANGES';
+            const state = clean ? 'APPROVED' : 'CHANGES_REQUESTED';
+            const verdict = clean ? 'Approved' : 'Request changes';
+            if (!report.body.includes('**Verdict: '+verdict+'**')) throw Error('review body disagrees with computed verdict');
             const marker = '<!-- craig-adversarial-review -->';
             const reviews = await github.paginate(github.rest.pulls.listReviews,args);
             if (reviews.some(r => r.user.login === 'github-actions[bot]' && r.commit_id === pr.head.sha && r.state === state && r.body.includes(marker))) return;

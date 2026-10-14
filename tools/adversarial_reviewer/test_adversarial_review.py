@@ -14,7 +14,6 @@ import time
 from unittest.mock import patch
 
 from adversarial_review import (
-    format_markdown_summary,
     run_heuristic_reviewer,
     run_model_reviewer,
     extract_git_diff,
@@ -166,7 +165,7 @@ class TestAdversarialReviewer(unittest.TestCase):
             [c["summary"] for c in report["chunks"]], [f"checked file {i}" for i in range(4)]
         )
 
-    def test_incomplete_parallel_batch_stops_new_calls(self):
+    def test_incomplete_parallel_batch_keeps_independent_coverage(self):
         diff = "".join(f"diff --git a/{i} b/{i}\n+{'x' * 700}\n" for i in range(6))
 
         def reviewer(chunk, *args, **kwargs):
@@ -179,8 +178,8 @@ class TestAdversarialReviewer(unittest.TestCase):
             patch("adversarial_review.run_model_reviewer", side_effect=reviewer) as runner,
         ):
             report = review_diff(diff, [str(i) for i in range(6)])
-        self.assertEqual(runner.call_count, 3)
-        self.assertEqual(report["completed_chunks"], 2)
+        self.assertEqual(runner.call_count, 6)
+        self.assertEqual(report["completed_chunks"], 5)
         self.assertFalse(report["complete"])
         self.assertEqual(report["disposition"], "COMMENT")
 
@@ -334,6 +333,21 @@ class TestAdversarialReviewer(unittest.TestCase):
         self.assertEqual(report["disposition"], "COMMENT")
         self.assertEqual(len(report["omitted_binary_changes"]), 1)
 
+    def test_documentation_images_are_explicitly_excluded(self):
+        for path, excluded in [('docs/assets/craig.png', True), ('native/runtime.png', False), ('docs/assets/../runtime.png', False), ('docs/assets/payload.exe', False)]:
+            diff = f'diff --git a/a.rs b/a.rs\n+change\ndiff --git a/{path} b/{path}\nBinary files a/{path} and b/{path} differ\n'
+            with patch('adversarial_review.run_model_reviewer', return_value=('APPROVE', [], 'checked')):
+                report=review_diff(diff, ['a.rs', path])
+            self.assertEqual(report['complete'], excluded)
+            self.assertEqual(report['excluded_assets'], [path] if excluded else [])
+
+    def test_deadline_marks_unreviewed_chunks(self):
+        with patch('adversarial_review.REVIEW_SECONDS', -1), patch('adversarial_review.run_model_reviewer') as runner:
+            report=review_diff('diff --git a/a b/a\n+change\n', ['a'])
+        runner.assert_not_called()
+        self.assertFalse(report['complete'])
+        self.assertIn('not reviewed', report['chunks'][0]['summary'])
+
     def test_budget_counts_model_requests_after_batching(self):
         diff = "".join(f"diff --git a/{n} b/{n}\n+change\n" for n in range(150))
         with patch("adversarial_review.run_model_reviewer", return_value=("APPROVE", [], "checked text")) as runner:
@@ -412,23 +426,6 @@ class TestAdversarialReviewer(unittest.TestCase):
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0]["code"], "CONV001")
 
-    def test_markdown_summary_formatting(self):
-        findings = [
-            {
-                "code": "DEP001",
-                "title": "Third-party dependency",
-                "file": "pyproject.toml",
-                "severity": "critical",
-                "category": "dependencies",
-                "details": "Added requests dependency",
-            }
-        ]
-        md = format_markdown_summary(
-            "REQUEST_CHANGES", findings, "Invariant violation found", "PR #1", 0.5
-        )
-        self.assertIn("REQUEST CHANGES", md)
-        self.assertIn("DEP001", md)
-        self.assertIn("pyproject.toml", md)
 
 
 if __name__ == "__main__":
