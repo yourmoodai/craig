@@ -99,4 +99,5 @@ async function main() {
   } else result=await exchange(request);
   process.stdout.write(JSON.stringify({version:1,status:'ok',value:result})+'\n');
 }
-if(process.argv[1]===fileURLToPath(import.meta.url)) main().catch(()=>{process.stdout.write('{"version":1,"status":"error","code":"review_unavailable"}\n');process.exitCode=1;});
+const entrypoint=process.argv[1] ? await realpath(process.argv[1]).catch(()=>null) : null;
+if(entrypoint===fileURLToPath(import.meta.url)) main().catch(()=>{process.stdout.write('{"version":1,"status":"error","code":"review_unavailable"}\n');process.exitCode=1;});

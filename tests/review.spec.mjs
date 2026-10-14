@@ -1,13 +1,23 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp, mkdir, writeFile, readFile, rm, stat} from 'node:fs/promises';
-import {spawn, execFileSync} from 'node:child_process';
+import {mkdtemp, mkdir, writeFile, readFile, rm, stat, symlink} from 'node:fs/promises';
+import {spawn, spawnSync, execFileSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {resolve, join} from 'node:path';
 
 const root=resolve(import.meta.dirname,'..');
 const day=86400000;
+test('review entrypoint responds through a directory alias', async()=>{
+  const temporary=await mkdtemp(join(tmpdir(),'craig-entrypoint-'));
+  try {
+    const alias=join(temporary,'alias');
+    await symlink(root,alias,process.platform==='win32'?'junction':'dir');
+    const result=spawnSync(process.execPath,[join(alias,'bridge/review.mjs')],{input:'invalid json',encoding:'utf8',timeout:10000});
+    assert.equal(result.status,1);
+    assert.deepEqual(JSON.parse(result.stdout),{version:1,status:'error',code:'review_unavailable'});
+  } finally {await rm(temporary,{recursive:true,force:true});}
+});
 function invoke(profile, request, extra_env={}) {
   return new Promise((done,reject)=>{
     const child=spawn(process.execPath,['bridge/review.mjs'],{cwd:root,env:{...process.env,CLAUDE_CONFIG_DIR:profile,CRAIG_JUDGE_CONFIG:'',...extra_env},stdio:['pipe','pipe','pipe']});
