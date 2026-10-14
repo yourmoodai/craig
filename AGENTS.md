@@ -5,7 +5,7 @@ See [README.md](README.md) for setup and [the architecture decision](docs/adr/00
 - Keep detection and replacement in Rust; adapters only transport requests and results.
 - Never forward original input after a processing failure.
 - Never log or persist original prompts. Use synthetic fixtures in tests and profiles.
-- Runtime inference must remain offline. Artifact downloads require explicit setup.
+- Runtime inference must remain offline. Artifact downloads are allowed only during explicit setup or automatic first activation of an installed release.
 - Preserve unmatched source text exactly. Reject ambiguous protected-span edits.
 - Use `LOG_LEVEL` for logging; messages and error codes stay lowercase.
 - Run `npm run build` and `npm run verify` before concluding implementation work.

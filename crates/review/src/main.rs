@@ -86,9 +86,9 @@ fn serve() -> ReviewResult<()> {
     let _ = std::fs::remove_file(socket);
     Ok(())
 }
-#[cfg(not(unix))]
+#[cfg(windows)]
 fn serve() -> ReviewResult<()> {
-    Err("unsupported_platform".into())
+    craig_review::windows::serve()
 }
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();

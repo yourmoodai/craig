@@ -1,3 +1,4 @@
+mod prepare;
 use craig::{FixedMarker, MAX_TEXT_BYTES, RuntimeDetector, rewrite};
 use serde::Deserialize;
 use std::io::{self, Read};
@@ -10,6 +11,10 @@ struct Request {
 }
 fn run() -> Result<serde_json::Value, String> {
     let command = std::env::args().nth(1).unwrap_or_else(|| "help".into());
+    if command == "prepare" && std::env::args().count() == 2 {
+        return prepare::prepare()
+            .map(|path| serde_json::json!({"version":1,"status":"ready","model_dir":path}));
+    }
     if command == "help" || command == "--help" {
         return Ok(serde_json::json!({"commands":["rewrite", "doctor"]}));
     }

@@ -1,0 +1,36 @@
+import { packaged } from './distribution';
+
+type Host = { plugin: {root: string}; process: {run(argv: readonly string[], options?: {timeoutMs?: number; env?: Record<string,string>}): Promise<{exitCode:number;stdout:string;stderr:string}>} };
+
+export class Runtime {
+  node = 'node';
+  env: Record<string,string> = {};
+  ready: boolean;
+  constructor(private readonly release = packaged) { this.ready = !release; }
+  status = packaged ? 'preparing local filter' : 'developer runtime';
+  async start(host: Host) {
+    if (!this.release) return;
+    this.ready = false;
+    this.status = 'downloading and verifying local model; drafts remain local until ready';
+    const targets = [['darwin-arm64','node'], ['linux-x64','node'], ['win32-x64','node.exe']] as const;
+    try {
+      let target: string | undefined;
+      for (const [name, executable] of targets) {
+        const node = host.plugin.root + '/runtime/' + name + '/' + executable;
+        try {
+          const result = await host.process.run([node, '-p', 'process.platform+"-"+process.arch'], {timeoutMs:10000});
+          if (result.exitCode === 0 && result.stdout.trim() === name) { this.node = node; target = name; break; }
+        } catch {}
+      }
+      if (!target) { this.status = 'unsupported platform or runtime unavailable'; return; }
+      const binary = host.plugin.root + '/runtime/' + target + '/craig' + (target === 'win32-x64' ? '.exe' : '');
+      const result = await host.process.run([binary, 'prepare'], {timeoutMs:600000});
+      const value = JSON.parse(result.stdout);
+      if (result.exitCode !== 0 || value.status !== 'ready' || typeof value.model_dir !== 'string' || !value.model_dir) throw Error('setup_failed');
+      this.env = {CRAIG_MODEL_DIR:value.model_dir};
+      const doctor = await host.process.run([this.node,host.plugin.root+'/bridge/cli.mjs','doctor'], {env:this.env,timeoutMs:45000});
+      if (doctor.exitCode !== 0 || JSON.parse(doctor.stdout).status !== 'ready') throw Error('setup_failed');
+      this.ready = true; this.status = 'local filter ready';
+    } catch { this.status = 'setup incomplete; check network access and reopen /craig to retry'; }
+  }
+}

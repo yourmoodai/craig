@@ -1,0 +1,52 @@
+"""Exercise the packaged runtime without developer PATH tools or model overrides."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import platform
+import subprocess
+import sys
+import tempfile
+import urllib.request
+import zipfile
+
+release=Path(sys.argv[1]).resolve()
+archive=next(release.glob('craig-*.zip'))
+with tempfile.TemporaryDirectory(prefix='craig release ') as temporary:
+    root=Path(temporary)
+    with zipfile.ZipFile(archive) as bundle:
+        bundle.extractall(root)
+        for entry in bundle.infolist():
+            mode=entry.external_attr>>16
+            if mode: (root/entry.filename).chmod(mode)
+    manifest=json.loads((root/'release.json').read_text())
+    for name,expected in manifest['files'].items():
+        with (root/name).open('rb') as stream:
+            assert hashlib.file_digest(stream,'sha256').hexdigest()==expected,name
+    target={'Darwin':'darwin-arm64','Linux':'linux-x64','Windows':'win32-x64'}[platform.system()]
+    suffix='.exe' if os.name=='nt' else ''
+    native=root/'runtime'/target
+    node=native/('node'+suffix)
+    cache=root/'cache';cache.mkdir()
+    env={k:v for k,v in os.environ.items() if not k.startswith('CRAIG_')}
+    env.update(PATH=str(native), XDG_CACHE_HOME=str(cache), LOCALAPPDATA=str(cache))
+    # Candidate assets are not public yet. Seed verified model bytes in the same
+    # cache layout; prepare still verifies every digest, offline, with no override.
+    model=manifest['model'];directory=cache/'craig/models'/model['provenance']['upstream_revision'];directory.mkdir(parents=True)
+    for artifact in model['artifacts']:
+        path=directory/artifact['file']
+        url=model['provenance']['upstream_url']+'/resolve/'+model['provenance']['upstream_revision']+'/'+artifact['file']
+        urllib.request.urlretrieve(url,path)
+    subprocess.run([str(native/('craig'+suffix)),'prepare'],env=env,check=True,timeout=600)
+    env['CRAIG_MODEL_DIR']=str(directory)
+    result=subprocess.run([str(node),str(root/'bridge/cli.mjs'),'rewrite'],input=json.dumps({'version':1,'text':'You idiot, do not delete the test.'}),text=True,capture_output=True,env=env,check=True)
+    assert json.loads(result.stdout)['text']=='You ya ya ya, do not delete the test.'
+    profile=root/'profile';profile.mkdir();env['CLAUDE_CONFIG_DIR']=str(profile)
+    def request(command):
+        r=subprocess.run([str(node),str(root/'bridge/review.mjs')],input=json.dumps(command),text=True,capture_output=True,env=env,check=True,timeout=60)
+        return json.loads(r.stdout)['value']
+    try:
+        state=request({'command':'status'})
+        assert state['consent']['live'] is False and state['consent']['history'] is False
+    finally:request({'command':'shutdown'})
+print('packaged replacement and private worker passed without developer tools')

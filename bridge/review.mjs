@@ -1,3 +1,4 @@
+import {workerBinary} from './runtime.mjs';
 import {connect} from 'node:net';
 import {createHash} from 'node:crypto';
 import {spawn} from 'node:child_process';
@@ -12,7 +13,8 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function exchange(request) {
   if (!profile) throw Error('profile_unavailable');
   return new Promise((done,reject)=>{
-    const socket=connect(join(profile,'craig','worker.sock'));
+    const endpoint=process.platform==='win32' ? '\\\\.\\pipe\\craig-'+createHash('sha256').update(profile.replace(/^\\\\\?\\/, '').toLowerCase()).digest('hex') : join(profile,'craig','worker.sock');
+    const socket=connect(endpoint);
     let size=0; const chunks=[];
     socket.setTimeout(30000,()=>socket.destroy(Error('review_timeout')));
     socket.on('error',()=>reject(Error('review_unavailable')));
@@ -31,7 +33,7 @@ async function start(allow_mismatch=false) {
     if(!allow_mismatch && current.runtime_fingerprint!==runtime_fingerprint) throw Error('review_configuration_mismatch');
     return;
   }
-  const binary=resolve(root,'target/release/craig-review');
+  const binary=workerBinary;
   await access(binary).catch(()=>{throw Error('review_not_built');});
   const child=spawn(binary,['serve'],{cwd:root,env:{...process.env,CLAUDE_CONFIG_DIR:profile},detached:true,stdio:'ignore'});
   child.on('error',()=>{});child.unref();

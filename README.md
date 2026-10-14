@@ -20,27 +20,30 @@ Anthropic's [October 8 policy announcement](https://www.anthropic.com/news/2026-
 
 ## Installation
 
-Requires Rust, a C/C++ toolchain, Node.js 22.18 or newer, and Claude Code with mods support for the adapter. The adapter is tested with Claude Code `2.1.290`. Native build targets are macOS arm64 and Linux x64; build on the target platform.
+Release installation is designed to require only Claude Code on macOS Apple
+Silicon, Linux x64, or Windows x64:
 
 ```sh
-npm ci
-npm run build
-npm run model:fetch
-export CRAIG_MODEL_DIR="$PWD/.cache/models/mudes-en-base"
-node bridge/cli.mjs doctor
-claude --plugin-dir "$PWD"
-```
-
-To register the repository as a Claude Code marketplace and install the plugin (`craig@yourmood.ai`) after building the native addon and fetching model artifacts locally:
-
-```sh
-claude plugin marketplace add "$PWD"
+claude plugin marketplace add https://github.com/yourmoodai/craig/releases/latest/download/marketplace.json
 claude plugin install craig@yourmood.ai
 ```
 
-When hosted on GitHub (`yourmoodai/craig`), users with a built checkout or marketplace access can add the catalog via `claude plugin marketplace add yourmoodai/craig`.
+Enable Craig if Claude prompts. On first activation it downloads and verifies
+the pinned local model automatically; prompts remain in the draft until the
+filter is ready. Open `/craig` to inspect readiness or retry a failed download.
+No Rust, npm, system Node, or environment configuration is required by a release.
 
-Setup explicitly downloads the pinned model from Hugging Face. Inference makes no network requests. The default English classifier is [`mudes/en-base`](https://huggingface.co/mudes/en-base), revision `1600298e0458d961c2c749da7a098f69b4be478a`. Its Apache-2.0 model license is separate from this repository's AGPL-3.0-or-later license. Model weights are not committed or included in the npm package; the lab can explicitly package a local candidate with its licenses and evidence. Setup and Rust loading verify artifact hashes.
+**Release availability:** the install-and-run release is not yet published.
+These commands become usable only after all platform and installed-host gates
+pass. Until then, use the [source build](CONTRIBUTING.md#development).
+
+The plugin ZIP must be below 210 MB and includes pinned Node runtimes and native
+binaries. The unchanged detector is a separate approximately 431 MB download;
+compression alone reduces it only to approximately 400 MB. Inference stays
+offline after initialization. Optional personal-review judges remain separate
+explicit downloads.
+
+Release initialization downloads pinned model assets from GitHub Releases; developer setup downloads them from Hugging Face. Inference makes no network requests. The default English classifier is [`mudes/en-base`](https://huggingface.co/mudes/en-base), revision `1600298e0458d961c2c749da7a098f69b4be478a`. Its Apache-2.0 model license is separate from this repository's AGPL-3.0-or-later license. Model weights are not committed or included in the npm package; the lab can explicitly package a local candidate with its licenses and evidence. Setup and Rust loading verify artifact hashes.
 
 [`models/catalog.json`](models/catalog.json) is the source of truth for model identity, publisher and quantizer provenance, license, digest, and permitted role. `mudes/en-base` is the only submission-path detector. Qwen and Gemma are explicit-download, offline judges for personal review and evaluation; they cannot be selected as delivery detectors, generate prompt rewrites, establish provider approval, or certify policy compliance.
 
@@ -49,7 +52,7 @@ Set these environment variables before starting Claude:
 | Variable | Meaning |
 | --- | --- |
 | `CRAIG_DETECTOR` | `bert` by default; opt-in `lexical` requires a decision artifact |
-| `CRAIG_MODEL_DIR` | Required absolute path to downloaded artifacts |
+| `CRAIG_MODEL_DIR` | Optional absolute path overriding the automatically prepared model |
 | `CRAIG_THRESHOLD` | Override the model threshold; baseline default `0.5`, greater than zero and at most one |
 | `CRAIG_POLICY` | `offensive_spans` by default; `directed_abuse` requires a matching candidate head |
 | `CRAIG_REPLACEMENT` | Fixed marker, default `ya ya ya`; 1–80 non-control characters |
@@ -67,7 +70,7 @@ not aliases. The marketplace is `yourmood.ai`; GitHub ownership remains
 
 Before switching, disable both personal-review capabilities in the old mod,
 uninstall `middle-finger@yourmoodai`, close its sessions, and stop its review
-worker. Build Craig and follow the setup above to install
+worker. Follow the installation instructions above to install
 `craig@yourmood.ai`. Reconfigure environment variables before launching Claude.
 Existing model directories remain usable; weights need not be downloaded again.
 

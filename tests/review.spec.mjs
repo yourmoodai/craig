@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp, mkdir, writeFile, readFile, rm, stat} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
+import {tmpdir} from 'node:os';
 import {resolve, join} from 'node:path';
 
 const root=resolve(import.meta.dirname,'..');
@@ -37,7 +38,7 @@ async function fixture(profile, project, ages) {
 }
 
 test('history uses lexical selection and rejects changed artifact provenance', {timeout:120000}, async()=>{
-  const profile=await mkdtemp('/tmp/craig-review-lexical-');
+  const profile=await mkdtemp(join(tmpdir(),'craig-review-lexical-'));
   const model=join(profile,'model');await mkdir(model);
   const artifact={version:1,kind:'lexical',policy:'offensive_spans',features:'unicode_words_separated_ascii_v2',threshold:0.5,corpus_sha256:'a'.repeat(64),epoch:0,labels_reviewed:false,weights:{idiot:0.9},transitions:[[0,0],[0,0]]};
   const env={CRAIG_DETECTOR:'lexical',CRAIG_MODEL_DIR:model,CRAIG_POLICY:'offensive_spans',CRAIG_THRESHOLD:'0.5'};
@@ -63,7 +64,7 @@ test('history uses lexical selection and rejects changed artifact provenance', {
 });
 
 test('local worker enforces consent, SDK history dates, deduplication and text-free persistence', {timeout:120000}, async()=>{
-  const profile=await mkdtemp('/tmp/craig-review-');
+  const profile=await mkdtemp(join(tmpdir(),'craig-review-'));
   try {
     await fixture(profile,'first',[6,4,1]);
     await fixture(profile,'second',[2]);

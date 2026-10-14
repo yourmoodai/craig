@@ -20,3 +20,6 @@ pub fn now_ms() -> i64 {
 pub mod comparison;
 #[cfg(feature = "judge")]
 pub mod presets;
+
+#[cfg(windows)]
+pub mod windows;

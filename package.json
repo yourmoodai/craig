@@ -89,7 +89,10 @@
     "bench:decisions": "node scripts/benchmark-decisions.mjs",
     "test:decisions": "cargo test -p craig decision::tests && cargo test -p craig-lab --bin decision && node --test tests/benchmark.spec.mjs tests/decision.spec.mjs",
     "profile:decisions:memory": "cargo build --profile profiling -p craig --example inference_memory && node scripts/benchmark-inference.mjs --runner target/profiling/examples/inference_memory --detector crf --target-ms 500 --samples 1 --warmup 0 --fixtures-file tests/fixtures/decision-performance.json",
-    "test:decisions:parity": "node scripts/check-decision-parity.mjs"
+    "test:decisions:parity": "node scripts/check-decision-parity.mjs",
+    "test:reviewer": "python3 -m unittest discover -s tools/adversarial_reviewer",
+    "release:stage": "python3 scripts/release/package.py stage",
+    "release:assemble": "python3 scripts/release/package.py assemble"
   },
   "files": [
     "native",
@@ -120,7 +123,8 @@
     "binaryName": "craig",
     "targets": [
       "aarch64-apple-darwin",
-      "x86_64-unknown-linux-gnu"
+      "x86_64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc"
     ]
   },
   "dependencies": {

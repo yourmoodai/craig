@@ -1,28 +1,31 @@
 import type { On } from 'claude-code';
 import { read_result, max_text_bytes, max_output_bytes } from '../src/protocol';
 import { PersonalReview } from './review';
+import { Runtime } from './runtime';
 
 export function register(on: On) {
   const review = new PersonalReview();
+  const runtime = new Runtime();
   let latest: { original: string; replacement: string } | null = null;
   let generation = 0;
   let submitted = 0;
   on('session.start', async ($, e, next) => {
     const host = {
-      run: (request: unknown) => $.process.run(['node', $.plugin.root + '/bridge/review.mjs'], {stdin: JSON.stringify(request), timeoutMs: (request as {command?: string}).command === 'scan' ? 600000 : 15000}),
+      run: (request: unknown) => $.process.run([runtime.node, $.plugin.root + '/bridge/review.mjs'], {env: runtime.env, stdin: JSON.stringify(request), timeoutMs: (request as {command?: string}).command === 'scan' ? 600000 : 15000}),
       session: () => $.session.id(), now: () => $.clock.now(),
       enabled: () => $.store.get('personal_review_enabled'),
       save: (enabled: boolean) => $.store.set('personal_review_enabled', enabled),
       invalidate: () => { $.ui.invalidate('ui.render'); },
     };
     latest = null; generation += 1;
-    await review.start(host);
+    await runtime.start({plugin:{root:$.plugin.root},process:{run:(argv,init)=>$.process.run(argv,init)}});
+    if (runtime.ready) await review.start(host);
     await $.command.register({ name: 'craig', description: 'inspect the latest local replacement', immediate: true });
     return next(e);
   });
   on('session.end', async ($, e, next) => {
     const host = {
-      run: (request: unknown) => $.process.run(['node', $.plugin.root + '/bridge/review.mjs'], {stdin: JSON.stringify(request), timeoutMs: (request as {command?: string}).command === 'scan' ? 600000 : 15000}),
+      run: (request: unknown) => $.process.run([runtime.node, $.plugin.root + '/bridge/review.mjs'], {env: runtime.env, stdin: JSON.stringify(request), timeoutMs: (request as {command?: string}).command === 'scan' ? 600000 : 15000}),
       session: () => $.session.id(), now: () => $.clock.now(),
       enabled: () => $.store.get('personal_review_enabled'),
       save: (enabled: boolean) => $.store.set('personal_review_enabled', enabled),
@@ -34,23 +37,25 @@ export function register(on: On) {
   });
   on('command.run', { command: 'craig' }, async ($) => {
     await $.ui.open({ id: 'craig', title: 'local replacement', closeOnEscape: true });
+    if (!runtime.ready) { await runtime.start({plugin:{root:$.plugin.root},process:{run:(argv,init)=>$.process.run(argv,init)}}); $.ui.invalidate('ui.render'); }
     return {};
   });
   on('prompt.submit', async ($, e, next) => {
     const host = {
-      run: (request: unknown) => $.process.run(['node', $.plugin.root + '/bridge/review.mjs'], {stdin: JSON.stringify(request), timeoutMs: (request as {command?: string}).command === 'scan' ? 600000 : 15000}),
+      run: (request: unknown) => $.process.run([runtime.node, $.plugin.root + '/bridge/review.mjs'], {env: runtime.env, stdin: JSON.stringify(request), timeoutMs: (request as {command?: string}).command === 'scan' ? 600000 : 15000}),
       session: () => $.session.id(), now: () => $.clock.now(),
       enabled: () => $.store.get('personal_review_enabled'),
       save: (enabled: boolean) => $.store.set('personal_review_enabled', enabled),
       invalidate: () => { $.ui.invalidate('ui.render'); },
     };
     if (e.origin.kind !== 'composer' || e.text.trimStart().startsWith('/')) return next(e);
+    if (!runtime.ready) return { drop: runtime.status };
     const current_generation = generation;
     const submission = ++submitted;
     try {
       if (new TextEncoder().encode(e.text).length > max_text_bytes) return { drop: 'input exceeds the local processing limit; edit and resubmit' };
-      const result = await $.process.run(['node', $.plugin.root + '/bridge/cli.mjs', 'rewrite'], {
-        stdin: JSON.stringify(review.consent.live ? {version:2,text:e.text,assess:true} : { version: 1, text: e.text }), timeoutMs: 45000,
+      const result = await $.process.run([runtime.node, $.plugin.root + '/bridge/cli.mjs', 'rewrite'], {
+        env: runtime.env, stdin: JSON.stringify(review.consent.live ? {version:2,text:e.text,assess:true} : { version: 1, text: e.text }), timeoutMs: 45000,
       });
       if (next.signal.aborted || generation !== current_generation) return { drop: 'submission cancelled; resubmit to retry' };
       if (result.exitCode !== 0) return { drop: 'local replacement failed; check craig doctor and resubmit' };
@@ -72,7 +77,7 @@ export function register(on: On) {
   });
   on('ui.render', { component: 'Pane' }, async ($, e, next) => {
     const host = {
-      run: (request: unknown) => $.process.run(['node', $.plugin.root + '/bridge/review.mjs'], {stdin: JSON.stringify(request), timeoutMs: (request as {command?: string}).command === 'scan' ? 600000 : 15000}),
+      run: (request: unknown) => $.process.run([runtime.node, $.plugin.root + '/bridge/review.mjs'], {env: runtime.env, stdin: JSON.stringify(request), timeoutMs: (request as {command?: string}).command === 'scan' ? 600000 : 15000}),
       session: () => $.session.id(), now: () => $.clock.now(),
       enabled: () => $.store.get('personal_review_enabled'),
       save: (enabled: boolean) => $.store.set('personal_review_enabled', enabled),
@@ -103,6 +108,7 @@ export function register(on: On) {
     </Box>;
     return <Box flexDirection="column">
       <Text bold>local inspection — never added to model context</Text>
+      <Text>{runtime.status}</Text>
       <Button key="personal-metrics" label="personal metrics" onPress={async()=>{review.view='metrics';review.now=await $.clock.now();$.ui.invalidate('ui.render');}} />
       <Button key="policy-evidence" label="policy evidence" onPress={()=>{review.view='policy';$.ui.invalidate('ui.render');}} />
       <Text>{latest ? '- ' + latest.original : 'no replacement in this session'}</Text>

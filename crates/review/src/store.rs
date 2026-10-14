@@ -64,7 +64,11 @@ fn db<T>(result: rusqlite::Result<T>) -> ReviewResult<T> {
 pub fn profile_dir() -> ReviewResult<PathBuf> {
     let root = match std::env::var_os("CLAUDE_CONFIG_DIR") {
         Some(value) if !value.is_empty() => PathBuf::from(value),
-        _ => PathBuf::from(std::env::var_os("HOME").ok_or("profile_unavailable")?).join(".claude"),
+        _ => PathBuf::from(
+            std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+                .ok_or("profile_unavailable")?,
+        )
+        .join(".claude"),
     };
     root.canonicalize()
         .map_err(|_| "profile_unavailable".into())
@@ -84,6 +88,8 @@ pub fn private_dir(path: &Path) -> ReviewResult<()> {
         std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700))
             .map_err(|_| "metrics_unavailable")?;
     }
+    #[cfg(windows)]
+    crate::windows::protect_directory(path)?;
     Ok(())
 }
 

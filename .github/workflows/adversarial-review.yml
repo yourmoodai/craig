@@ -1,0 +1,106 @@
+name: adversarial code review
+on:
+  push:
+    branches: [develop]
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: review-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+jobs:
+  assess:
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    environment:
+      name: default
+      deployment: false
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      head: ${{ steps.scope.outputs.head }}
+      pr: ${{ steps.scope.outputs.pr }}
+    steps:
+      - uses: actions/github-script@v7
+        id: scope
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        with:
+          script: |
+            if (context.eventName === 'push') {
+              const pulls = (await github.rest.pulls.list({...context.repo, state:'open',head:context.repo.owner+':develop',base:'main'})).data;
+              if (pulls.length !== 1) throw Error('expected one open develop PR');
+              process.env.PR_NUMBER=String(pulls[0].number);
+            }
+            if (!/^[1-9][0-9]*$/.test(process.env.PR_NUMBER)) throw Error('invalid PR');
+            const pr = (await github.rest.pulls.get({...context.repo, pull_number:Number(process.env.PR_NUMBER)})).data;
+            if (pr.state !== 'open' || pr.draft) throw Error('PR is not ready');
+            core.setOutput('pr', pr.number);
+            core.setOutput('head', pr.head.sha);
+            core.setOutput('base', pr.base.sha);
+      # Only trusted base code executes with secrets. PR code is diff data.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: fetch diff without checkout
+        env:
+          PR_NUMBER: ${{ steps.scope.outputs.pr }}
+        run: git fetch origin "pull/$PR_NUMBER/head"
+      - name: qualify and assess
+        env:
+          KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+          BASE_SHA: ${{ steps.scope.outputs.base }}
+          HEAD_SHA: ${{ steps.scope.outputs.head }}
+        run: python3 tools/adversarial_reviewer/run_ci.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adversarial-report
+          path: review-result/report.json
+          if-no-files-found: error
+  publish:
+    needs: assess
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: adversarial-report
+          path: review-result
+      - uses: actions/github-script@v7
+        env:
+          EXPECTED_HEAD: ${{ needs.assess.outputs.head }}
+          PR_NUMBER: ${{ needs.assess.outputs.pr }}
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('review-result/report.json', 'utf8'));
+            const args = {...context.repo, pull_number:Number(process.env.PR_NUMBER)};
+            const pr = (await github.rest.pulls.get(args)).data;
+            if (pr.state !== 'open' || pr.head.sha !== process.env.EXPECTED_HEAD || report.commit_id !== pr.head.sha) {
+              core.notice('stale review discarded'); return;
+            }
+            if (typeof report.body !== 'string' || !report.body.trim() || report.body.length > 60000 || /co-authored-by|generated-by|assisted-by|reviewed with|🤖/i.test(report.body)) throw Error('invalid review body');
+            const clean = report.qualified === true && report.complete === true && report.disposition === 'APPROVE' && Array.isArray(report.findings) && report.findings.length === 0;
+            const event = clean ? 'APPROVE' : 'COMMENT';
+            const state = clean ? 'APPROVED' : 'COMMENTED';
+            const marker = '<!-- craig-adversarial-review -->';
+            const reviews = await github.paginate(github.rest.pulls.listReviews,args);
+            if (reviews.some(r => r.user.login === 'github-actions[bot]' && r.commit_id === pr.head.sha && r.state === state && r.body.includes(marker))) return;
+            await github.rest.pulls.createReview({...args,commit_id:pr.head.sha,event,body:marker+'\n'+report.body});

@@ -1,0 +1,116 @@
+name: release qualification
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths: ['scripts/release/**', '.github/workflows/release.yml', 'crates/**', 'bridge/**', 'hooks/**', 'Cargo*', 'package*.json']
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: darwin-arm64
+          - os: ubuntu-24.04
+            target: linux-x64
+          - os: windows-2022
+            target: win32-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.0
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: '"RUSTFLAGS=-C target-feature=+crt-static" | Out-File -FilePath $env:GITHUB_ENV -Append'
+      - run: npm run build
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: npm run model:fetch
+      - run: npm run eval:local
+      - run: node --test tests/native.spec.mjs tests/review.spec.mjs
+      - run: python scripts/release/package.py stage ${{ matrix.target }} .cache/part
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: .cache/part
+  package:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.0
+      - uses: actions/download-artifact@v4
+        with:
+          path: .cache/parts
+      - run: python3 scripts/release/package.py assemble .cache/parts .cache/release/plugin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            .cache/release/*.zip
+            .cache/release/marketplace.json
+            .cache/release/SHA256SUMS
+  installed:
+    needs: package
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: .cache/release
+      - run: python scripts/release/smoke.py .cache/release
+      # Full host qualification is required before a production release.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.0
+      - run: npm install --global @anthropic-ai/claude-code@2.1.290
+      - if: runner.os == 'Windows'
+        run: python -m pip install pywinpty==3.0.2
+      - name: installed host gate
+        run: python scripts/release/host_gate.py
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: installed
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: .cache/release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.0
+      - run: npm run model:fetch
+      - name: publish immutable assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release/publish.py

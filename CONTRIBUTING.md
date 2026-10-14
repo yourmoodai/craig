@@ -53,13 +53,17 @@ boundaries. New implementation phases do not automatically need new ADRs.
 
 ## Development
 
-Follow the [README installation](README.md#installation), then work on a focused
-branch in your fork. The existing repository is library-first: build Rust and its typed Node
-bindings before exercising the adapter.
+Work on a focused branch in your fork. Source development requires Rust, a
+C/C++ toolchain, and Node.js 22.18 or newer. Build the Rust library and typed
+Node bindings before exercising the adapter.
 
 ```sh
 npm ci
 npm run build
+npm run model:fetch
+export CRAIG_MODEL_DIR="$PWD/.cache/models/mudes-en-base"
+node bridge/cli.mjs doctor
+claude --plugin-dir "$PWD"
 npm run verify
 ```
 
@@ -111,3 +115,19 @@ Submit only material you have the right to contribute. Contributions use the
 project's existing [LICENSE](LICENSE) and [NOTICE](NOTICE) terms. Model weights
 and imported tooling retain their separate licenses; keep their provenance and
 notices intact. Synthetic fixtures use `CC0-1.0` where declared.
+
+
+## Release and review workflows
+
+The [architecture decision](docs/adr/0001-local-span-replacement.md#release-distribution-and-initialization)
+owns release packaging and activation. Run `python3 scripts/release/package.py stage`
+with a supported target and output directory after a release build. CI assembles
+all targets, exercises the archive, and gates tag publication on installed-host tests.
+The generated release marketplace points at a checksummed ZIP; never point it at
+an unqualified candidate. Source archives are not installable release bundles.
+
+Kimi review is advisory. A complete clean review approves the current commit;
+findings or incomplete coverage comment without blocking request-changes reviews.
+See [reviewer verification](tools/adversarial_reviewer/README.md). Existing required
+human/PR approvals and stale-review dismissal remain in effect. The environment
+secret is `KIMI_API_KEY` in `default`; never put its value in code or logs.

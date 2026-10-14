@@ -1,3 +1,4 @@
+import {Runtime} from '../hooks/runtime';
 import { test, expect, mock } from 'claude-code/testing';
 
 const original = 'You idiot, fix the test';
@@ -125,4 +126,29 @@ test('history controls default to three days and cap selection at five',async($,
   expect(await ui.find({type:'Text',text:/lookback: 5 days/})).toBeDefined();
   expect(await ui.find({key:'days-6'})).toBeUndefined();
   await ui.unmount();
+});
+
+
+test('packaged runtime never uses PATH node and stays closed on setup failure', async () => {
+  const runtime = new Runtime(true);
+  const calls: string[][] = [];
+  await runtime.start({plugin:{root:'/synthetic/plugin'},process:{run:async (args) => {
+    calls.push([...args]);
+    if (args[1]==='-p') return {exitCode:0,stdout:'darwin-arm64',stderr:''};
+    return {exitCode:1,stdout:'{}',stderr:''};
+  }}});
+  expect(runtime.ready).toBe(false);
+  expect(calls[0]?.[0]).toBe('/synthetic/plugin/runtime/darwin-arm64/node');
+  expect(calls.length).toBe(2);
+});
+
+test('packaged runtime becomes ready only after prepare and doctor', async () => {
+  const runtime = new Runtime(true);
+  await runtime.start({plugin:{root:'/synthetic/plugin'},process:{run:async (args,options) => {
+    if (args[1]==='-p') return {exitCode:0,stdout:'darwin-arm64',stderr:''};
+    if (args[1]==='prepare') return {exitCode:0,stdout:JSON.stringify({status:'ready',model_dir:'/synthetic/cache'}),stderr:''};
+    expect(options?.env?.CRAIG_MODEL_DIR).toBe('/synthetic/cache');
+    return {exitCode:0,stdout:JSON.stringify({status:'ready'}),stderr:''};
+  }}});
+  expect(runtime.ready).toBe(true);
 });

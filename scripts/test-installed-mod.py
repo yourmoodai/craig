@@ -1,21 +1,56 @@
 #!/usr/bin/env python3
 """Exercise the installed composer against a synthetic loopback provider."""
-import fcntl
 import http.server
 import json
 import os
 from pathlib import Path
-import pty
 import select
 import shutil
 import struct
 import subprocess
 import tempfile
-import termios
 import threading
 import time
+import queue
 
-root = Path(__file__).resolve().parent.parent
+class Terminal:
+    def __init__(self, argv, cwd, env):
+        self.messages = queue.Queue()
+        if os.name == 'nt':
+            from winpty import PtyProcess
+            self.process = PtyProcess.spawn(argv, cwd=str(cwd), env=env, dimensions=(50,160))
+            self.master = None
+        else:
+            import fcntl, pty, termios
+            self.master, slave = pty.openpty()
+            fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH',50,160,0,0))
+            self.process = subprocess.Popen(argv,cwd=cwd,env=env,stdin=slave,stdout=slave,stderr=slave,start_new_session=True)
+            os.close(slave)
+        def read():
+            try:
+                while True:
+                    data = self.process.read(65536).encode() if self.master is None else os.read(self.master,65536)
+                    if not data: break
+                    self.messages.put(data)
+            except (OSError,EOFError): pass
+        threading.Thread(target=read,daemon=True).start()
+    def read(self):
+        try: return self.messages.get(timeout=0.1)
+        except queue.Empty: return b''
+    def write(self,data):
+        if self.master is None: self.process.write(data.decode())
+        else: os.write(self.master,data)
+    def close(self):
+        if self.master is None: self.process.close(force=True)
+        else:
+            os.close(self.master)
+            if self.process.poll() is None:
+                self.process.terminate()
+                try: self.process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    self.process.kill();self.process.wait(timeout=3)
+
+root = Path(os.environ.get("CRAIG_PLUGIN_ROOT", Path(__file__).resolve().parent.parent)).resolve()
 original = "You idiot, do not delete the test."
 replacement = "You ya ya ya, do not delete the test."
 received = []
@@ -57,7 +92,7 @@ def main():
     model = os.environ.get("CRAIG_MODEL_DIR")
     if not binary or not model:
         raise SystemExit("claude and CRAIG_MODEL_DIR are required")
-    with tempfile.TemporaryDirectory(prefix="craig-host-", dir="/tmp") as directory:
+    with tempfile.TemporaryDirectory(prefix="craig-host-") as directory:
         home = Path(directory).resolve()
         profile = home / ".claude"
         profile.mkdir()
@@ -74,10 +109,10 @@ def main():
         if not version.stdout.startswith("2.1.290 "):
             server.shutdown()
             raise SystemExit("installed UI fixture requires claude 2.1.290")
-        master, slave = pty.openpty()
-        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 160, 0, 0))
-        process = subprocess.Popen([binary, "--plugin-dir", str(root), "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--setting-sources", "", "--tools", "", "--model", "claude-sonnet-4-5", "--system-prompt", "Respond with synthetic response."], cwd=workspace, env=env, stdin=slave, stdout=slave, stderr=slave, start_new_session=True)
-        os.close(slave)
+        for key in ('SYSTEMROOT','WINDIR','COMSPEC','TEMP','TMP'):
+            if key in os.environ: env[key]=os.environ[key]
+        env['USERPROFILE']=str(home)
+        terminal = Terminal([binary, "--plugin-dir", str(root), "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--setting-sources", "", "--tools", "", "--model", "claude-sonnet-4-5", "--system-prompt", "Respond with synthetic response."], workspace, env)
         output = b""
         try:
             started = time.monotonic()
@@ -88,35 +123,31 @@ def main():
             metrics_open = False
             live_enabled = False
             while time.monotonic() - started < 45:
-                if select.select([master], [], [], 0.1)[0]:
-                    try:
-                        output += os.read(master, 65536)  # 64 KiB
-                    except OSError:
-                        break
+                output += terminal.read()
                 if any(marker in output for marker in [b"oauth/authorize", b"Paste code", b"Login successful"]):
                     raise SystemExit("installed mod requires authentication; composer not tested")
                 if not trusted and b"trust" in output and b"No," in output:
-                    os.write(master, b"\x1b[B\r")
+                    terminal.write(b"\x1b[B\r")
                     trusted = True
                     output = b""
                     started = time.monotonic()
                 if not pane_open and time.monotonic() - started > 4:
-                    os.write(master, b"/craig")
+                    terminal.write(b"/craig")
                     time.sleep(0.2)
-                    os.write(master, b"\r")
+                    terminal.write(b"\r")
                     pane_open = True
                 if pane_open and not metrics_open and time.monotonic() - started > 6:
-                    os.write(master, b"\x1b[<0;105;3M\x1b[<0;105;3m")
+                    terminal.write(b"\x1b[<0;105;3M\x1b[<0;105;3m")
                     metrics_open = True
                 if metrics_open and not live_enabled and time.monotonic() - started > 8:
-                    os.write(master, b"\x1b[<0;110;6M\x1b[<0;110;6m")
+                    terminal.write(b"\x1b[<0;110;6M\x1b[<0;110;6m")
                     live_enabled = True
                 if not sent and time.monotonic() - started > 11:
-                    os.write(master, b"\x1b")
+                    terminal.write(b"\x1b")
                     time.sleep(0.2)
-                    os.write(master, original.encode())
+                    terminal.write(original.encode())
                     time.sleep(0.2)
-                    os.write(master, b"\r")
+                    terminal.write(b"\r")
                     submitted_at = time.monotonic()
                     sent = True
                 if any(replacement in json.dumps(body) for body in received):
@@ -136,14 +167,7 @@ def main():
             # Host startup can include account information; do not persist terminal output.
             raise SystemExit("installed mod did not forward the expected replacement")
         finally:
-            os.close(master)
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=3)
+            terminal.close()
             subprocess.run(["node", str(root / "bridge/review.mjs")], input=json.dumps({"command": "shutdown"}), text=True, capture_output=True, env=env, timeout=20)
             server.shutdown()
 
