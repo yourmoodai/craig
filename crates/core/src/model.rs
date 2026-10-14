@@ -15,28 +15,9 @@ use tokenizers::{
 };
 
 fn verify_artifacts(dir: &Path) -> Result<()> {
-    for (name, expected) in [
-        (
-            "config.json",
-            "6f8566c9cffeb2bee02c274793125719758432e760e84cf6a0c8e9d2d4e0c1c7",
-        ),
-        (
-            "model_args.json",
-            "d18c9f32e0ff54f3131f77a9e5006c7637aee5c0087ab931354ad3903b939d8d",
-        ),
-        (
-            "tokenizer_config.json",
-            "eecbbc6e05bea2122aa27947cd4e47892701b843390bdfd8bb58688810c7fe43",
-        ),
-        (
-            "vocab.txt",
-            "eeaa9875b23b04b4c54ef759d03db9d1ba1554838f8fb26c5d96fa551df93d02",
-        ),
-        (
-            "pytorch_model.bin",
-            "a5b81cea46c128250dd422c1ddab7506a5ba46946708f3cc74c234b1dbe38b4b",
-        ),
-    ] {
+    for artifact in &crate::model_catalog::delivery_detector().artifacts {
+        let name = &artifact.file;
+        let expected = &artifact.sha256;
         let mut file = std::fs::File::open(dir.join(name)).map_err(|_| Error::ModelUnavailable)?;
         let mut hash = Sha256::new();
         let mut buffer = [0u8; 65_536]; // 64 KiB
@@ -49,7 +30,7 @@ fn verify_artifacts(dir: &Path) -> Result<()> {
             }
             hash.update(&buffer[..count]);
         }
-        if format!("{:x}", hash.finalize()) != expected {
+        if format!("{:x}", hash.finalize()) != *expected {
             return Err(Error::ModelIncompatible);
         }
     }

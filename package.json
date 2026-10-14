@@ -1,10 +1,18 @@
 {
   "name": "middle-finger",
   "version": "0.1.0",
-  "description": "Local offensive-span replacement, built in Rust with typed JavaScript bindings.",
+  "description": "A local Claude Code mod that keeps a provider's tone policy out of your private draft.",
   "type": "module",
   "private": true,
   "license": "AGPL-3.0-or-later",
+  "keywords": [
+    "privacy",
+    "local-inference",
+    "offline",
+    "open-source-models",
+    "span-replacement",
+    "claude-code-mod"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/yourmoodai/middle-finger.git"
@@ -28,6 +36,8 @@
     "test:plugin": "claude plugin test .",
     "validate": "claude plugin validate --strict . && claude plugin validate --strict .claude-plugin/plugin.json",
     "model:fetch": "node scripts/fetch-model.mjs",
+    "models:sync": "node scripts/sync-model-notice.mjs",
+    "models:verify": "node scripts/verify-models.mjs",
     "eval:local": "node scripts/evaluate.mjs",
     "build:lab": "cargo build --profile profiling -p middle-finger-lab",
     "review": "node bridge/review.mjs",
@@ -43,7 +53,7 @@
     "run": "node bridge/cli.mjs",
     "debug": "node --inspect-brk bridge/cli.mjs",
     "profile:memory": "cargo build --profile profiling -p middle-finger-cli && node --heap-prof scripts/profile.mjs",
-    "verify": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && npm run check && npm test && npm run validate && npm run test:plugin",
+    "verify": "npm run models:verify && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && npm run check && npm test && npm run validate && npm run test:plugin",
     "test:installed": "python3 scripts/test-installed-mod.py",
     "run:review:debug": "cargo run -p middle-finger-review --features judge -- serve",
     "run:review:release": "target/release/middle-finger-review serve",
@@ -89,7 +99,8 @@
     ".claude-plugin",
     "README.md",
     "LICENSE",
-    "NOTICE"
+    "NOTICE",
+    "models"
   ],
   "devDependencies": {
     "@napi-rs/cli": "^3.10.8",

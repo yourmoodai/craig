@@ -4,6 +4,7 @@ mod bert;
 mod coreml;
 pub mod decision;
 mod model;
+pub mod model_catalog;
 mod runtime;
 pub use artifact::{ModelManifest, Policy, artifact_digest};
 pub use coreml::ComputeUnits;

@@ -4,7 +4,7 @@ use middle_finger_review::{
     comparison::{dimensions, report},
     judge::{JudgeConfig, parse_response},
     policy::{CheckStatus, JudgeRun, PreparedPolicy, Scenario, judge_input, run_judge},
-    presets::{PRESETS, validate},
+    presets::{presets, validate},
 };
 use serde_json::json;
 
@@ -124,7 +124,7 @@ fn judge_payload_excludes_labels_detector_and_competing_verdicts() {
 }
 #[test]
 fn both_pinned_presets_accept_legacy_shape_and_reject_tampering() {
-    for preset in &PRESETS {
+    for preset in presets() {
         let value = json!({"model_id":preset.model_id,"revision":preset.revision,"quantization":preset.quantization,"sha256":preset.sha256,"artifact":"local.gguf","server_binary":"llama-server"});
         let mut config: JudgeConfig = serde_json::from_value(value).unwrap();
         validate(&config).unwrap();

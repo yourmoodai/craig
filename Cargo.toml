@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/node", "crates/cli", "crates/lab", "crates/review"]
+members = ["crates/core", "crates/node", "crates/cli", "crates/lab", "crates/review", "tools/commit_check"]
 resolver = "3"
 
 [workspace.package]
@@ -9,6 +9,7 @@ rust-version = "1.88"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/yourmoodai/middle-finger"
 homepage = "https://github.com/yourmoodai/middle-finger"
+description = "Local offline offensive-span detection and deterministic replacement."
 
 [workspace.dependencies]
 middle-finger = { path = "crates/core" }

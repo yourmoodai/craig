@@ -1,6 +1,7 @@
 use crate::{ReviewResult, judge::JudgeConfig};
 use std::{io::Write, path::Path, time::Duration};
 
+#[derive(Clone, Copy, Debug)]
 pub struct Preset {
     pub name: &'static str,
     pub model_id: &'static str,
@@ -10,42 +11,59 @@ pub struct Preset {
     pub sha256: &'static str,
     pub quantization: &'static str,
 }
-pub const PRESETS: [Preset; 2] = [
-    Preset {
-        name: "qwen",
-        model_id: "Qwen/Qwen3-4B-Instruct-2507",
-        repository: "bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF",
-        revision: "ae44f08e1392f39c0e474af10c3ff8355c8b6688",
-        file: "Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
-        sha256: "2fde00ce69dd4899c70d020845e2638353015bba0fdf161b3eb965f2bca4464e",
-        quantization: "Q4_K_M",
-    },
-    Preset {
-        name: "gemma",
-        model_id: "google/gemma-4-12B-it",
-        repository: "ggml-org/gemma-4-12B-it-GGUF",
-        revision: "e3e681731089efaa3f0917336944ac64752db8ba",
-        file: "gemma-4-12B-it-Q4_0.gguf",
-        sha256: "3712b9bd32cae83a22f67ee7a4466d8d7a4f21646ac8a07d19bf9418e8767a70",
-        quantization: "Q4_0",
-    },
-];
+
+pub fn presets() -> Vec<Preset> {
+    middle_finger::model_catalog::judges()
+        .map(|model| {
+            let artifact = model.artifacts.first().expect("judge artifact");
+            let converter_url = model
+                .provenance
+                .converter_url
+                .as_deref()
+                .expect("judge converter");
+            Preset {
+                name: if model.id.starts_with("Qwen/") {
+                    "qwen"
+                } else {
+                    "gemma"
+                },
+                model_id: &model.id,
+                repository: converter_url
+                    .strip_prefix("https://huggingface.co/")
+                    .expect("hugging face converter"),
+                revision: model
+                    .provenance
+                    .converter_revision
+                    .as_deref()
+                    .expect("converter revision"),
+                file: &artifact.file,
+                sha256: &artifact.sha256,
+                quantization: artifact
+                    .quantization
+                    .as_deref()
+                    .expect("judge quantization"),
+            }
+        })
+        .collect()
+}
+
 pub fn validate(config: &JudgeConfig) -> ReviewResult<()> {
-    if PRESETS.iter().any(|p| {
-        config.model_id == p.model_id
-            && config.revision == p.revision
-            && config.sha256 == p.sha256
-            && config.quantization == p.quantization
+    if presets().iter().any(|preset| {
+        config.model_id == preset.model_id
+            && config.revision == preset.revision
+            && config.sha256 == preset.sha256
+            && config.quantization == preset.quantization
     }) {
         Ok(())
     } else {
         Err("judge_artifact_mismatch".into())
     }
 }
+
 pub fn fetch(name: &str, directory: &Path, binary: &Path) -> ReviewResult<()> {
-    let preset = PRESETS
-        .iter()
-        .find(|p| p.name == name)
+    let preset = presets()
+        .into_iter()
+        .find(|preset| preset.name == name)
         .ok_or("unknown_judge_preset")?;
     let binary = binary
         .canonicalize()
@@ -96,7 +114,7 @@ pub fn fetch(name: &str, directory: &Path, binary: &Path) -> ReviewResult<()> {
         response
             .copy_to(&mut file)
             .map_err(|_| "judge_download_failed")?;
-        file.flush().map_err(|_| "setup_failed")?;
+        file.flush().map_err(|_| "judge_download_failed")?;
         if middle_finger::artifact_digest(&temporary).map_err(|_| "judge_artifact_unavailable")?
             != preset.sha256
         {

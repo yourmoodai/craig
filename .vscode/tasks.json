@@ -232,6 +232,19 @@
       "type": "shell",
       "command": "npm run profile:decisions:memory -- --model \"${input:decision_models}/crf\" --output \"${input:inference_report}\"",
       "problemMatcher": []
+    },
+    {
+      "label": "test commit standards",
+      "type": "process",
+      "command": "cargo",
+      "args": [
+        "test",
+        "-p",
+        "commit_check"
+      ],
+      "problemMatcher": [
+        "$rustc"
+      ]
     }
   ],
   "inputs": [

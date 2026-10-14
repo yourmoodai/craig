@@ -55,7 +55,7 @@ test('history uses lexical selection and rejects changed artifact provenance', {
     assert.equal(state.summary.history.assessed,1);
     assert.equal(state.summary.history.removed_characters,5);
     await writeFile(join(model,'decision.json'),JSON.stringify({...artifact,weights:{idiot:0.8}}));
-    await assert.rejects(invoke(profile,{command:'status'},env),/review_configuration_mismatch/);
+    await assert.rejects(invoke(profile,{command:'status'},env),/review_unavailable/);
   } finally {
     await invoke(profile,{command:'shutdown'},env).catch(()=>{});
     await rm(profile,{recursive:true,force:true});

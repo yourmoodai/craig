@@ -24,8 +24,7 @@ Attribution and Fork Notice (AGPL-3.0 Section 7)
 
 Separate Model and Dataset Licenses
 -----------------------------------
-- Default classifier weights (`mudes/en-base`) and local evaluation judge weights
-  (`Qwen3-4B-Instruct-2507`, `Gemma`) are separate artifacts governed by the
-  Apache License, Version 2.0. See `models/NOTICE` and `models/LICENSE-APACHE-2.0`.
+- Default classifier and local judge weights are separate Apache-2.0 artifacts.
+  See `models/catalog.json`, `models/NOTICE`, and `models/LICENSE-APACHE-2.0`.
 - Synthetic evaluation corpus fixtures in `tests/fixtures/` are provided under
   CC0-1.0 unless otherwise noted in the fixture record.

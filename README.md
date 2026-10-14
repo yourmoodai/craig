@@ -1,6 +1,6 @@
 # middle-finger
 
-Local offensive-span replacement: write what you mean, then decide what the provider gets to see. A Rust library detects offensive words and phrases on your machine and replaces each contiguous span with `ya ya ya`. A typed JavaScript interface and a Claude Code mod use the same core.
+Local offensive-span replacement for Claude Code: write what you mean, then decide what the provider gets to see. This is a Claude Code mod for people who refuse the premise that access to a tool gives its vendor authority over the tone of a private draft. A Rust library detects offensive words and phrases on your machine and replaces each contiguous span with `ya ya ya`. A typed JavaScript interface and the mod use the same core.
 
 ```text
 You idiot, do not delete the test.
@@ -16,7 +16,7 @@ The marker is deliberately facetious and bounded: one marker per span, with no g
 
 Anthropic's October 8, 2026 announcement adds a prohibition on “sustained and needless abusive or cruel behavior toward our models,” effective November 12, 2026. It expressly excludes ordinary frustration, pushback, dark creative themes, and testing or research. Our objection is to the vendor claiming authority over this boundary, not a claim that the announcement bans every swear word. [Read the announcement](https://www.anthropic.com/news/2026-usage-policy-update) and [usage policy](https://www.anthropic.com/legal/aup).
 
-This project puts the editing decision on the user's machine. The original wording is not the provider's entitlement.
+This project puts the editing decision on the user's machine. The original wording is not the provider's entitlement. A provider can set the conditions for its own service; it does not get to convert normal use of a computer into a compulsory etiquette tribunal. Making people install a local mod merely to keep communicating normally is Kafkaesque and hostile by design. The mod makes the boundary explicit: the user keeps their draft, and the provider receives only the deterministic replacement after successful local processing.
 
 ## Setup
 
@@ -41,6 +41,8 @@ claude plugin install middle-finger@yourmoodai
 When hosted on GitHub (`yourmoodai/middle-finger`), users with a built checkout or marketplace access can add the catalog via `claude plugin marketplace add yourmoodai/middle-finger`.
 
 Setup explicitly downloads the pinned model from Hugging Face. Inference makes no network requests. The default English classifier is [`mudes/en-base`](https://huggingface.co/mudes/en-base), revision `1600298e0458d961c2c749da7a098f69b4be478a`. Its Apache-2.0 model license is separate from this repository's AGPL-3.0-or-later license. Model weights are not committed or included in the npm package; the lab can explicitly package a local candidate with its licenses and evidence. Setup and Rust loading verify artifact hashes.
+
+[`models/catalog.json`](models/catalog.json) is the source of truth for model identity, publisher and quantizer provenance, license, digest, and permitted role. `mudes/en-base` is the only submission-path detector. Qwen and Gemma are explicit-download, offline judges for personal review and evaluation; they cannot be selected as delivery detectors, generate prompt rewrites, establish provider approval, or certify policy compliance.
 
 Set these environment variables before starting Claude:
 
@@ -233,4 +235,9 @@ Under [LICENSE](LICENSE) (Section 7 additional terms) and [NOTICE](NOTICE):
 - **Distinct fork naming**: Any fork or modified version distributed through a Claude plugin marketplace, directory, or package registry must use a distinct plugin `name` and `displayName` and clearly state that it is derived from `yourmoodai/middle-finger`.
 - **Upstream improvements**: Any modified version distributed or offered to users must publish its complete Corresponding Source under `AGPL-3.0-or-later` so that improvements can be contributed back upstream.
 
-Model weights (`mudes/en-base`, `Qwen3-4B-Instruct-2507`, `Gemma`) are separate artifacts governed by `Apache-2.0` (see [`models/NOTICE`](models/NOTICE) and [`models/LICENSE-APACHE-2.0`](models/LICENSE-APACHE-2.0)). Synthetic evaluation fixtures are provided under `CC0-1.0`.
+Model weights are separate Apache-2.0 artifacts; their pinned upstream revisions, third-party conversions, and required notices are recorded in [`models/catalog.json`](models/catalog.json) and generated [`models/NOTICE`](models/NOTICE). Synthetic evaluation fixtures are provided under `CC0-1.0`.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for issue acceptance, maintainer response
+commitments, development checks, commit standards, and pull request guidance.

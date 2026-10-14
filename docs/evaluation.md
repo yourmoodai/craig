@@ -416,7 +416,10 @@ The package includes the license and modification notices, while repository
 code is licensed under AGPL-3.0-or-later. Apache-2.0 permits modification and redistribution, including
 free distribution, subject to [its redistribution conditions](https://www.apache.org/licenses/LICENSE-2.0).
 Imported datasets retain their own terms; their permissions are not implied by
-the model license.
+the model license. [`models/catalog.json`](../models/catalog.json) records the
+pinned detector and judge artifacts, conversion provenance, and allowed roles.
+Only the MUDES entry may process submission-path text; Qwen and Gemma remain
+offline judges and never establish provider approval or certification.
 
 ## Policy and personal review
 
@@ -630,3 +633,24 @@ Neither metric is provider approval or judge calibration. Promotion requires
 reviewed regressions and evaluation labels, preserved clean cases and protected
 outcomes, and normalized precision/recall no worse than BERT. Keep synthetic
 labels provisional rather than changing them to make a gate pass.
+
+### Lexical revision results
+
+The measured M5 build completed three 10,000-sample runs per fixture across all
+20 fixtures through 64 KiB: 600,000 native rewrites and 600,000 Node-API rewrites.
+Maximum observed latency was **42.32 ms native** and **44.51 ms Node-API**, with
+no unexpected rewrite errors or 500 ms violations. The original third attempt
+was interrupted by moving the repository; its completed native samples peaked
+at 46.69 ms. Preserve that attempt alongside the complete replacement run.
+
+The revised detector matched 48/48 existing cases, 12/12 inspected regressions
+and 20/20 new synthetic cases; native/FFI parity matched all 80. Labels remain
+unreviewed, so production promotion remains gated. Fresh bridge-process
+measurements peaked at 65.60 ms across ten samples and are not a qualification
+of startup or host interaction. Installed-host verification remains unresolved
+because authentication preceded the composer.
+
+Local evidence is in `.cache/decision-revision-final.json` and its Markdown
+summary. Results bind the recorded binary hashes, not later concurrent changes
+to the model catalog or a future rebuild. They do not establish accuracy on
+unseen language or provider approval.

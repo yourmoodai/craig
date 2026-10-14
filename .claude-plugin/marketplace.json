@@ -1,6 +1,6 @@
 {
   "name": "yourmoodai",
-  "description": "Local offensive-span detection and replacement.",
+  "description": "Local-first Claude Code mods for keeping private drafts under user control.",
   "owner": {
     "name": "yourmoodai",
     "url": "https://github.com/yourmoodai"
@@ -9,7 +9,7 @@
     {
       "name": "middle-finger",
       "source": "./",
-      "description": "Local offensive-span replacement for Claude Code."
+      "description": "A Claude Code mod for keeping a provider's tone policy out of your private draft."
     }
   ]
 }
