@@ -15,7 +15,7 @@ ENDPOINT = "https://api.moonshot.ai/v1/chat/completions"
 MODEL = "kimi-k3"
 REASONING_EFFORT = "low"
 OUTPUT_TOKENS = 8192
-CALL_SECONDS = 120
+CALL_SECONDS = 240
 PROGRESS_SECONDS = 30
 MAX_RESPONSE_BYTES = 1048576  # 1 MiB
 

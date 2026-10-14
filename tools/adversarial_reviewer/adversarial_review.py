@@ -26,7 +26,7 @@ REVIEW_WORKERS = 3
 MAX_CHUNKS = 128
 SUPPORT_BYTES = 32768  # 32 KiB; include complete referenced release helpers.
 ASSESSMENT_SECONDS = 240
-REVIEW_SECONDS = 900
+REVIEW_SECONDS = 1800
 RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {

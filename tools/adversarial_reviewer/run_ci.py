@@ -16,7 +16,7 @@ try:
     qualified = subprocess.run([sys.executable, str(root/'evaluate_model.py')], timeout=1000).returncode == 0
     if qualified:
         subprocess.run([sys.executable, str(root/'adversarial_review.py'), '--base', os.environ['BASE_SHA'],
-                        '--head', head, '--fail-on', 'none', '--json-output', str(path)], timeout=1000)
+                        '--head', head, '--fail-on', 'none', '--json-output', str(path)], timeout=1900)
         if path.exists():
             report = json.loads(path.read_text())
             report['qualified'] = True
