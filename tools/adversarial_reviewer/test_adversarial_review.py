@@ -348,6 +348,14 @@ class TestAdversarialReviewer(unittest.TestCase):
         self.assertFalse(report['complete'])
         self.assertIn('not reviewed', report['chunks'][0]['summary'])
 
+    def test_executable_images_are_not_excluded(self):
+        path='docs/assets/tool.png'
+        for mode in ['new file mode 100755', 'index abcdef1..abcdef2 100755']:
+            diff=f'diff --git a/{path} b/{path}\n{mode}\nBinary files a/{path} and b/{path} differ\n'
+            report=review_diff(diff,[path])
+            self.assertFalse(report['complete'])
+            self.assertEqual(report['excluded_assets'],[])
+
     def test_budget_counts_model_requests_after_batching(self):
         diff = "".join(f"diff --git a/{n} b/{n}\n+change\n" for n in range(150))
         with patch("adversarial_review.run_model_reviewer", return_value=("APPROVE", [], "checked text")) as runner:

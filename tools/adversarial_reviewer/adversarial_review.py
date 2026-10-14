@@ -348,7 +348,8 @@ def review_diff(diff, files, *, mock=False):
         if re.search(r"^(Binary files .* differ|GIT binary patch)$", section, re.MULTILINE):
             header = section.splitlines()[0]
             asset = re.fullmatch(r"diff --git a/(docs/assets/[^\n]+\.(?:png|jpg|jpeg|webp)) b/\1", header, re.IGNORECASE)
-            if asset and ".." not in Path(asset[1]).parts and not re.search(r"^.*mode (?!100644)\d+", section, re.MULTILINE):
+            unsafe_mode = re.search(r"^(?:.*mode |index \S+ )(?!100644)\d+", section, re.MULTILINE)
+            if asset and ".." not in Path(asset[1]).parts and not unsafe_mode:
                 excluded.append(asset[1])
             else:
                 omitted.append(header)
