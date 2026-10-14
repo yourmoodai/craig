@@ -45,8 +45,11 @@ with tempfile.TemporaryDirectory(prefix='craig release ') as temporary:
     def request(command):
         r=subprocess.run([str(node),str(root/'bridge/review.mjs')],input=json.dumps(command),text=True,capture_output=True,env=env,check=True,timeout=60)
         return json.loads(r.stdout)['value']
+    started=False
     try:
         state=request({'command':'status'})
+        started=True
         assert state['consent']['live'] is False and state['consent']['history'] is False
-    finally:request({'command':'shutdown'})
+    finally:
+        if started: request({'command':'shutdown'})
 print('packaged replacement and private worker passed without developer tools')

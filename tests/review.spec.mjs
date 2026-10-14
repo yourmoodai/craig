@@ -1,13 +1,32 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp, mkdir, writeFile, readFile, rm, stat, symlink} from 'node:fs/promises';
+import {mkdtemp, mkdir, writeFile, readFile, rm, stat, symlink, realpath} from 'node:fs/promises';
 import {spawn, spawnSync, execFileSync} from 'node:child_process';
-import {randomUUID} from 'node:crypto';
+import {randomUUID, createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {resolve, join} from 'node:path';
 
 const root=resolve(import.meta.dirname,'..');
 const day=86400000;
+test('long Unix profiles retain private isolated worker sockets', {skip:process.platform==='win32',timeout:30000}, async()=>{
+  const temporary=await mkdtemp(join(tmpdir(),'craig-long-'));
+  const profiles=['a','b'].map(name=>join(temporary,name.repeat(140)));
+  try {
+    for(const profile of profiles) await mkdir(profile);
+    await invoke(profiles[0],{command:'consent',live:true,history:false});
+    assert.equal((await invoke(profiles[1],{command:'status'})).consent.live,false);
+    assert.equal((await invoke(profiles[0],{command:'status'})).consent.live,true);
+    for(const profile of profiles) {
+      const hash=createHash('sha256').update(await realpath(profile)).digest('hex');
+      const directory=`/tmp/craig-${process.geteuid()}-${hash}`;
+      assert.equal((await stat(directory)).mode&0o777,0o700);
+      assert.equal((await stat(join(directory,'s'))).mode&0o777,0o600);
+    }
+  } finally {
+    for(const profile of profiles) await invoke(profile,{command:'shutdown'}).catch(()=>{});
+    await rm(temporary,{recursive:true,force:true});
+  }
+});
 test('review entrypoint responds through a directory alias', async()=>{
   const temporary=await mkdtemp(join(tmpdir(),'craig-entrypoint-'));
   try {

@@ -601,6 +601,7 @@ dependencies = [
  "ctrlc",
  "fs2",
  "hmac",
+ "libc",
  "rand 0.9.5",
  "reqwest",
  "rusqlite",

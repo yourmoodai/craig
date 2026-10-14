@@ -2,7 +2,7 @@ import {workerBinary} from './runtime.mjs';
 import {connect} from 'node:net';
 import {createHash} from 'node:crypto';
 import {spawn} from 'node:child_process';
-import {realpath, access, writeFile, readFile} from 'node:fs/promises';
+import {realpath, access, writeFile, readFile, lstat} from 'node:fs/promises';
 import {homedir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -12,8 +12,16 @@ const profile=await realpath(process.env.CLAUDE_CONFIG_DIR || join(homedir(),'.c
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function exchange(request) {
   if (!profile) throw Error('profile_unavailable');
+  let unix_endpoint;
+  if(process.platform!=='win32') {
+    const uid=process.geteuid();
+    const directory='/tmp/craig-'+uid+'-'+createHash('sha256').update(profile).digest('hex');
+    const metadata=await lstat(directory);
+    if(!metadata.isDirectory() || metadata.uid!==uid || (metadata.mode&0o777)!==0o700) throw Error('review_unavailable');
+    unix_endpoint=join(directory,'s');
+  }
   return new Promise((done,reject)=>{
-    const endpoint=process.platform==='win32' ? '\\\\.\\pipe\\craig-'+createHash('sha256').update(profile.replace(/^\\\\\?\\/, '').toLowerCase()).digest('hex') : join(profile,'craig','worker.sock');
+    const endpoint=process.platform==='win32' ? '\\\\.\\pipe\\craig-'+createHash('sha256').update(profile.replace(/^\\\\\?\\/, '').toLowerCase()).digest('hex') : unix_endpoint;
     const socket=connect(endpoint);
     let size=0; const chunks=[];
     socket.setTimeout(30000,()=>socket.destroy(Error('review_timeout')));
