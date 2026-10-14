@@ -8,6 +8,11 @@ Run `python3 -m unittest discover -s tools/adversarial_reviewer` for transport,
 evidence, coverage, and disposition tests. With `KIMI_API_KEY` configured, run
 `python3 tools/adversarial_reviewer/evaluate_model.py` for live qualification.
 
+Qualification includes paired Node evaluation cases whose expected behavior is
+checked by executing fixed fixtures. The reviewer receives observations from
+fixed, reviewer-owned runtime probes to distinguish valid lexical shadowing from
+duplicate declarations. These probes never execute code supplied by a PR.
+
 Each review begins with a 50–100 word overview synthesized from all chunk results,
 followed by **Approved** or **Request changes**. Findings and review failures appear
 separately; chunk details and exclusions are collapsed below them.

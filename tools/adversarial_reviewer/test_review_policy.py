@@ -21,10 +21,10 @@ const input=JSON.parse(process.argv[1]); const calls=[];
 process.env.EXPECTED_HEAD='head';process.env.PR_NUMBER='1';
 const context={repo:{owner:'yourmoodai',repo:'craig'}};
 const core={notice:()=>{}};
-const require=()=>({readFileSync:()=>JSON.stringify(input.report)});
+const mockRequire=()=>({readFileSync:()=>JSON.stringify(input.report)});
 const github={rest:{pulls:{get:async()=>({data:{state:'open',head:{sha:input.head}}}),listReviews:()=>{},createReview:async r=>calls.push(r)}},paginate:async()=>input.reviews};
 '''
-        result=subprocess.run(['node','-e',harness+'\n(async()=>{'+policy+'\n})().then(()=>console.log(JSON.stringify(calls)));',json.dumps(case)],capture_output=True,text=True,timeout=10)
+        result=subprocess.run(['node','--input-type=commonjs','-e',harness+'\n(async(require)=>{'+policy+'\n})(mockRequire).then(()=>console.log(JSON.stringify(calls)));',json.dumps(case)],capture_output=True,text=True,timeout=10)
         if case.get('invalid'):
             self.assertNotEqual(result.returncode,0)
             return []

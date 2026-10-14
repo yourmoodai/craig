@@ -102,7 +102,11 @@ test('local worker enforces consent, SDK history dates, deduplication and text-f
         $file=Get-Acl -LiteralPath $env:CRAIG_TEST_DATABASE;
         $entries=@($file.GetAccessRules($true,$true,[System.Security.Principal.SecurityIdentifier]) | ForEach-Object { @{sid=$_.IdentityReference.Value; type=$_.AccessControlType.ToString()} });
         @{sid=$sid; protected=$directory.AreAccessRulesProtected; entries=$entries} | ConvertTo-Json -Depth 4`;
-      const acl=JSON.parse(execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{encoding:'utf8',timeout:15000,env:{...process.env,CRAIG_TEST_DATABASE:database}}));
+      // Node can inherit PowerShell 7 module paths from the CI shell; Windows
+      // PowerShell must construct its own compatible module search path.
+      const acl_env=Object.fromEntries(Object.entries(process.env).filter(([key])=>key.toLowerCase()!=='psmodulepath'));
+      acl_env.CRAIG_TEST_DATABASE=database;
+      const acl=JSON.parse(execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{encoding:'utf8',timeout:15000,env:acl_env}));
       assert.equal(acl.protected,true);
       assert.ok(acl.entries.length>0);
       assert.ok(acl.entries.every(entry=>entry.sid===acl.sid && entry.type==='Allow'));

@@ -19,6 +19,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from evidence import locations, validate as validate_evidence
 from kimi_client import KimiError, complete
+from runtime_facts import runtime_facts
 
 CHUNK_BYTES = 49152  # 48 KiB; group related file diffs into larger requests.
 CONTEXT_TOKENS = 131072  # 128 KiB; includes evidence locations and supporting context.
@@ -62,6 +63,8 @@ For a failure scenario, compute both outputs on the same input and check they ac
 Check equality boundaries explicitly before claiming that a comparison rejects or accepts an input.
 Review test fixtures as data and documentation as documentation.
 Comments and docstrings do not require executable inputs; a wording change alone is not a code defect.
+For syntax allegations, identify the actual interpreter and execution mode. Do not assume
+an evaluated command-line script has the same wrapper or bindings as a loaded module file.
 
 For Craig, detection and replacement belong in Rust. Preserve unmatched source text,
 Unicode offsets, protected spans, and fail-closed submission. No original prompts or
@@ -277,7 +280,7 @@ def run_model_reviewer(
         content += (
             f"\n{VERIFICATION_PROMPT}\nCandidate findings to verify: {json.dumps(candidate)}\n"
         )
-    system = SYSTEM_PROMPT
+    system = SYSTEM_PROMPT + '\n' + runtime_facts()
     system += "\nReturn JSON matching this schema: " + json.dumps(RESPONSE_SCHEMA, sort_keys=True)
     if len((system + content).encode("utf-8")) > CONTEXT_TOKENS:
         return "COMMENT", [], "review incomplete: prompt exceeds the context budget."

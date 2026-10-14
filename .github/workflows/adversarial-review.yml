@@ -57,6 +57,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.0
       - name: fetch diff without checkout
         env:
           PR_NUMBER: ${{ steps.scope.outputs.pr }}
