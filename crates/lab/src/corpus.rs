@@ -1,5 +1,5 @@
 use crate::{LabResult, fail};
-use middle_finger::{Policy, Span, validate_text};
+use craig::{Policy, Span, validate_text};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -279,7 +279,7 @@ pub fn bootstrap(path: &Path) -> LabResult<()> {
                         ),
                     ]),
                     provenance: "synthetic_template".into(),
-                    source: "middle-finger synthetic corpus generator v1".into(),
+                    source: "craig synthetic corpus generator v1".into(),
                     license: "CC0-1.0".into(),
                     reviewed: false,
                 });

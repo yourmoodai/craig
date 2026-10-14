@@ -1,5 +1,5 @@
 [package]
-name = "middle-finger-node"
+name = "craig-node"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,8 +14,8 @@ categories = ["api-bindings", "text-processing"]
 crate-type = ["cdylib"]
 
 [dependencies]
-middle-finger.workspace = true
-middle-finger-review = { path = "../review" }
+craig.workspace = true
+craig-review = { path = "../review" }
 napi = { version = "3", default-features = false, features = ["napi8"] }
 napi-derive = "3"
 

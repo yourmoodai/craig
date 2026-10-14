@@ -164,7 +164,7 @@ until its added computation demonstrates a quality benefit.
 
 `RuntimeDetector` owns explicit BERT/lexical selection for the library, CLI,
 Node-API and personal assessment. Existing callers default to BERT. The mod can
-opt into lexical artifacts with `MIDDLE_FINGER_DETECTOR=lexical`. Unsupported
+opt into lexical artifacts with `CRAIG_DETECTOR=lexical`. Unsupported
 policies, execution settings and artifacts fail without fallback. A lexical
 failure never invokes BERT or forwards the original. Training and independent
 judging remain offline development operations, outside submission inference.
@@ -186,7 +186,7 @@ startup and optional assessment remain separately measured costs.
 
 ### Measured policy alignment and personal review
 
-Extend the shared Rust boundary with `middle-finger-review`: source-aware language
+Extend the shared Rust boundary with `craig-review`: source-aware language
 assessment, versioned policy interpretation, bounded judging, and metric storage.
 The native detector exports `assess` through Node-API. The mod transports inputs
 and renders results; it does not implement classification, retention, or date
@@ -345,7 +345,7 @@ not change third-party licenses.
 Replace passive forwarding, permissive abstention, raw flow logging, and
 key-log-dependent operation in the enforcement path. The passive engine may
 inform synthetic verification tooling but cannot serve as the rewriting gate.
-Use `middle-finger` naming for extracted crates, commands, bundle identifiers,
+Use `craig` naming for extracted crates, commands, bundle identifiers,
 services, logs, and documentation. Extraction is deferred; this ADR does not
 move or rename workshop files.
 

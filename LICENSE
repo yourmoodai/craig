@@ -618,10 +618,10 @@ copy of the Program in return for a fee.
 
                      END OF TERMS AND CONDITIONS
 
-        Copyright and Section 7 Additional Terms for middle-finger
+        Copyright and Section 7 Additional Terms for craig
 
-Copyright (c) 2026 Adam Williams and yourmoodai
-Upstream repository: https://github.com/yourmoodai/middle-finger
+Copyright (c) 2026 Adam Williams and yourmood.ai
+Upstream repository: https://github.com/yourmoodai/craig
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
@@ -634,13 +634,13 @@ requirements on all copies, forks, and modified versions:
 
   1. Preservation of Attribution (Section 7(b)): You must retain the root
      NOTICE file and all copyright, author, and upstream repository attributions
-     referencing Adam Williams, yourmoodai, and
-     https://github.com/yourmoodai/middle-finger in all source distributions,
+     referencing Adam Williams, yourmood.ai, and
+     https://github.com/yourmoodai/craig in all source distributions,
      plugin packages, marketplace listings, and documentation.
   2. Distinct Marking of Forks and Modified Versions (Section 7(c)): You must
      not misrepresent the origin of this software. Any fork or modified version
      published to a plugin marketplace, directory, or package registry must be
-     clearly marked as a modified version derived from yourmoodai/middle-finger
+     clearly marked as a modified version derived from yourmoodai/craig
      and must use a distinct plugin identifier (`name`) and `displayName`.
   3. Reciprocal Source Availability for Upstream Improvements (Sections 5, 6,
      and 13): Any modified version conveyed or offered to users must provide

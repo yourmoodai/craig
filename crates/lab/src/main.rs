@@ -5,7 +5,7 @@ mod setup;
 mod training;
 
 use clap::{Parser, Subcommand};
-use middle_finger::{ModelDetector, Policy, artifact_digest};
+use craig::{ModelDetector, Policy, artifact_digest};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::{
@@ -120,7 +120,7 @@ fn identity(model: &Path) -> LabResult<serde_json::Value> {
         );
     }
     Ok(
-        serde_json::json!({"base_model":middle_finger::MODEL_ID,"base_revision":middle_finger::MODEL_REVISION,"files":files}),
+        serde_json::json!({"base_model":craig::MODEL_ID,"base_revision":craig::MODEL_REVISION,"files":files}),
     )
 }
 fn read_json(path: &Path) -> LabResult<serde_json::Value> {
@@ -285,7 +285,7 @@ fn run(args: Args) -> LabResult<()> {
             if !threshold.is_finite() || threshold <= 0.0 || threshold > 1.0 {
                 return fail("invalid_threshold");
             }
-            use middle_finger::Detector;
+            use craig::Detector;
             detector
                 .detect("Please preserve the test.")
                 .map_err(|_| "warmup_failed")?;
@@ -357,11 +357,11 @@ fn run(args: Args) -> LabResult<()> {
                 judgments.push(serde_json::json!({"id":row.id,"cohort":if representative {"representative"}else{"failure_enriched"},
                     "verdict":match verdict {Some(Ok(v))=>serde_json::to_value(v).map_err(|_|"write_failed")?,Some(Err(code))=>serde_json::json!({"status":"unresolved","code":code}),None=>serde_json::json!({"status":"unresolved","code":"judge_not_available"})}}));
             }
-            let machine = std::env::var("MIDDLE_FINGER_BENCH_MACHINE")
+            let machine = std::env::var("CRAIG_BENCH_MACHINE")
                 .unwrap_or_else(|_| format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH));
             let mut report = serde_json::json!({"version":1,"kind":"empirical_evaluation","status":"inconclusive","policy":policy,"split":split,"threshold":threshold,
                 "threshold_only_baseline":baseline_only,"model":model_identity,"corpus_sha256":corpus_hash,"seed":42,"sample_limit":sample,
-                "machine":machine,"machine_declared":std::env::var("MIDDLE_FINGER_BENCH_MACHINE").is_ok(),"runner_sha256":runner_hash,
+                "machine":machine,"machine_declared":std::env::var("CRAIG_BENCH_MACHINE").is_ok(),"runner_sha256":runner_hash,
                 "optimized":!cfg!(debug_assertions),"labels_reviewed":selected.iter().all(|r|r.reviewed),"cold_load_ms":load_ms,"detector_peak_rss_bytes":peak,
                 "summary":evaluation::summary(&outcomes),"outcomes":outcomes,"judge":judge_provenance,"judge_error":judge_error,
                 "rubric_sha256":format!("{:x}",Sha256::digest(judge::RUBRIC.as_bytes())),"judgments":judgments,"review_queue":review,"judge_cohorts":cohorts.into_iter().map(|(k,v)|(k,serde_json::json!({"pass":v[0],"fail":v[1],"unresolved":v[2]}))).collect::<BTreeMap<_,_>>(),
@@ -395,8 +395,7 @@ fn run(args: Args) -> LabResult<()> {
             {
                 return fail("package_failed_evaluation");
             }
-            let manifest =
-                middle_finger::ModelManifest::read(&model).map_err(|_| "invalid_candidate")?;
+            let manifest = craig::ModelManifest::read(&model).map_err(|_| "invalid_candidate")?;
             if evaluation["policy"]
                 != serde_json::to_value(manifest.policy).map_err(|_| "invalid_policy")?
                 || evaluation["threshold"]
@@ -443,7 +442,7 @@ fn run(args: Args) -> LabResult<()> {
 }
 fn main() {
     if let Err(code) = run(Args::parse()) {
-        eprintln!("middle-finger-lab: {code}");
+        eprintln!("craig-lab: {code}");
         std::process::exit(1);
     }
 }

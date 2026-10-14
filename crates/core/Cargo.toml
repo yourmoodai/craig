@@ -1,5 +1,5 @@
 [package]
-name = "middle-finger"
+name = "craig"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

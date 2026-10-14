@@ -1,23 +1,23 @@
 use crate::{LabResult, corpus::Example, evaluation::Outcome};
-use middle_finger::Policy;
+use craig::Policy;
 #[cfg(test)]
-use middle_finger_review::judge::{JudgeConfig, parse_verdict};
-pub use middle_finger_review::judge::{Judgment, RUBRIC, Verdict};
+use craig_review::judge::{JudgeConfig, parse_verdict};
+pub use craig_review::judge::{Judgment, RUBRIC, Verdict};
 use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::Path,
 };
-pub struct Judge(middle_finger_review::judge::Judge);
+pub struct Judge(craig_review::judge::Judge);
 impl std::ops::Deref for Judge {
-    type Target = middle_finger_review::judge::Judge;
+    type Target = craig_review::judge::Judge;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 impl Judge {
     pub fn start(path: &Path) -> LabResult<Self> {
-        Ok(Self(middle_finger_review::judge::Judge::start(path)?))
+        Ok(Self(craig_review::judge::Judge::start(path)?))
     }
     pub fn score(
         &mut self,

@@ -12,7 +12,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function exchange(request) {
   if (!profile) throw Error('profile_unavailable');
   return new Promise((done,reject)=>{
-    const socket=connect(join(profile,'middle-finger','worker.sock'));
+    const socket=connect(join(profile,'craig','worker.sock'));
     let size=0; const chunks=[];
     socket.setTimeout(30000,()=>socket.destroy(Error('review_timeout')));
     socket.on('error',()=>reject(Error('review_unavailable')));
@@ -21,9 +21,9 @@ async function exchange(request) {
     socket.on('end',()=>{try{const response=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(response.version!==1 || response.status!=='ok') throw Error(response.code||'invalid_review_response');done(response.value);}catch{reject(Error('review_request_failed'));}});
   });
 }
-const artifact_path=process.env.MIDDLE_FINGER_MODEL_DIR ? join(process.env.MIDDLE_FINGER_MODEL_DIR,process.env.MIDDLE_FINGER_DETECTOR==='lexical'?'decision.json':'manifest.json') : null;
+const artifact_path=process.env.CRAIG_MODEL_DIR ? join(process.env.CRAIG_MODEL_DIR,process.env.CRAIG_DETECTOR==='lexical'?'decision.json':'manifest.json') : null;
 const artifact_hash=artifact_path ? await readFile(artifact_path).then(b=>createHash('sha256').update(b).digest('hex')).catch(()=>'') : '';
-const runtime_fingerprint=createHash('sha256').update(JSON.stringify(['MIDDLE_FINGER_MODEL_DIR','MIDDLE_FINGER_DETECTOR','MIDDLE_FINGER_POLICY','MIDDLE_FINGER_THRESHOLD','MIDDLE_FINGER_REPLACEMENT','MIDDLE_FINGER_JUDGE_CONFIG'].map(key=>process.env[key]||'').concat(artifact_hash))).digest('hex');
+const runtime_fingerprint=createHash('sha256').update(JSON.stringify(['CRAIG_MODEL_DIR','CRAIG_DETECTOR','CRAIG_POLICY','CRAIG_THRESHOLD','CRAIG_REPLACEMENT','CRAIG_JUDGE_CONFIG'].map(key=>process.env[key]||'').concat(artifact_hash))).digest('hex');
 async function start(allow_mismatch=false) {
   let current;
   try {current=await exchange({command:'status'});} catch {}
@@ -31,7 +31,7 @@ async function start(allow_mismatch=false) {
     if(!allow_mismatch && current.runtime_fingerprint!==runtime_fingerprint) throw Error('review_configuration_mismatch');
     return;
   }
-  const binary=resolve(root,'target/release/middle-finger-review');
+  const binary=resolve(root,'target/release/craig-review');
   await access(binary).catch(()=>{throw Error('review_not_built');});
   const child=spawn(binary,['serve'],{cwd:root,env:{...process.env,CLAUDE_CONFIG_DIR:profile},detached:true,stdio:'ignore'});
   child.on('error',()=>{});child.unref();
@@ -91,7 +91,7 @@ async function main() {
   if(request.command==='scan')result=await scan(request.days);
   else if(request.command==='export_file') {
     const data=await exchange({command:'export'});
-    const path=join(profile,'middle-finger',`metrics-${Date.now()}.json`);
+    const path=join(profile,'craig',`metrics-${Date.now()}.json`);
     await writeFile(path,JSON.stringify(data,null,2)+'\n',{mode:0o600,flag:'wx'});
     result={path};
   } else result=await exchange(request);

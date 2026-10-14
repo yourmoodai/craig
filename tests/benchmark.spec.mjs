@@ -32,13 +32,13 @@ test('failed runner leaves text-free unmet evidence without overwriting it',asyn
   const {tmpdir}=await import('node:os');
   const {join}=await import('node:path');
   const {spawnSync}=await import('node:child_process');
-  const directory=await mkdtemp(join(tmpdir(),'mf-benchmark-'));
+  const directory=await mkdtemp(join(tmpdir(),'craig-benchmark-'));
   try {
     const runner=join(directory,'runner'),output=join(directory,'report.json');
     await writeFile(join(directory,'pytorch_model.bin'),'synthetic artifact');
     await writeFile(runner,'#!/bin/sh\nprintf \'{"private":"synthetic private canary"}\\n\'\n',{mode:0o700});
     const args=['scripts/benchmark-inference.mjs','--runner',runner,'--fixture','short','--samples','1','--warmup','0','--output',output];
-    const options={env:{...process.env,MIDDLE_FINGER_MODEL_DIR:directory},encoding:'utf8'};
+    const options={env:{...process.env,CRAIG_MODEL_DIR:directory},encoding:'utf8'};
     assert.notEqual(spawnSync(process.execPath,args,options).status,0);
     const contents=await readFile(output,'utf8'),report=JSON.parse(contents);
     assert.equal(report.target_status,'unmet');

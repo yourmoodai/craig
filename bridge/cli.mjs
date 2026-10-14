@@ -6,13 +6,13 @@ const allowed_errors = new Set(['invalid_input','invalid_span','invalid_options'
 
 async function main() {
   const command = process.argv[2];
-  if (!command || command === '--help') { process.stdout.write('middle-finger rewrite | doctor\n'); return; }
+  if (!command || command === '--help') { process.stdout.write('craig rewrite | doctor\n'); return; }
   if (!['rewrite', 'doctor'].includes(command) || process.argv.length !== 3) throw Error('invalid_command');
-  const modelDir = process.env.MIDDLE_FINGER_MODEL_DIR;
+  const modelDir = process.env.CRAIG_MODEL_DIR;
   if (!modelDir) throw Error('model_not_configured');
-  const threshold = process.env.MIDDLE_FINGER_THRESHOLD === undefined ? undefined : Number(process.env.MIDDLE_FINGER_THRESHOLD);
-  const policy = process.env.MIDDLE_FINGER_POLICY ?? 'offensive_spans';
-  const marker = process.env.MIDDLE_FINGER_REPLACEMENT ?? 'ya ya ya';
+  const threshold = process.env.CRAIG_THRESHOLD === undefined ? undefined : Number(process.env.CRAIG_THRESHOLD);
+  const policy = process.env.CRAIG_POLICY ?? 'offensive_spans';
+  const marker = process.env.CRAIG_REPLACEMENT ?? 'ya ya ya';
   let text; let assess = false;
   if (command === 'rewrite') {
     const chunks = []; let size = 0;
@@ -29,7 +29,7 @@ async function main() {
     assess = request.version === 2 && request.assess === true;
   }
   const { loadDetector } = require('../native/index.cjs');
-  const detector = await loadDetector({ modelDir, threshold, policy, detector: process.env.MIDDLE_FINGER_DETECTOR ?? 'bert' });
+  const detector = await loadDetector({ modelDir, threshold, policy, detector: process.env.CRAIG_DETECTOR ?? 'bert' });
   if (command === 'doctor') { process.stdout.write(JSON.stringify({ version:1, status:'ready' }) + '\n'); return; }
   if (assess) {
     const result = await detector.assess(text, {marker});
@@ -44,6 +44,6 @@ async function main() {
 main().catch(error => {
   const code = allowed_errors.has(error?.message) ? error.message : 'bridge_failed';
   process.stdout.write(JSON.stringify({ version:1, status:'error', code }) + '\n');
-  if (process.env.LOG_LEVEL !== 'silent') process.stderr.write(`middle-finger: ${code}\n`);
+  if (process.env.LOG_LEVEL !== 'silent') process.stderr.write(`craig: ${code}\n`);
   process.exitCode = 1;
 });

@@ -3,7 +3,7 @@
 #[path = "../corpus.rs"]
 mod corpus;
 use clap::{Parser, Subcommand};
-use middle_finger::{
+use craig::{
     Detector, FixedMarker, Span, apply_replacements, artifact_digest,
     decision::{self, Artifact, DecisionDetector},
 };
@@ -61,7 +61,7 @@ enum Command {
     },
 }
 fn gold(row: &corpus::Example) -> Vec<Span> {
-    row.spans(middle_finger::Policy::OffensiveSpans)
+    row.spans(craig::Policy::OffensiveSpans)
 }
 fn mask(text: &str, spans: &[Span]) -> Vec<bool> {
     let mut out = vec![false; text.len()];
@@ -279,10 +279,10 @@ fn evaluate(
     {
         let model_hash =
             artifact_digest(&model.join("pytorch_model.bin")).map_err(|e| e.to_string())?;
-        let model = middle_finger::ModelDetector::load_policy_with_execution(
+        let model = craig::ModelDetector::load_policy_with_execution(
             model,
-            middle_finger::Policy::OffensiveSpans,
-            middle_finger::ExecutionOptions {
+            craig::Policy::OffensiveSpans,
+            craig::ExecutionOptions {
                 backend: backend.parse().map_err(|_| "invalid_backend")?,
                 fp16: match precision {
                     "float32" => false,
@@ -291,9 +291,9 @@ fn evaluate(
                 },
                 coreml_dir,
                 compute_units: if backend == "core_ml" {
-                    middle_finger::ComputeUnits::CpuGpu
+                    craig::ComputeUnits::CpuGpu
                 } else {
-                    middle_finger::ComputeUnits::All
+                    craig::ComputeUnits::All
                 },
                 window_batch: 1,
             },
@@ -334,7 +334,7 @@ fn evaluate(
             }
             normalized_examples += 1;
         }
-        let outcome = |r: &middle_finger::Result<middle_finger::RewriteResult>| match r {
+        let outcome = |r: &craig::Result<craig::RewriteResult>| match r {
             Ok(r) => if r.replacement_count > 0 {
                 "rewritten"
             } else {
@@ -350,8 +350,8 @@ fn evaluate(
                 r.spans
                     .iter()
                     .map(|s| (
-                        middle_finger::byte_to_utf16(&row.text, s.start).unwrap(),
-                        middle_finger::byte_to_utf16(&row.text, s.end).unwrap()
+                        craig::byte_to_utf16(&row.text, s.start).unwrap(),
+                        craig::byte_to_utf16(&row.text, s.end).unwrap()
                     ))
                     .collect::<Vec<_>>()
             ]),
@@ -372,10 +372,10 @@ fn evaluate(
         errors += usize::from(
             actual
                 .as_ref()
-                .is_err_and(|e| *e != middle_finger::Error::ProtectedSpan),
+                .is_err_and(|e| *e != craig::Error::ProtectedSpan),
         );
-        let p = middle_finger::normalize_spans(&row.text, &predicted, threshold);
-        let g = middle_finger::normalize_spans(&row.text, &expected, 0.5);
+        let p = craig::normalize_spans(&row.text, &predicted, threshold);
+        let g = craig::normalize_spans(&row.text, &expected, 0.5);
         let span_comparable = p.is_ok() && g.is_ok();
         let exact_spans = match (p, g) {
             (Ok(p), Ok(g)) => p

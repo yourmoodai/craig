@@ -1,4 +1,4 @@
-use middle_finger_review::{
+use craig_review::{
     ReviewResult,
     store::{private_dir, profile_dir},
     worker::{Request, Worker},
@@ -12,7 +12,7 @@ use std::{
 fn serve() -> ReviewResult<()> {
     use std::os::unix::{fs::PermissionsExt, net::UnixListener};
     let profile = profile_dir()?;
-    let directory = profile.join("middle-finger");
+    let directory = profile.join("craig");
     private_dir(&directory)?;
     if directory.join("worker.lock").is_symlink() {
         return Err("unsafe_metrics_path".into());
@@ -95,23 +95,23 @@ fn main() {
     let result = match args.as_slice() {
         [command] if command == "serve" => serve(),
         [command, output] if command == "policy-fetch" => {
-            middle_finger_review::policy::fetch(std::path::Path::new(output))
+            craig_review::policy::fetch(std::path::Path::new(output))
         }
         [command, corpus, output] if command == "policy-evaluate" => {
-            middle_finger_review::policy::evaluate_file(
+            craig_review::policy::evaluate_file(
                 std::path::Path::new(corpus),
                 std::path::Path::new(output),
             )
         }
         [command, preset, directory, binary] if command == "judge-setup" => {
-            middle_finger_review::presets::fetch(
+            craig_review::presets::fetch(
                 preset,
                 std::path::Path::new(directory),
                 std::path::Path::new(binary),
             )
         }
         [command, corpus, left, right, output] if command == "policy-compare" => {
-            middle_finger_review::comparison::evaluate(
+            craig_review::comparison::evaluate(
                 std::path::Path::new(corpus),
                 std::path::Path::new(left),
                 std::path::Path::new(right),
@@ -121,7 +121,7 @@ fn main() {
         _ => Err("invalid_command".into()),
     };
     if let Err(code) = result {
-        eprintln!("middle-finger-review: {code}");
+        eprintln!("craig-review: {code}");
         std::process::exit(1);
     }
 }

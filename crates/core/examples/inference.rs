@@ -1,4 +1,4 @@
-use middle_finger::{
+use craig::{
     Detector, ExecutionOptions, FixedMarker, ModelDetector, Policy, apply_replacements, rewrite,
 };
 use serde::Deserialize;
@@ -7,10 +7,10 @@ use std::{io::Read, time::Instant};
 
 enum Instance {
     Bert(Box<ModelDetector>),
-    Decision(middle_finger::decision::DecisionDetector),
+    Decision(craig::decision::DecisionDetector),
 }
 impl Detector for Instance {
-    fn detect(&mut self, text: &str) -> middle_finger::Result<Vec<middle_finger::Span>> {
+    fn detect(&mut self, text: &str) -> craig::Result<Vec<craig::Span>> {
         match self {
             Self::Bert(d) => d.detect(text),
             Self::Decision(d) => d.detect(text),
@@ -18,10 +18,7 @@ impl Detector for Instance {
     }
 }
 impl Instance {
-    fn profile(
-        &mut self,
-        text: &str,
-    ) -> middle_finger::Result<(Vec<middle_finger::Span>, serde_json::Value)> {
+    fn profile(&mut self, text: &str) -> craig::Result<(Vec<craig::Span>, serde_json::Value)> {
         match self {
             Self::Bert(d) => d.detect_profiled(text).map(|(s, t)| (s, json!(t))),
             Self::Decision(d) => {
@@ -124,7 +121,7 @@ pub fn run(allocations: Option<fn() -> (u64, u64)>) -> Result<(), Box<dyn std::e
         if request.backend != "cpu" || request.fp16 || request.batch != 1 {
             return Err("invalid_options".into());
         }
-        let d = middle_finger::decision::DecisionDetector::load(&request.model, &request.detector)?;
+        let d = craig::decision::DecisionDetector::load(&request.model, &request.detector)?;
         let threshold = d.threshold();
         (Instance::Decision(d), threshold)
     };

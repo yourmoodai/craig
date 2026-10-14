@@ -1,4 +1,4 @@
-use middle_finger_review::{
+use craig_review::{
     DAY_MS,
     assessment::{Alignment, LanguageAssessment},
     history::{ClaudeHistory, HistorySource, window},
@@ -30,6 +30,45 @@ fn metric(timestamp: i64) -> Metric {
         assessment_failed: false,
         authorship_verified: true,
     }
+}
+
+#[test]
+fn manually_moved_metrics_retain_data_without_consent() {
+    let profile = tempfile::tempdir().unwrap();
+    let now = 100 * DAY_MS;
+    let mut store = SqliteMetrics::open(profile.path()).unwrap();
+    assert!(!store.consent().unwrap().live);
+    assert!(!store.consent().unwrap().history);
+    let consent = store.set_consent(true, true).unwrap();
+    let id = store.opaque("id", "migration-fixture");
+    let session = store.opaque("session", "migration-session");
+    assert!(
+        store
+            .record(&id, &session, &metric(now), consent.generation, now)
+            .unwrap()
+    );
+    store.set_consent(false, false).unwrap();
+    drop(store);
+
+    // The old and new applications use the same database schema.
+    let current = profile.path().join("craig");
+    let retired = profile.path().join("middle-finger");
+    std::fs::rename(&current, &retired).unwrap();
+    assert!(!current.exists());
+    std::fs::rename(&retired, &current).unwrap();
+    let mut store = SqliteMetrics::open(profile.path()).unwrap();
+    assert!(!store.consent().unwrap().live);
+    assert!(!store.consent().unwrap().history);
+    assert_eq!(
+        store.export(now).unwrap()["summary"]["live"]["observations"],
+        1
+    );
+    assert_eq!(
+        store.export(now + 31 * DAY_MS).unwrap()["metrics"],
+        json!([])
+    );
+    store.clear().unwrap();
+    assert_eq!(store.export(now).unwrap()["metrics"], json!([]));
 }
 
 #[test]
@@ -79,7 +118,7 @@ fn consent_generation_prevents_late_writes_and_profiles_are_isolated() {
             .record(&id, &session, &row, consent.generation, now)
             .unwrap()
     );
-    let bytes = std::fs::read(a.path().join("middle-finger/metrics.sqlite3")).unwrap();
+    let bytes = std::fs::read(a.path().join("craig/metrics.sqlite3")).unwrap();
     assert!(!String::from_utf8_lossy(&bytes).contains("synthetic-original"));
 }
 #[test]
@@ -132,7 +171,7 @@ fn retention_and_numeric_only_storage() {
     {
         use std::os::unix::fs::PermissionsExt;
         assert_eq!(
-            std::fs::metadata(dir.path().join("middle-finger/metrics.sqlite3"))
+            std::fs::metadata(dir.path().join("craig/metrics.sqlite3"))
                 .unwrap()
                 .permissions()
                 .mode()
@@ -225,7 +264,7 @@ fn provisional_or_uncalibrated_policy_checks_remain_inconclusive() {
 #[cfg(feature = "judge")]
 #[test]
 fn worker_queue_is_bounded_and_cancel_clears_pending_text() {
-    use middle_finger_review::worker::{Observation, Request, Worker};
+    use craig_review::worker::{Observation, Request, Worker};
     let dir = tempfile::tempdir().unwrap();
     let worker = Worker::new(dir.path()).unwrap();
     let result = worker
@@ -240,7 +279,7 @@ fn worker_queue_is_bounded_and_cancel_clears_pending_text() {
             id: format!("row-{i}"),
             session: "session".into(),
             generation,
-            timestamp_ms: middle_finger_review::now_ms(),
+            timestamp_ms: craig_review::now_ms(),
             source: ObservationSource::History,
             original: "synthetic private prompt".into(),
             replacement: None,

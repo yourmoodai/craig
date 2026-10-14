@@ -1,7 +1,7 @@
 use std::process::Command;
 
 fn lab() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_middle-finger-lab"))
+    Command::new(env!("CARGO_BIN_EXE_craig-lab"))
 }
 
 #[test]
@@ -67,14 +67,14 @@ fn failed_setup_never_creates_a_candidate() {
     assert!(!output.exists());
     assert_eq!(
         String::from_utf8(result.stderr).unwrap(),
-        "middle-finger-lab: base_model_unavailable\n"
+        "craig-lab: base_model_unavailable\n"
     );
 }
 
 #[test]
 #[ignore = "requires explicitly downloaded local model artifacts"]
 fn real_model_training_export_and_policy_selection() {
-    let base = std::env::var("MIDDLE_FINGER_MODEL_DIR").expect("set MIDDLE_FINGER_MODEL_DIR");
+    let base = std::env::var("CRAIG_MODEL_DIR").expect("set CRAIG_MODEL_DIR");
     let dir = tempfile::tempdir().unwrap();
     let corpus = dir.path().join("corpus.jsonl");
     assert!(
@@ -125,20 +125,20 @@ fn real_model_training_export_and_policy_selection() {
         assert_eq!(report["classifier_changed"], true);
         assert!(report["export_probability_max_error"].as_f64().unwrap() <= 0.0001);
         let matching = policy.parse().unwrap();
-        assert!(middle_finger::ModelDetector::load_policy(&output, matching).is_ok());
+        assert!(craig::ModelDetector::load_policy(&output, matching).is_ok());
         let different = if policy == "directed_abuse" {
-            middle_finger::Policy::OffensiveSpans
+            craig::Policy::OffensiveSpans
         } else {
-            middle_finger::Policy::DirectedAbuse
+            craig::Policy::DirectedAbuse
         };
         assert!(matches!(
-            middle_finger::ModelDetector::load_policy(&output, different),
-            Err(middle_finger::Error::PolicyUnavailable)
+            craig::ModelDetector::load_policy(&output, different),
+            Err(craig::Error::PolicyUnavailable)
         ));
         std::fs::write(output.join("head.safetensors"), b"tampered").unwrap();
         assert!(matches!(
-            middle_finger::ModelDetector::load_policy(&output, matching),
-            Err(middle_finger::Error::ModelIncompatible)
+            craig::ModelDetector::load_policy(&output, matching),
+            Err(craig::Error::ModelIncompatible)
         ));
     }
 }

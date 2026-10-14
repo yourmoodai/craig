@@ -53,11 +53,11 @@ class Provider(http.server.BaseHTTPRequestHandler):
 
 
 def main():
-    binary = os.environ.get("MIDDLE_FINGER_CLAUDE_BINARY") or shutil.which("claude")
-    model = os.environ.get("MIDDLE_FINGER_MODEL_DIR")
+    binary = os.environ.get("CRAIG_CLAUDE_BINARY") or shutil.which("claude")
+    model = os.environ.get("CRAIG_MODEL_DIR")
     if not binary or not model:
-        raise SystemExit("claude and MIDDLE_FINGER_MODEL_DIR are required")
-    with tempfile.TemporaryDirectory(prefix="mf-host-", dir="/tmp") as directory:
+        raise SystemExit("claude and CRAIG_MODEL_DIR are required")
+    with tempfile.TemporaryDirectory(prefix="craig-host-", dir="/tmp") as directory:
         home = Path(directory).resolve()
         profile = home / ".claude"
         profile.mkdir()
@@ -68,8 +68,8 @@ def main():
         (profile / ".claude.json").write_text(json.dumps(config))
         server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Provider)
         threading.Thread(target=server.serve_forever, daemon=True).start()
-        env = {"PATH": os.environ["PATH"], "HOME": str(home), "CLAUDE_CONFIG_DIR": str(profile), "TERM": "xterm-256color", "ANTHROPIC_API_KEY": "synthetic-local-key", "ANTHROPIC_BASE_URL": f"http://127.0.0.1:{server.server_port}", "MIDDLE_FINGER_MODEL_DIR": str(Path(model).resolve()), "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", "DISABLE_AUTOUPDATER": "1", "DISABLE_TELEMETRY": "1", "DISABLE_ERROR_REPORTING": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1", "ENABLE_CLAUDEAI_MCP_SERVERS": "false", "OTEL_SDK_DISABLED": "true"}
-        env["MIDDLE_FINGER_DETECTOR"] = os.environ.get("MIDDLE_FINGER_DETECTOR", "bert")
+        env = {"PATH": os.environ["PATH"], "HOME": str(home), "CLAUDE_CONFIG_DIR": str(profile), "TERM": "xterm-256color", "ANTHROPIC_API_KEY": "synthetic-local-key", "ANTHROPIC_BASE_URL": f"http://127.0.0.1:{server.server_port}", "CRAIG_MODEL_DIR": str(Path(model).resolve()), "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", "DISABLE_AUTOUPDATER": "1", "DISABLE_TELEMETRY": "1", "DISABLE_ERROR_REPORTING": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1", "ENABLE_CLAUDEAI_MCP_SERVERS": "false", "OTEL_SDK_DISABLED": "true"}
+        env["CRAIG_DETECTOR"] = os.environ.get("CRAIG_DETECTOR", "bert")
         version = subprocess.run([binary, "--version"], cwd=workspace, env=env, text=True, capture_output=True, check=True)
         if not version.stdout.startswith("2.1.290 "):
             server.shutdown()
@@ -101,7 +101,7 @@ def main():
                     output = b""
                     started = time.monotonic()
                 if not pane_open and time.monotonic() - started > 4:
-                    os.write(master, b"/middle-finger")
+                    os.write(master, b"/craig")
                     time.sleep(0.2)
                     os.write(master, b"\r")
                     pane_open = True
@@ -128,9 +128,9 @@ def main():
                     assert metrics["consent"]["history"] is False
                     assert metrics["summary"]["live"]["observations"] == 1
                     assert metrics["summary"]["live"]["removed_characters"] == 5
-                    assert original.encode() not in (profile / "middle-finger/metrics.sqlite3").read_bytes()
+                    assert original.encode() not in (profile / "craig/metrics.sqlite3").read_bytes()
                     assert original not in result.stdout
-                    print(json.dumps({"detector":env["MIDDLE_FINGER_DETECTOR"],"submission_to_provider_ms":submission_ms,"samples":1}))
+                    print(json.dumps({"detector":env["CRAIG_DETECTOR"],"submission_to_provider_ms":submission_ms,"samples":1}))
                     print("installed mod: UI opt-in, native assessment, text-free metrics and sanitized provider payload passed")
                     return
             # Host startup can include account information; do not persist terminal output.

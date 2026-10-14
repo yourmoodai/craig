@@ -1,4 +1,4 @@
-use middle_finger::*;
+use craig::*;
 use proptest::prelude::*;
 fn span(start: usize, end: usize) -> Span {
     Span {

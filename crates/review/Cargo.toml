@@ -1,5 +1,5 @@
 [package]
-name = "middle-finger-review"
+name = "craig-review"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,12 +14,12 @@ categories = ["development-tools::testing", "text-processing"]
 judge = ["dep:reqwest", "dep:ctrlc"]
 
 [[bin]]
-name = "middle-finger-review"
+name = "craig-review"
 path = "src/main.rs"
 required-features = ["judge"]
 
 [dependencies]
-middle-finger.workspace = true
+craig.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10"

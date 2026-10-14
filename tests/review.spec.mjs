@@ -9,7 +9,7 @@ const root=resolve(import.meta.dirname,'..');
 const day=86400000;
 function invoke(profile, request, extra_env={}) {
   return new Promise((done,reject)=>{
-    const child=spawn(process.execPath,['bridge/review.mjs'],{cwd:root,env:{...process.env,CLAUDE_CONFIG_DIR:profile,MIDDLE_FINGER_JUDGE_CONFIG:'',...extra_env},stdio:['pipe','pipe','pipe']});
+    const child=spawn(process.execPath,['bridge/review.mjs'],{cwd:root,env:{...process.env,CLAUDE_CONFIG_DIR:profile,CRAIG_JUDGE_CONFIG:'',...extra_env},stdio:['pipe','pipe','pipe']});
     let out='',err='';
     child.stdout.on('data',c=>out+=c);child.stderr.on('data',c=>err+=c);
     child.on('error',reject);
@@ -37,10 +37,10 @@ async function fixture(profile, project, ages) {
 }
 
 test('history uses lexical selection and rejects changed artifact provenance', {timeout:120000}, async()=>{
-  const profile=await mkdtemp('/tmp/mf-review-lexical-');
+  const profile=await mkdtemp('/tmp/craig-review-lexical-');
   const model=join(profile,'model');await mkdir(model);
   const artifact={version:1,kind:'lexical',policy:'offensive_spans',features:'unicode_words_separated_ascii_v2',threshold:0.5,corpus_sha256:'a'.repeat(64),epoch:0,labels_reviewed:false,weights:{idiot:0.9},transitions:[[0,0],[0,0]]};
-  const env={MIDDLE_FINGER_DETECTOR:'lexical',MIDDLE_FINGER_MODEL_DIR:model,MIDDLE_FINGER_POLICY:'offensive_spans',MIDDLE_FINGER_THRESHOLD:'0.5'};
+  const env={CRAIG_DETECTOR:'lexical',CRAIG_MODEL_DIR:model,CRAIG_POLICY:'offensive_spans',CRAIG_THRESHOLD:'0.5'};
   try {
     await writeFile(join(model,'decision.json'),JSON.stringify(artifact));
     await fixture(profile,'lexical',[1]);
@@ -63,13 +63,13 @@ test('history uses lexical selection and rejects changed artifact provenance', {
 });
 
 test('local worker enforces consent, SDK history dates, deduplication and text-free persistence', {timeout:120000}, async()=>{
-  const profile=await mkdtemp('/tmp/mf-review-');
+  const profile=await mkdtemp('/tmp/craig-review-');
   try {
     await fixture(profile,'first',[6,4,1]);
     await fixture(profile,'second',[2]);
     const initial=await invoke(profile,{command:'status'});
     assert.equal(initial.consent.live,false);assert.equal(initial.consent.history,false);
-    await assert.rejects(invoke(profile,{command:'status'},{MIDDLE_FINGER_REPLACEMENT:'la la la'}));
+    await assert.rejects(invoke(profile,{command:'status'},{CRAIG_REPLACEMENT:'la la la'}));
     await assert.rejects(invoke(profile,{command:'scan',days:3}));
     await invoke(profile,{command:'consent',live:false,history:true});
     const first=await invoke(profile,{command:'scan',days:3});
@@ -91,7 +91,7 @@ test('local worker enforces consent, SDK history dates, deduplication and text-f
     assert.ok(!('certification' in state));
     assert.ok(state.metrics.every(m=>m.authorship_verified===false));
     assert.ok(!JSON.stringify(state).includes('synthetic private canary'));
-    const database=join(profile,'middle-finger/metrics.sqlite3');
+    const database=join(profile,'craig/metrics.sqlite3');
     assert.ok(!(await readFile(database)).includes(Buffer.from('synthetic private canary')));
     assert.equal((await stat(database)).mode&0o777,0o600);
     const exported=await invoke(profile,{command:'export_file'});
@@ -104,9 +104,9 @@ test('local worker enforces consent, SDK history dates, deduplication and text-f
   }
 });
 
-test('native assessment returns measurements without changing replacement', {skip:!process.env.MIDDLE_FINGER_MODEL_DIR}, async()=>{
+test('native assessment returns measurements without changing replacement', {skip:!process.env.CRAIG_MODEL_DIR}, async()=>{
   const {loadDetector}=await import('../native/index.cjs');
-  const detector=await loadDetector({modelDir:process.env.MIDDLE_FINGER_MODEL_DIR});
+  const detector=await loadDetector({modelDir:process.env.CRAIG_MODEL_DIR});
   const text='You idiot, do not delete the test.';
   const rewrite=await detector.rewrite(text);
   const measured=await detector.assess(text);

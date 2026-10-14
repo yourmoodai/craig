@@ -1,12 +1,12 @@
 #import <CoreML/CoreML.h>
 #import <Foundation/Foundation.h>
 
-@interface MFCoreMlHandle : NSObject
+@interface CraigCoreMlHandle : NSObject
 @property(nonatomic, strong) MLModel *model;
 @property(nonatomic, strong) NSURL *compiled;
 @end
 
-@implementation MFCoreMlHandle
+@implementation CraigCoreMlHandle
 - (void)dealloc {
     // Core ML may prepare shape-specific execution lazily; retain its assets for the model lifetime.
     _model = nil;
@@ -15,12 +15,12 @@
 @end
 
 // The Rust owner serializes predictions. No NSError or exception text crosses this boundary.
-void *mf_coreml_load(const char *path, int units) {
+void *craig_coreml_load(const char *path, int units) {
     @autoreleasepool {
         @try {
             NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
             NSError *error = nil;
-            MFCoreMlHandle *handle = [MFCoreMlHandle new];
+            CraigCoreMlHandle *handle = [CraigCoreMlHandle new];
             handle.compiled = [MLModel compileModelAtURL:url error:&error];
             if (!handle.compiled) return NULL;
             MLModelConfiguration *config = [MLModelConfiguration new];
@@ -37,14 +37,14 @@ void *mf_coreml_load(const char *path, int units) {
     }
 }
 
-void mf_coreml_free(void *handle) {
+void craig_coreml_free(void *handle) {
     @autoreleasepool { (void)CFBridgingRelease(handle); }
 }
 
-int mf_coreml_predict(void *handle, const int32_t *features, size_t batch, size_t width, float *logits) {
+int craig_coreml_predict(void *handle, const int32_t *features, size_t batch, size_t width, float *logits) {
     @autoreleasepool {
         @try {
-            MLModel *model = ((__bridge MFCoreMlHandle *)handle).model;
+            MLModel *model = ((__bridge CraigCoreMlHandle *)handle).model;
             NSError *error = nil;
             MLMultiArray *input = [[MLMultiArray alloc] initWithShape:@[@3, @(batch), @(width)]
                                                            dataType:MLMultiArrayDataTypeInt32 error:&error];

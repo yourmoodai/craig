@@ -9,7 +9,7 @@ use candle_nn::{
     Linear, Optimizer, ParamsAdamW, VarBuilder, VarMap, linear,
     ops::{log_softmax, softmax_last_dim},
 };
-use middle_finger::{
+use craig::{
     MODEL_ID, MODEL_REVISION, ModelDetector, ModelManifest, Policy, Span, artifact_digest,
 };
 use std::{collections::BTreeMap, path::Path};
@@ -252,7 +252,7 @@ pub fn train(
     crate::write_json(&output.join("manifest.json"), &manifest)?;
     let mut reloaded =
         ModelDetector::load_policy(output, policy).map_err(|_| "export_reload_failed")?;
-    use middle_finger::Detector;
+    use craig::Detector;
     let mut maximum = 0.0_f32;
     for row in cached.iter().filter(|r| r.example.split == "validation") {
         let before = predictions(&head, row)?;

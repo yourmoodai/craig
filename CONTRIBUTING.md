@@ -1,4 +1,4 @@
-# Contributing to middle-finger
+# Contributing to craig
 
 Bug reports, design proposals, documentation corrections, tests, and code are
 welcome. Start with an issue so contributors and maintainers agree on the
@@ -6,7 +6,7 @@ problem before implementing a change.
 
 ## Issue acceptance
 
-Search [open and closed issues](https://github.com/yourmoodai/middle-finger/issues?q=is%3Aissue)
+Search [open and closed issues](https://github.com/yourmoodai/craig/issues?q=is%3Aissue)
 before opening a proposal. Describe the problem, proposed behavior, a small
 example, and effects on privacy, latency, compatibility, or model quality.
 

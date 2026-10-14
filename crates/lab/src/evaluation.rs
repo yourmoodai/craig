@@ -1,5 +1,5 @@
 use crate::{LabResult, corpus::Example, fail};
-use middle_finger::{Detector, FixedMarker, ModelDetector, Policy, Span, apply_replacements};
+use craig::{Detector, FixedMarker, ModelDetector, Policy, Span, apply_replacements};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -80,7 +80,7 @@ pub struct Outcome {
 pub fn score(e: &Example, policy: Policy, spans: &[Span], threshold: f32) -> Outcome {
     let expected = apply_replacements(&e.text, &e.spans(policy), 0.5, &FixedMarker::default());
     let actual = apply_replacements(&e.text, spans, threshold, &FixedMarker::default());
-    let status = |r: &middle_finger::Result<middle_finger::RewriteResult>| match r {
+    let status = |r: &craig::Result<craig::RewriteResult>| match r {
         Ok(r) => {
             if r.spans.is_empty() {
                 "unchanged".into()

@@ -1,5 +1,5 @@
 use crate::{ReviewResult, fail};
-use middle_finger::artifact_digest;
+use craig::artifact_digest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -153,7 +153,7 @@ impl Judge {
             .arg(&config.artifact)
             .args([
                 "--alias",
-                "middle-finger-judge",
+                "craig-judge",
                 "--ctx-size",
                 "8192",
                 "--parallel",
@@ -261,7 +261,7 @@ impl Judge {
         self.provenance["rubric_sha256"] =
             format!("{:x}", Sha256::digest(rubric.as_bytes())).into();
         let response = self.client.post(format!("{}/v1/chat/completions",self.url)).json(&serde_json::json!({
-            "model":"middle-finger-judge","messages":[{"role":"system","content":rubric},{"role":"user","content":input.to_string()}],
+            "model":"craig-judge","messages":[{"role":"system","content":rubric},{"role":"user","content":input.to_string()}],
             "temperature":0,"seed":42,"max_tokens":256,"response_format":{"type":"json_schema","json_schema":{"name":"verdict","schema":verdict_schema}}
         })).send().map_err(|e|if e.is_timeout(){"judge_timeout"}else{"judge_unavailable"})?;
         if !response.status().is_success() {

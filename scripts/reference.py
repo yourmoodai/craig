@@ -6,7 +6,7 @@ import torch
 from transformers import BertForTokenClassification, BertTokenizerFast
 
 root = Path(__file__).resolve().parents[1]
-model_dir = Path(os.environ.get("MIDDLE_FINGER_MODEL_DIR", root / ".cache/models/mudes-en-base"))
+model_dir = Path(os.environ.get("CRAIG_MODEL_DIR", root / ".cache/models/mudes-en-base"))
 model = BertForTokenClassification.from_pretrained(model_dir, local_files_only=True).eval()
 tokenizer = BertTokenizerFast(vocab_file=str(model_dir / "vocab.txt"), do_lower_case=False)
 texts = ["You idiot, fix the test.", "Your previous answer was wrong.", "🙂 You stupid idiot, do not delete the test."]

@@ -1,8 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 const { applyReplacements, loadDetector } = createRequire(import.meta.url)('../native/index.cjs');
+test('craig ignores the retired model environment variable', () => {
+  const env = {...process.env, MIDDLE_FINGER_MODEL_DIR:'/synthetic/retired-model', LOG_LEVEL:'silent'};
+  delete env.CRAIG_MODEL_DIR;
+  const result = spawnSync(process.execPath, ['bridge/cli.mjs','doctor'], {env, encoding:'utf8'});
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stdout).code, 'model_not_configured');
+  assert.equal(result.stderr, '');
+});
 test('ffi replaces utf16 ranges and preserves everything else', () => {
   const result = applyReplacements('🙂 idiot, do not edit `main.rs`', [{start:3,end:8,score:0.9}]);
   assert.equal(result.text, '🙂 ya ya ya, do not edit `main.rs`');
@@ -38,7 +46,7 @@ test('ffi validates explicit execution options before loading', async () => {
   }
 });
 test('bridge errors never echo original text', async () => {
-  const child = spawn(process.execPath, ['bridge/cli.mjs','rewrite'], {env:{...process.env,MIDDLE_FINGER_MODEL_DIR:'/missing',LOG_LEVEL:'silent'}});
+  const child = spawn(process.execPath, ['bridge/cli.mjs','rewrite'], {env:{...process.env,CRAIG_MODEL_DIR:'/missing',LOG_LEVEL:'silent'}});
   let stdout='', stderr=''; child.stdout.on('data', x=>stdout+=x); child.stderr.on('data',x=>stderr+=x);
   child.stdin.end(JSON.stringify({version:1,text:'synthetic-secret-canary'}));
   const code = await new Promise(resolve=>child.on('close',resolve));

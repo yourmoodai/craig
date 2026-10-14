@@ -1,16 +1,16 @@
 {
-  "name": "middle-finger",
-  "displayName": "Middle Finger",
+  "name": "craig",
+  "displayName": "Craig",
   "version": "0.1.0",
   "description": "A local Claude Code mod that keeps a provider's tone policy out of your private draft.",
   "author": {
     "name": "Adam Williams",
     "url": "https://github.com/yourmoodai"
   },
-  "homepage": "https://github.com/yourmoodai/middle-finger#readme",
-  "repository": "https://github.com/yourmoodai/middle-finger",
-  "documentationUrl": "https://github.com/yourmoodai/middle-finger#readme",
-  "supportUrl": "https://github.com/yourmoodai/middle-finger/issues",
+  "homepage": "https://github.com/yourmoodai/craig#readme",
+  "repository": "https://github.com/yourmoodai/craig",
+  "documentationUrl": "https://github.com/yourmoodai/craig#readme",
+  "supportUrl": "https://github.com/yourmoodai/craig/issues",
   "license": "AGPL-3.0-or-later",
   "keywords": [
     "privacy",

@@ -531,6 +531,82 @@ dependencies = [
 ]
 
 [[package]]
+name = "craig"
+version = "0.1.0"
+dependencies = [
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
+ "cc",
+ "libc",
+ "proptest",
+ "pulldown-cmark",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokenizers",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "craig-cli"
+version = "0.1.0"
+dependencies = [
+ "craig",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "craig-lab"
+version = "0.1.0"
+dependencies = [
+ "candle-core",
+ "candle-nn",
+ "clap",
+ "craig",
+ "craig-review",
+ "libc",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
+name = "craig-node"
+version = "0.1.0"
+dependencies = [
+ "craig",
+ "craig-review",
+ "napi",
+ "napi-build",
+ "napi-derive",
+]
+
+[[package]]
+name = "craig-review"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "craig",
+ "ctrlc",
+ "fs2",
+ "hmac",
+ "rand 0.9.5",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1716,82 +1792,6 @@ dependencies = [
  "log",
  "objc",
  "paste",
-]
-
-[[package]]
-name = "middle-finger"
-version = "0.1.0"
-dependencies = [
- "candle-core",
- "candle-nn",
- "candle-transformers",
- "cc",
- "libc",
- "proptest",
- "pulldown-cmark",
- "regex",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror 2.0.21",
- "tokenizers",
- "unicode-segmentation",
-]
-
-[[package]]
-name = "middle-finger-cli"
-version = "0.1.0"
-dependencies = [
- "middle-finger",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "middle-finger-lab"
-version = "0.1.0"
-dependencies = [
- "candle-core",
- "candle-nn",
- "clap",
- "libc",
- "middle-finger",
- "middle-finger-review",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
-]
-
-[[package]]
-name = "middle-finger-node"
-version = "0.1.0"
-dependencies = [
- "middle-finger",
- "middle-finger-review",
- "napi",
- "napi-build",
- "napi-derive",
-]
-
-[[package]]
-name = "middle-finger-review"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "ctrlc",
- "fs2",
- "hmac",
- "middle-finger",
- "rand 0.9.5",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
 ]
 
 [[package]]

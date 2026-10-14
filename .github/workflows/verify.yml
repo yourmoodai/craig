@@ -13,8 +13,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - run: cargo clippy -p middle-finger --features coreml --all-targets -- -D warnings
-      - run: cargo test -p middle-finger --features coreml
+      - run: cargo clippy -p craig --features coreml --all-targets -- -D warnings
+      - run: cargo test -p craig --features coreml
   native:
     strategy:
       matrix:
@@ -39,10 +39,10 @@ jobs:
       - run: npm run eval:local
       - name: native assessment and synthetic SDK history
         env:
-          MIDDLE_FINGER_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
+          CRAIG_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
         run: node --test tests/review.spec.mjs
       - name: real model training and reload parity
         if: github.event_name == 'workflow_dispatch'
         env:
-          MIDDLE_FINGER_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
-        run: cargo test --profile profiling -p middle-finger-lab --test cli -- --ignored
+          CRAIG_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
+        run: cargo test --profile profiling -p craig-lab --test cli -- --ignored

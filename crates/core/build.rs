@@ -7,7 +7,7 @@ fn main() {
             .file("src/coreml_bridge.m")
             .flag("-fobjc-arc")
             .flag("-mmacosx-version-min=15.0")
-            .compile("middle_finger_coreml");
+            .compile("craig_coreml");
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rustc-link-lib=framework=CoreML");
     }

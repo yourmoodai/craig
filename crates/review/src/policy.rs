@@ -60,15 +60,14 @@ pub fn prepare(corpus: &std::path::Path) -> ReviewResult<PreparedPolicy> {
     {
         return Err("invalid_policy_corpus".into());
     }
-    let model_path =
-        std::env::var("MIDDLE_FINGER_MODEL_DIR").map_err(|_| "model_not_configured")?;
-    let policy = std::env::var("MIDDLE_FINGER_POLICY")
+    let model_path = std::env::var("CRAIG_MODEL_DIR").map_err(|_| "model_not_configured")?;
+    let policy = std::env::var("CRAIG_POLICY")
         .unwrap_or_else(|_| "offensive_spans".into())
         .parse()
         .map_err(|_| "invalid_policy")?;
-    let mut model = middle_finger::ModelDetector::load_policy(&model_path, policy)
-        .map_err(|_| "model_unavailable")?;
-    let threshold = std::env::var("MIDDLE_FINGER_THRESHOLD")
+    let mut model =
+        craig::ModelDetector::load_policy(&model_path, policy).map_err(|_| "model_unavailable")?;
+    let threshold = std::env::var("CRAIG_THRESHOLD")
         .ok()
         .map(|s| s.parse::<f32>().map_err(|_| "invalid_threshold"))
         .transpose()?
@@ -76,8 +75,8 @@ pub fn prepare(corpus: &std::path::Path) -> ReviewResult<PreparedPolicy> {
     if !threshold.is_finite() || threshold <= 0.0 || threshold > 1.0 {
         return Err("invalid_threshold".into());
     }
-    let marker = std::env::var("MIDDLE_FINGER_REPLACEMENT").unwrap_or_else(|_| "ya ya ya".into());
-    let strategy = middle_finger::FixedMarker::new(marker.clone()).map_err(|_| "invalid_marker")?;
+    let marker = std::env::var("CRAIG_REPLACEMENT").unwrap_or_else(|_| "ya ya ya".into());
+    let strategy = craig::FixedMarker::new(marker.clone()).map_err(|_| "invalid_marker")?;
     let mut inputs = Vec::new();
     let mut exact = Vec::new();
     for row in &rows {
@@ -101,7 +100,7 @@ pub fn prepare(corpus: &std::path::Path) -> ReviewResult<PreparedPolicy> {
     let provenance = json!({
         "corpus_sha256": fingerprint(&bytes), "policy_sha256":fingerprint(POLICY_RECORD.as_bytes()),
         "rubric_sha256":fingerprint(CONTEXTUAL_RUBRIC.as_bytes()),
-        "model_sha256":middle_finger::artifact_digest(&std::path::Path::new(&model_path).join("pytorch_model.bin")).map_err(|_| "model_unavailable")?,
+        "model_sha256":craig::artifact_digest(&std::path::Path::new(&model_path).join("pytorch_model.bin")).map_err(|_| "model_unavailable")?,
         "head_sha256":std::fs::read(std::path::Path::new(&model_path).join("head.safetensors")).ok().map(|b|fingerprint(&b)),
         "replacement_policy":policy,"threshold":threshold,"marker_sha256":fingerprint(marker.as_bytes()),
         "prepared_inputs_sha256":fingerprint(serde_json::to_string(&inputs).map_err(|_| "invalid_policy_corpus")?.as_bytes())
@@ -198,7 +197,7 @@ pub fn evaluate_file(corpus: &std::path::Path, output: &std::path::Path) -> Revi
         return Err("output_exists_or_unavailable".into());
     }
     let prepared = prepare(corpus)?;
-    let judge_path = std::env::var("MIDDLE_FINGER_JUDGE_CONFIG").ok();
+    let judge_path = std::env::var("CRAIG_JUDGE_CONFIG").ok();
     let run = run_judge(&prepared, judge_path.as_deref().map(std::path::Path::new));
     let actual: Vec<_> = run
         .judgments

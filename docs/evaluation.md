@@ -48,7 +48,7 @@ Reference verification uses Python only as an independent development oracle. Pr
 
 ```sh
 uv run --python 3.12 --with 'torch==2.7.0' --with 'transformers==4.57.6' scripts/reference.py
-cargo run --release -p middle-finger --example parity
+cargo run --release -p craig --example parity
 ```
 
 The parity example compares every token's source offsets and toxicity probability with a `0.0001` tolerance. Evaluation outputs stay under ignored `.cache/`. Memory profiling uses a fixed synthetic prompt; never substitute private prompts into a profiler or reference corpus.
@@ -124,7 +124,7 @@ npm run bench:inference -- --runner target/metal/profiling/examples/inference --
 npm run model:export:coreml -- --output .cache/coreml-new --precision float32
 npm run build:inference:coreml
 npm run build:inference:ffi:coreml
-npm run bench:inference -- --runner target/coreml/profiling/examples/inference --addon .cache/native-coreml/middle-finger.darwin-arm64.node --backend core_ml --coreml-dir .cache/coreml-new --compute-units cpu_gpu --samples 2 --warmup 1 --output .cache/coreml-new.json
+npm run bench:inference -- --runner target/coreml/profiling/examples/inference --addon .cache/native-coreml/craig.darwin-arm64.node --backend core_ml --coreml-dir .cache/coreml-new --compute-units cpu_gpu --samples 2 --warmup 1 --output .cache/coreml-new.json
 ```
 
 Export and benchmark outputs require new paths. Setup/build explicitly downloads
@@ -144,9 +144,9 @@ unit checks; shared CI hardware does not qualify latency.
 
 Use `examples/parity` against the independent Transformers reference and
 `examples/backend_parity` against CPU predictions. Set
-`MIDDLE_FINGER_BENCH_BACKEND`, `MIDDLE_FINGER_BENCH_PRECISION`,
-`MIDDLE_FINGER_BENCH_BATCH`, `MIDDLE_FINGER_COREML_DIR`, and
-`MIDDLE_FINGER_COMPUTE_UNITS` as appropriate (`cpu_gpu` for flexible Core ML
+`CRAIG_BENCH_BACKEND`, `CRAIG_BENCH_PRECISION`,
+`CRAIG_BENCH_BATCH`, `CRAIG_COREML_DIR`, and
+`CRAIG_COMPUTE_UNITS` as appropriate (`cpu_gpu` for flexible Core ML
 exports). Offsets and replacement outcomes
 must match, and probability errors must remain below `0.0001`; FP16 does not
 receive a relaxed tolerance. These checks establish execution parity, not
@@ -270,7 +270,7 @@ execution with remaining work in elementwise activation and normalization.
 
 ## Improvement loop
 
-The `middle-finger-lab` executable uses the release-derived `profiling` build.
+The `craig-lab` executable uses the release-derived `profiling` build.
 Its corpus contains 240 synthetic examples in 40 scenario families: 144 training,
 48 validation, and 48 test examples. Each split covers ten categories. Each row
 contains UTF-8 byte spans for both policies, family and split identifiers, source,
@@ -294,7 +294,7 @@ be new; reports and candidate directories never overwrite prior evidence.
 
 ```sh
 npm run build:lab
-export MIDDLE_FINGER_BENCH_MACHINE=local-macos-arm64
+export CRAIG_BENCH_MACHINE=local-macos-arm64
 npm run lab -- fetch-judge --directory .cache/judge --server-binary "$(command -v llama-server)"
 npm run lab:evaluate -- --model .cache/models/mudes-en-base --corpus tests/fixtures/corpus.jsonl --judge .cache/judge/judge.json --output .cache/baseline-offensive.json
 npm run lab:calibrate -- --model .cache/models/mudes-en-base --corpus tests/fixtures/corpus.jsonl --output .cache/calibration-offensive.json
@@ -440,9 +440,9 @@ record and rerunning the corpus.
 ```sh
 npm run build
 npm run policy:fetch -- .cache/anthropic-policy-snapshot-new.json
-export MIDDLE_FINGER_MODEL_DIR="$PWD/.cache/models/mudes-en-base"
+export CRAIG_MODEL_DIR="$PWD/.cache/models/mudes-en-base"
 npm run policy:evaluate -- tests/fixtures/policy.json .cache/policy-deterministic-new.json
-export MIDDLE_FINGER_JUDGE_CONFIG="$PWD/.cache/judge/judge.json"
+export CRAIG_JUDGE_CONFIG="$PWD/.cache/judge/judge.json"
 npm run policy:evaluate -- tests/fixtures/policy.json .cache/policy-judged-new.json
 ```
 
@@ -487,7 +487,7 @@ No system-wide runner replacement is required.
 ```sh
 npm run build
 npm run judge:setup -- gemma .cache/judge-gemma .cache/llama-v0.6.0/llama-b11429/llama-server
-export MIDDLE_FINGER_MODEL_DIR="$PWD/.cache/models/mudes-en-base"
+export CRAIG_MODEL_DIR="$PWD/.cache/models/mudes-en-base"
 npm run policy:compare -- tests/fixtures/policy.json .cache/judge/judge.json .cache/judge-gemma/judge.json .cache/policy-comparison.json
 ```
 
@@ -551,9 +551,9 @@ not a sum of simultaneously resident parent and child memory.
 
 ```sh
 npm run test:review
-MIDDLE_FINGER_MODEL_DIR="$PWD/.cache/models/mudes-en-base" node --test tests/review.spec.mjs
+CRAIG_MODEL_DIR="$PWD/.cache/models/mudes-en-base" node --test tests/review.spec.mjs
 npm run test:plugin
-MIDDLE_FINGER_MODEL_DIR="$PWD/.cache/models/mudes-en-base" npm run test:installed
+CRAIG_MODEL_DIR="$PWD/.cache/models/mudes-en-base" npm run test:installed
 npm run build:review:debug
 npm run build:review:profiling
 npm run profile:review
@@ -561,7 +561,7 @@ npm run profile:review
 
 The installed-host test requires Python 3 and Claude Code `2.1.290` on a Unix
 platform. It uses a temporary home/profile, dummy credentials, a local mock
-provider, and synthetic text. `MIDDLE_FINGER_CLAUDE_BINARY` can name the configured
+provider, and synthetic text. `CRAIG_CLAUDE_BINARY` can name the configured
 Claude executable when a shell wrapper would override the isolated profile.
 The test pins terminal geometry for its mouse actions; other host versions need
 their own UI verification. No private profile is inspected. CI runs native and
@@ -569,7 +569,7 @@ SDK checks on macOS/Linux; installed-host testing remains an explicit local gate
 
 `profile:review` measures a synthetic assessment through the profiling binary
 and `/usr/bin/time`; it does not import private history. Unset
-`MIDDLE_FINGER_JUDGE_CONFIG` to profile detection alone, or supply the prepared
+`CRAIG_JUDGE_CONFIG` to profile detection alone, or supply the prepared
 local judge to include judging. The profiling build retains release optimization
 and debug symbols. Interactive worker runs use `run:review:debug` and
 `run:review:release`; they use the active profile and do not grant consent.

@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { readFile, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const { loadDetector, applyReplacements } = createRequire(import.meta.url)('../native/index.cjs');
-const detector = await loadDetector({modelDir: process.env.MIDDLE_FINGER_MODEL_DIR ?? '.cache/models/mudes-en-base'});
+const detector = await loadDetector({modelDir: process.env.CRAIG_MODEL_DIR ?? '.cache/models/mudes-en-base'});
 const fixtures = JSON.parse(await readFile(new URL('../tests/fixtures/model.json',import.meta.url),'utf8'));
 const results = [];
 for (const fixture of fixtures) {

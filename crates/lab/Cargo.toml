@@ -1,6 +1,6 @@
 [package]
-name = "middle-finger-lab"
-default-run = "middle-finger-lab"
+name = "craig-lab"
+default-run = "craig-lab"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,8 +12,8 @@ keywords = ["privacy", "local-inference", "offline", "open-source-models", "span
 categories = ["development-tools::testing", "text-processing"]
 
 [dependencies]
-middle-finger = { path = "../core", features = ["training"] }
-middle-finger-review = { path = "../review", features = ["judge"] }
+craig = { path = "../core", features = ["training"] }
+craig-review = { path = "../review", features = ["judge"] }
 serde.workspace = true
 serde_json.workspace = true
 candle-core = "0.11"

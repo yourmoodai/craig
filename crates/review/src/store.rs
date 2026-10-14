@@ -104,7 +104,7 @@ pub struct SqliteMetrics {
 }
 impl SqliteMetrics {
     pub fn open(profile: &Path) -> ReviewResult<Self> {
-        let directory = profile.join("middle-finger");
+        let directory = profile.join("craig");
         private_dir(&directory)?;
         let path = directory.join("metrics.sqlite3");
         if path.is_symlink() {

@@ -1,5 +1,5 @@
 pub mod decision;
-use middle_finger as core;
+use craig as core;
 use napi::{Task, bindgen_prelude::*};
 use napi_derive::napi;
 use std::sync::{
@@ -88,20 +88,12 @@ pub struct Assess {
 }
 #[napi]
 impl Task for Assess {
-    type Output = (
-        middle_finger_review::assessment::LanguageAssessment,
-        Option<String>,
-    );
+    type Output = (craig_review::assessment::LanguageAssessment, Option<String>);
     type JsValue = AssessedRewrite;
     fn compute(&mut self) -> Result<Self::Output> {
         let mut model = self.model.try_lock().map_err(|_| err(core::Error::Busy))?;
-        middle_finger_review::assessment::assess(
-            &mut *model,
-            &self.text,
-            self.threshold,
-            &self.marker,
-        )
-        .map_err(|code| Error::new(Status::GenericFailure, code))
+        craig_review::assessment::assess(&mut *model, &self.text, self.threshold, &self.marker)
+            .map_err(|code| Error::new(Status::GenericFailure, code))
     }
     fn resolve(&mut self, _: Env, (assessment, text): Self::Output) -> Result<Self::JsValue> {
         Ok(AssessedRewrite {
