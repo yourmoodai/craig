@@ -40,6 +40,8 @@ class Terminal:
     def write(self,data):
         if self.master is None: self.process.write(data.decode())
         else: os.write(self.master,data)
+    def alive(self):
+        return self.process.isalive() if self.master is None else self.process.poll() is None
     def close(self):
         if self.master is None: self.process.close(force=True)
         else:
@@ -124,6 +126,11 @@ def main():
             live_enabled = False
             while time.monotonic() - started < 45:
                 output += terminal.read()
+                if not terminal.alive():
+                    # Report known diagnostic categories, never raw terminal content.
+                    markers = (b"unknown option", b"Invalid API key", b"Cannot find", b"not found", b"ENOENT", b"SyntaxError", b"error", b"Error")
+                    categories = [marker.decode() for marker in markers if marker in output]
+                    raise SystemExit("installed host exited before submission: " + ", ".join(categories))
                 if any(marker in output for marker in [b"oauth/authorize", b"Paste code", b"Login successful"]):
                     raise SystemExit("installed mod requires authentication; composer not tested")
                 if not trusted and b"trust" in output and b"No," in output:

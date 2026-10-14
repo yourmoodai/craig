@@ -102,6 +102,10 @@ pub fn prepare() -> Result<PathBuf, String> {
         }
         let partial = path.with_extension("partial");
         regular(&partial)?;
+        // A previous process may have finished downloading before it was stopped.
+        if promote_verified(&partial, &path, &artifact.sha256)? {
+            continue;
+        }
         let offset = fs::metadata(&partial).map(|m| m.len()).unwrap_or(0);
         let url = format!(
             "https://github.com/yourmoodai/craig/releases/download/v{}/model-{}",
@@ -113,6 +117,10 @@ pub fn prepare() -> Result<PathBuf, String> {
             request = request.header("Range", format!("bytes={offset}-"));
         }
         let response = request.send().map_err(|_| "download_failed")?;
+        if response.status() == reqwest::StatusCode::RANGE_NOT_SATISFIABLE {
+            fs::remove_file(&partial).map_err(|_| "cache_unavailable")?;
+            return Err("download_failed_retry".into());
+        }
         let append = response.status() == reqwest::StatusCode::PARTIAL_CONTENT;
         if !response.status().is_success()
             || (append
@@ -150,9 +158,34 @@ pub fn prepare() -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+fn promote_verified(partial: &Path, path: &Path, expected: &str) -> Result<bool, String> {
+    if digest(partial).ok().as_deref() != Some(expected) {
+        return Ok(false);
+    }
+    if path.exists() {
+        fs::remove_file(path).map_err(|_| "cache_unavailable")?;
+    }
+    fs::rename(partial, path).map_err(|_| "cache_unavailable")?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn finished_download_survives_restart_without_network() {
+        let dir = tempfile::tempdir().unwrap();
+        let partial = dir.path().join("model.partial");
+        let destination = dir.path().join("model.bin");
+        fs::write(&partial, b"verified model").unwrap();
+        fs::write(&destination, b"corrupt cache").unwrap();
+        assert!(!promote_verified(&partial, &destination, "wrong").unwrap());
+        assert_eq!(fs::read(&destination).unwrap(), b"corrupt cache");
+        let expected = digest(&partial).unwrap();
+        assert!(promote_verified(&partial, &destination, &expected).unwrap());
+        assert_eq!(fs::read(&destination).unwrap(), b"verified model");
+        assert!(!partial.exists());
+    }
     #[test]
     fn digest_and_path_checks() {
         let dir = tempfile::tempdir().unwrap();

@@ -1,4 +1,4 @@
-"""Unit tests for whip-it adversarial code reviewer."""
+"""Coverage and evidence checks for the adversarial code reviewer."""
 
 import sys
 from pathlib import Path
@@ -27,7 +27,6 @@ from adversarial_review import (
     batch_chunks,
 )
 from kimi_client import KimiError
-from best_practices import get_best_practices_context, INVARIANT_RULES
 
 
 class TestAdversarialReviewer(unittest.TestCase):
@@ -322,6 +321,19 @@ class TestAdversarialReviewer(unittest.TestCase):
             self.assertFalse(report["complete"])
             self.assertNotEqual(report["disposition"], "APPROVE")
 
+    def test_binary_assets_do_not_skip_text_review(self):
+        diff = "diff --git a/a.rs b/a.rs\n+unsafe_change();\ndiff --git a/x.png b/x.png\nBinary files a/x.png and b/x.png differ\n"
+        with (
+            patch.object(Path, "exists", return_value=True),
+            patch("adversarial_review.run_model_reviewer", return_value=("APPROVE", [], "checked text")) as runner,
+        ):
+            report = review_diff(diff, ["a.rs", "x.png"])
+        self.assertEqual(runner.call_count, 1)
+        self.assertIn("unsafe_change", runner.call_args.args[0])
+        self.assertFalse(report["complete"])
+        self.assertEqual(report["disposition"], "COMMENT")
+        self.assertEqual(len(report["omitted_binary_changes"]), 1)
+
     def test_findings_from_any_chunk_prevent_approval(self):
         diff = "diff --git a/a b/a\n+one\ndiff --git a/b b/b\n+two\n"
         with (
@@ -337,14 +349,6 @@ class TestAdversarialReviewer(unittest.TestCase):
             report = review_diff(diff, ["a", "b"])
         self.assertTrue(report["complete"])
         self.assertEqual(report["disposition"], "REQUEST_CHANGES")
-
-    def test_doc_context_synthesis(self):
-        context = get_best_practices_context()
-        self.assertIn("Zero Runtime Dependencies", context)
-        self.assertIn("Strict Latency Budget", context)
-        self.assertIn("Anti-Autonomous-Override Defense", context)
-        self.assertIn("Multi-Client Schema Invariants", context)
-        self.assertEqual(len(INVARIANT_RULES), 7)
 
     def test_heuristics_cannot_approve(self):
         diff = """

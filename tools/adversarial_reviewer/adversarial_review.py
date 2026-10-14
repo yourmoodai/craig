@@ -340,7 +340,17 @@ def review_diff(diff, files, *, mock=False):
     }
     if not diff.strip():
         return {**report, "summary": "review incomplete: no diff to assess."}
-    if re.search(r"^(Binary files .* differ|GIT binary patch)$", diff, re.MULTILINE):
+    omitted = []
+    sections = re.split(r"(?=^diff --git )", diff, flags=re.MULTILINE)
+    text_sections = []
+    for section in sections:
+        if re.search(r"^(Binary files .* differ|GIT binary patch)$", section, re.MULTILINE):
+            omitted.append(section.splitlines()[0])
+        else:
+            text_sections.append(section)
+    diff = "".join(text_sections)
+    report["omitted_binary_changes"] = omitted
+    if not diff.strip():
         return {**report, "summary": "review incomplete: binary changes require manual review."}
     try:
         chunks = split_diff(diff)
@@ -420,7 +430,7 @@ def review_diff(diff, files, *, mock=False):
                     f"{incomplete[0]} completed {report['completed_chunks']}/{len(chunks)} chunks."
                 )
                 return report
-    report["complete"] = True
+    report["complete"] = not omitted
     dispositions = {chunk["disposition"] for chunk in report["chunks"]}
     report["disposition"] = (
         "REQUEST_CHANGES"
@@ -434,6 +444,9 @@ def review_diff(diff, files, *, mock=False):
         f"{len(files)} files in {len(chunks)} chunks. "
         "chunk coverage does not establish cross-file correctness."
     )
+    if omitted:
+        report["disposition"] = "COMMENT"
+        report["summary"] = "review incomplete: textual changes assessed; binary changes require manual review: " + "; ".join(omitted)
     return report
 
 
