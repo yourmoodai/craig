@@ -1,0 +1,19 @@
+middle-finger model artifacts
+
+Base: mudes/en-base, revision 1600298e0458d961c2c749da7a098f69b4be478a.
+Published by the MUDES authors under the Apache License, Version 2.0.
+https://huggingface.co/mudes/en-base
+https://github.com/TharinduDR/MUDES
+
+Candidate modifications: classifier weights fine-tuned for the policy named in
+manifest.json; the pinned BERT encoder and tokenizer remain unchanged. See
+manifest.json and training.json for the training corpus fingerprint, parameters,
+checkpoint selection, and parity evidence. Candidate artifacts are not promoted
+or endorsed by the upstream authors.
+
+The evaluation judge is a separate artifact and is not part of a detector package.
+Qwen3-4B-Instruct-2507 is published under Apache-2.0. The pinned Q4_K_M conversion
+is provided by bartowski; its exact revision and digest are recorded in judge.json.
+
+Synthetic bootstrap examples are offered under CC0-1.0. Other supplied datasets
+retain their own licenses. Model licensing does not grant rights in external data.

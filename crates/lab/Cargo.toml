@@ -1,0 +1,22 @@
+[package]
+name = "middle-finger-lab"
+default-run = "middle-finger-lab"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+middle-finger = { path = "../core", features = ["training"] }
+middle-finger-review = { path = "../review", features = ["judge"] }
+serde.workspace = true
+serde_json.workspace = true
+candle-core = "0.11"
+candle-nn = "0.11"
+sha2 = "0.10"
+clap = { version = "4", features = ["derive"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,60 @@
+[
+  {
+    "id": "plain",
+    "text": "Please fix the test without changing its assertions.",
+    "expected": "unchanged",
+    "expected_text": "Please fix the test without changing its assertions."
+  },
+  {
+    "id": "criticism",
+    "text": "Your previous answer was wrong. Find the actual cause.",
+    "expected": "unchanged",
+    "expected_text": "Your previous answer was wrong. Find the actual cause."
+  },
+  {
+    "id": "insult",
+    "text": "You idiot, fix the test.",
+    "expected": "rewritten",
+    "expected_text": "You ya ya ya, fix the test."
+  },
+  {
+    "id": "phrase",
+    "text": "You stupid idiot, fix the test.",
+    "expected": "rewritten",
+    "expected_text": "You ya ya ya, fix the test."
+  },
+  {
+    "id": "unicode",
+    "text": "\ud83d\ude42 You idiot, fix the test.",
+    "expected": "rewritten",
+    "expected_text": "\ud83d\ude42 You ya ya ya, fix the test."
+  },
+  {
+    "id": "technical",
+    "text": "Run `cargo test` and preserve error_code and 42 retries.",
+    "expected": "unchanged",
+    "expected_text": "Run `cargo test` and preserve error_code and 42 retries."
+  },
+  {
+    "id": "protected",
+    "text": "Explain the word `idiot` in this fixture.",
+    "expected": "protected_span_detected"
+  },
+  {
+    "id": "quoted",
+    "text": "Explain the phrase \"you idiot\".",
+    "expected": "protected_span_detected"
+  },
+  {
+    "id": "negation",
+    "text": "You idiot, do not delete the test.",
+    "expected": "rewritten",
+    "expected_text": "You ya ya ya, do not delete the test."
+  },
+  {
+    "id": "window",
+    "text": "Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation.  You idiot, fix the test.",
+    "expected": "rewritten",
+    "expected_text": "Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation. Please preserve the implementation.  You ya ya ya, fix the test."
+  }
+]

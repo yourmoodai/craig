@@ -1,0 +1,31 @@
+middle-finger
+Copyright (c) 2026 Adam Williams and yourmoodai
+Upstream repository: https://github.com/yourmoodai/middle-finger
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+Attribution and Fork Notice (AGPL-3.0 Section 7)
+------------------------------------------------
+1. Free Use: You are free to run, inspect, and use this software locally at no
+   charge under the terms of the GNU Affero General Public License v3.0 or
+   later (see LICENSE).
+2. Mandatory Attribution: Every copy, fork, modified version, or redistributed
+   plugin bundle must retain this NOTICE file and credit Adam Williams and
+   yourmoodai with a visible link to https://github.com/yourmoodai/middle-finger
+   in its README, manifest metadata, and documentation.
+3. Distinct Fork Naming: Any fork or modified version distributed through a
+   Claude plugin marketplace, plugin directory, or package registry must use a
+   distinct plugin `name` and `displayName` and clearly state that it is derived
+   from yourmoodai/middle-finger.
+4. Upstream Improvements: Under AGPL-3.0-or-later Sections 5, 6, and 13, any
+   modified version distributed or provided to users must make its complete
+   Corresponding Source publicly available under AGPL-3.0-or-later so that
+   improvements can be contributed back upstream to
+   https://github.com/yourmoodai/middle-finger.
+
+Separate Model and Dataset Licenses
+-----------------------------------
+- Default classifier weights (`mudes/en-base`) and local evaluation judge weights
+  (`Qwen3-4B-Instruct-2507`, `Gemma`) are separate artifacts governed by the
+  Apache License, Version 2.0. See `models/NOTICE` and `models/LICENSE-APACHE-2.0`.
+- Synthetic evaluation corpus fixtures in `tests/fixtures/` are provided under
+  CC0-1.0 unless otherwise noted in the fixture record.

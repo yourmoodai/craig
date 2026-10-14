@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const max_bytes = 65_536; // 64 KiB
+const allowed_errors = new Set(['invalid_input','invalid_span','invalid_options','protected_span_detected','model_unavailable','model_incompatible','inference_failed','processing_timeout','busy','invalid_request','invalid_command','model_not_configured','policy_unavailable']);
+
+async function main() {
+  const command = process.argv[2];
+  if (!command || command === '--help') { process.stdout.write('middle-finger rewrite | doctor\n'); return; }
+  if (!['rewrite', 'doctor'].includes(command) || process.argv.length !== 3) throw Error('invalid_command');
+  const modelDir = process.env.MIDDLE_FINGER_MODEL_DIR;
+  if (!modelDir) throw Error('model_not_configured');
+  const threshold = process.env.MIDDLE_FINGER_THRESHOLD === undefined ? undefined : Number(process.env.MIDDLE_FINGER_THRESHOLD);
+  const policy = process.env.MIDDLE_FINGER_POLICY ?? 'offensive_spans';
+  const marker = process.env.MIDDLE_FINGER_REPLACEMENT ?? 'ya ya ya';
+  let text; let assess = false;
+  if (command === 'rewrite') {
+    const chunks = []; let size = 0;
+    for await (const chunk of process.stdin) {
+      size += chunk.length;
+      if (size > max_bytes * 8) throw Error('invalid_request');
+      chunks.push(chunk);
+    }
+    let request;
+    try { request = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw Error('invalid_request'); }
+    if (!request || ![1,2].includes(request.version) || typeof request.text !== 'string' || Object.keys(request).some(key => !['version','text','assess'].includes(key))) throw Error('invalid_request');
+    if (request.version === 1 && request.assess !== undefined || request.assess !== undefined && typeof request.assess !== 'boolean') throw Error('invalid_request');
+    text = request.text;
+    assess = request.version === 2 && request.assess === true;
+  }
+  const { loadDetector } = require('../native/index.cjs');
+  const detector = await loadDetector({ modelDir, threshold, policy, detector: process.env.MIDDLE_FINGER_DETECTOR ?? 'bert' });
+  if (command === 'doctor') { process.stdout.write(JSON.stringify({ version:1, status:'ready' }) + '\n'); return; }
+  if (assess) {
+    const result = await detector.assess(text, {marker});
+    const a = result.assessment;
+    const assessment = {input_characters:a.inputCharacters, removed_characters:a.removedCharacters, replacement_count:a.replacementCount, removed_proportion:a.removedProportion, detector_confidence:a.detectorConfidence ?? null, residual_confidence:a.residualConfidence ?? null, protected_abstention:a.protectedAbstention};
+    process.stdout.write(JSON.stringify({version:2,status:result.text ? (a.replacementCount ? 'rewritten':'unchanged') : 'error', text:result.text, code:result.text ? undefined : 'protected_span_detected', assessment})+'\n');
+    return;
+  }
+  const result = await detector.rewrite(text, { marker });
+  process.stdout.write(JSON.stringify({ version:1, status:result.replacementCount ? 'rewritten':'unchanged', text:result.text, replacement_count:result.replacementCount }) + '\n');
+}
+main().catch(error => {
+  const code = allowed_errors.has(error?.message) ? error.message : 'bridge_failed';
+  process.stdout.write(JSON.stringify({ version:1, status:'error', code }) + '\n');
+  if (process.env.LOG_LEVEL !== 'silent') process.stderr.write(`middle-finger: ${code}\n`);
+  process.exitCode = 1;
+});

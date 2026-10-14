@@ -1,0 +1,15 @@
+{
+  "name": "yourmoodai",
+  "description": "Local offensive-span detection and replacement.",
+  "owner": {
+    "name": "yourmoodai",
+    "url": "https://github.com/yourmoodai"
+  },
+  "plugins": [
+    {
+      "name": "middle-finger",
+      "source": "./",
+      "description": "Local offensive-span replacement for Claude Code."
+    }
+  ]
+}

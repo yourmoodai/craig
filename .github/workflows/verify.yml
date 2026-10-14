@@ -1,0 +1,48 @@
+name: verify
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  coreml:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy -p middle-finger --features coreml --all-targets -- -D warnings
+      - run: cargo test -p middle-finger --features coreml
+  native:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: npm run check
+      - run: npm test
+      - run: npm run model:fetch
+      - run: npm run eval:local
+      - name: native assessment and synthetic SDK history
+        env:
+          MIDDLE_FINGER_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
+        run: node --test tests/review.spec.mjs
+      - name: real model training and reload parity
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          MIDDLE_FINGER_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
+        run: cargo test --profile profiling -p middle-finger-lab --test cli -- --ignored

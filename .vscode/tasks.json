@@ -1,0 +1,257 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build evaluation profiling",
+      "type": "shell",
+      "command": "npm run build:lab",
+      "problemMatcher": []
+    },
+    {
+      "label": "evaluation debug",
+      "type": "shell",
+      "command": "npm run lab:debug -- --help",
+      "problemMatcher": []
+    },
+    {
+      "label": "test evaluation",
+      "type": "shell",
+      "command": "cargo test -p middle-finger-lab",
+      "problemMatcher": []
+    },
+    {
+      "label": "evaluation and memory profile",
+      "type": "shell",
+      "command": "npm run lab:evaluate -- --model .cache/models/mudes-en-base --corpus tests/fixtures/corpus.jsonl --output .cache/lab-evaluation.json",
+      "problemMatcher": []
+    },
+    {
+      "label": "build release",
+      "type": "shell",
+      "command": "npm run build",
+      "problemMatcher": []
+    },
+    {
+      "label": "build debug",
+      "type": "shell",
+      "command": "npm run build:debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "run",
+      "type": "shell",
+      "command": "npm run run -- doctor",
+      "problemMatcher": []
+    },
+    {
+      "label": "debug",
+      "type": "shell",
+      "command": "npm run debug -- doctor",
+      "problemMatcher": []
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "npm test",
+      "problemMatcher": []
+    },
+    {
+      "label": "verify",
+      "type": "shell",
+      "command": "npm run verify",
+      "problemMatcher": []
+    },
+    {
+      "label": "evaluate model",
+      "type": "shell",
+      "command": "npm run eval:local",
+      "problemMatcher": []
+    },
+    {
+      "label": "profile memory",
+      "type": "shell",
+      "command": "npm run profile:memory",
+      "problemMatcher": []
+    },
+    {
+      "label": "build review debug",
+      "type": "shell",
+      "command": "npm run build:review:debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "build review profiling",
+      "type": "shell",
+      "command": "npm run build:review:profiling",
+      "problemMatcher": []
+    },
+    {
+      "label": "run review debug",
+      "type": "shell",
+      "command": "npm run run:review:debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "run review release",
+      "type": "shell",
+      "command": "npm run run:review:release",
+      "problemMatcher": []
+    },
+    {
+      "label": "test review",
+      "type": "shell",
+      "command": "npm run test:review",
+      "problemMatcher": []
+    },
+    {
+      "label": "test installed mod",
+      "type": "shell",
+      "command": "npm run test:installed",
+      "problemMatcher": []
+    },
+    {
+      "label": "profile review memory",
+      "type": "shell",
+      "command": "npm run profile:review",
+      "problemMatcher": []
+    },
+    {
+      "label": "test judge comparison",
+      "type": "shell",
+      "command": "npm run test:review",
+      "problemMatcher": []
+    },
+    {
+      "label": "build inference profiling",
+      "type": "shell",
+      "command": "npm run build:inference",
+      "problemMatcher": []
+    },
+    {
+      "label": "build inference debug",
+      "type": "shell",
+      "command": "npm run build:inference:debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "build inference accelerate",
+      "type": "shell",
+      "command": "npm run build:inference:accelerate",
+      "problemMatcher": []
+    },
+    {
+      "label": "build inference metal",
+      "type": "shell",
+      "command": "npm run build:inference:metal",
+      "problemMatcher": []
+    },
+    {
+      "label": "test inference",
+      "type": "shell",
+      "command": "npm run test:inference",
+      "problemMatcher": []
+    },
+    {
+      "label": "profile inference latency and memory",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "scripts/benchmark-inference.mjs",
+        "--fixture",
+        "short,medium,long",
+        "--output",
+        "${input:inference_report}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "build inference coreml",
+      "type": "shell",
+      "command": "npm run build:inference:coreml",
+      "problemMatcher": []
+    },
+    {
+      "label": "build inference coreml debug",
+      "type": "shell",
+      "command": "npm run build:inference:coreml:debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "build inference coreml release",
+      "type": "shell",
+      "command": "npm run build:inference:coreml:release",
+      "problemMatcher": []
+    },
+    {
+      "label": "test inference coreml",
+      "type": "shell",
+      "command": "npm run test:inference:coreml",
+      "problemMatcher": []
+    },
+    {
+      "label": "build decisions profiling",
+      "type": "shell",
+      "command": "npm run build:decisions",
+      "problemMatcher": []
+    },
+    {
+      "label": "build decisions debug",
+      "type": "shell",
+      "command": "npm run build:decisions:debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "build decisions release",
+      "type": "shell",
+      "command": "npm run build:decisions:release",
+      "problemMatcher": []
+    },
+    {
+      "label": "test decisions",
+      "type": "shell",
+      "command": "npm run test:decisions",
+      "problemMatcher": []
+    },
+    {
+      "label": "screen decision detectors",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "scripts/benchmark-decisions.mjs",
+        "--models",
+        "${input:decision_models}",
+        "--output",
+        "${input:decision_report}",
+        "--candidates",
+        "lexical,crf"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "profile decision allocations",
+      "type": "shell",
+      "command": "npm run profile:decisions:memory -- --model \"${input:decision_models}/crf\" --output \"${input:inference_report}\"",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "inference_report",
+      "type": "promptString",
+      "description": "New inference report path",
+      "default": ".cache/inference-new.json"
+    },
+    {
+      "id": "decision_models",
+      "type": "promptString",
+      "description": "Directory containing trained lexical and CRF artifacts",
+      "default": ".cache/decision-models-v1"
+    },
+    {
+      "id": "decision_report",
+      "type": "promptString",
+      "description": "New comparison output directory",
+      "default": ".cache/decision-screen"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "middle-finger",
+  "displayName": "Middle Finger",
+  "version": "0.1.0",
+  "description": "Local offensive-span detection and configurable replacement with ya ya ya.",
+  "author": {
+    "name": "Adam Williams",
+    "url": "https://github.com/yourmoodai"
+  },
+  "homepage": "https://github.com/yourmoodai/middle-finger#readme",
+  "repository": "https://github.com/yourmoodai/middle-finger",
+  "documentationUrl": "https://github.com/yourmoodai/middle-finger#readme",
+  "supportUrl": "https://github.com/yourmoodai/middle-finger/issues",
+  "license": "AGPL-3.0-or-later",
+  "keywords": [
+    "privacy",
+    "moderation",
+    "local-inference",
+    "prompt-rewriting",
+    "claude-code-mod"
+  ]
+}

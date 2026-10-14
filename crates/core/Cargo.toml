@@ -1,0 +1,33 @@
+[package]
+name = "middle-finger"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+training = []
+coreml = []
+accelerate = ["candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate"]
+metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+candle-core = "0.11"
+candle-nn = "0.11"
+candle-transformers = "0.11"
+tokenizers = { version = "0.22", default-features = false, features = ["onig"] }
+regex = "1"
+unicode-segmentation = "1"
+pulldown-cmark = "0.13"
+sha2 = "0.10"
+
+[build-dependencies]
+cc = "1"
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"
+libc = "0.2"
