@@ -1,6 +1,10 @@
 # Craig
 
-Local offensive-span replacement for Claude Code: write what you mean, then decide what the provider gets to see. This is a Claude Code mod for people who refuse the premise that access to a tool gives its vendor authority over the tone of a private draft. A Rust library detects offensive words and phrases on your machine and replaces each contiguous span with `ya ya ya`. A typed JavaScript interface and the mod use the same core.
+<img src="docs/assets/craig.png" width="240" alt="Craig in a blue hat, looking unimpressed and raising his middle finger">
+
+**Another AI library. This one protects the chatbot from your vocabulary.**
+
+Craig is a deliberately rude mascot for a useful local profanity and offensive-language filter. Named after Craig from *South Park*, this yourmood.ai project arrives with the obligatory mascot and a practical job: replace detected offensive spans before a Claude Code composer submission continues. The mascot supplies the gesture; the mod does not generate insults or banter.
 
 ```text
 You idiot, do not delete the test.
@@ -8,19 +12,13 @@ You idiot, do not delete the test.
 You ya ya ya, do not delete the test.
 ```
 
-The marker is deliberately facetious and bounded: one marker per span, with no generative rewrite of the surrounding instruction. Its token cost depends on the receiving tokenizer. It signals removal; it makes no promise about confusing a model or contaminating training data.
+Write the frustrated instruction. Craig swaps detected spans for a configurable marker, defaulting to `ya ya ya`, and preserves the surrounding text exactly. A Rust library performs inference locally and offline; its typed JavaScript interface, CLI, and Claude Code mod share the same replacement core. Protected-span conflicts and processing failures stop submission rather than forwarding the original as a fallback. Slash commands and non-composer submissions bypass the mod.
 
-Craig is named after Craig from *South Park*: blunt, unimpressed, and liable to flip you off. That is the character concept; this version does not display gestures or insults. Craig is a yourmood.ai project.
+**Freedom of speech == freedom of instruction.** We consider a vendor policing how politely you address software an Orwellian etiquette exercise. Craig is our tongue-in-cheek response: a profanity filter wearing a middle finger, for people who want to keep using the tool without sending it every word of their frustration.
 
-## Why
+Anthropic's [October 8 policy announcement](https://www.anthropic.com/news/2026-usage-policy-update) prohibits “sustained and needless abusive or cruel behavior toward our models,” effective November 12, 2026. It explicitly excludes ordinary frustration, pushback, dark creative themes, and testing or research. Craig is intended to help users remove language they do not want to submit under that [policy](https://www.anthropic.com/legal/aup). It does not establish compliance: detecting offensive words cannot determine whether a conversation meets a contextual behavior rule. Our evaluations measure policy alignment, not provider approval.
 
-**Freedom of speech == freedom of instruction.** A tool should let people under pressure express themselves without surrendering their unfiltered words to the vendor. Conditioning access on a vendor's judgment of how kindly someone treats software is a Kafkaesque bargain. We consider that hostile to the human using the tool and a betrayal of the promise that computing should increase personal agency.
-
-Anthropic's October 8, 2026 announcement adds a prohibition on “sustained and needless abusive or cruel behavior toward our models,” effective November 12, 2026. It expressly excludes ordinary frustration, pushback, dark creative themes, and testing or research. Our objection is to the vendor claiming authority over this boundary, not a claim that the announcement bans every swear word. [Read the announcement](https://www.anthropic.com/news/2026-usage-policy-update) and [usage policy](https://www.anthropic.com/legal/aup).
-
-This project puts the editing decision on the user's machine. The original wording is not the provider's entitlement. A provider can set the conditions for its own service; it does not get to convert normal use of a computer into a compulsory etiquette tribunal. Making people install a local mod merely to keep communicating normally is Kafkaesque and hostile by design. The mod makes the boundary explicit: the user keeps their draft, and the provider receives only the deterministic replacement after successful local processing.
-
-## Setup
+## Installation
 
 Requires Rust, a C/C++ toolchain, Node.js 22.18 or newer, and Claude Code with mods support for the adapter. The adapter is tested with Claude Code `2.1.290`. Native build targets are macOS arm64 and Linux x64; build on the target platform.
 

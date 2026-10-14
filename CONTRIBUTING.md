@@ -53,8 +53,8 @@ boundaries. New implementation phases do not automatically need new ADRs.
 
 ## Development
 
-Follow the [README setup](README.md#setup), then work on a focused branch in your
-fork. The existing repository is library-first: build Rust and its typed Node
+Follow the [README installation](README.md#installation), then work on a focused
+branch in your fork. The existing repository is library-first: build Rust and its typed Node
 bindings before exercising the adapter.
 
 ```sh
