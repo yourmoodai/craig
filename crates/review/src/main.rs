@@ -1,8 +1,10 @@
+use craig_review::ReviewResult;
+#[cfg(unix)]
 use craig_review::{
-    ReviewResult,
     store::{private_dir, profile_dir},
     worker::{Request, Worker},
 };
+#[cfg(unix)]
 use std::{
     io::{BufRead, Read, Write},
     sync::atomic::Ordering,

@@ -4,7 +4,10 @@ on:
   push:
     tags: ['v*']
   pull_request:
-    paths: ['scripts/release/**', '.github/workflows/release.yml', 'crates/**', 'bridge/**', 'hooks/**', 'Cargo*', 'package*.json']
+    paths: ['scripts/**', 'tests/**', '.github/workflows/release.yml', 'crates/**', 'bridge/**', 'hooks/**', 'Cargo*', 'package*.json']
+concurrency:
+  group: release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 permissions:
   contents: read
 jobs:
@@ -36,6 +39,9 @@ jobs:
       - if: runner.os == 'Windows'
         shell: pwsh
         run: '"RUSTFLAGS=-C target-feature=+crt-static" | Out-File -FilePath $env:GITHUB_ENV -Append'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - run: npm run build
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace

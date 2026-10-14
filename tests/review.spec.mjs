@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp, mkdir, writeFile, readFile, rm, stat} from 'node:fs/promises';
-import {spawn} from 'node:child_process';
+import {spawn, execFileSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {resolve, join} from 'node:path';
@@ -94,7 +94,21 @@ test('local worker enforces consent, SDK history dates, deduplication and text-f
     assert.ok(!JSON.stringify(state).includes('synthetic private canary'));
     const database=join(profile,'craig/metrics.sqlite3');
     assert.ok(!(await readFile(database)).includes(Buffer.from('synthetic private canary')));
-    assert.equal((await stat(database)).mode&0o777,0o600);
+    if(process.platform==='win32') {
+      // Windows privacy is an ACL invariant, not a POSIX mode-bit invariant.
+      const script = `$ErrorActionPreference='Stop';
+        $sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value;
+        $directory=Get-Acl -LiteralPath (Split-Path -Parent $env:CRAIG_TEST_DATABASE);
+        $file=Get-Acl -LiteralPath $env:CRAIG_TEST_DATABASE;
+        $entries=@($file.GetAccessRules($true,$true,[System.Security.Principal.SecurityIdentifier]) | ForEach-Object { @{sid=$_.IdentityReference.Value; type=$_.AccessControlType.ToString()} });
+        @{sid=$sid; protected=$directory.AreAccessRulesProtected; entries=$entries} | ConvertTo-Json -Depth 4`;
+      const acl=JSON.parse(execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{encoding:'utf8',timeout:15000,env:{...process.env,CRAIG_TEST_DATABASE:database}}));
+      assert.equal(acl.protected,true);
+      assert.ok(acl.entries.length>0);
+      assert.ok(acl.entries.every(entry=>entry.sid===acl.sid && entry.type==='Allow'));
+    } else {
+      assert.equal((await stat(database)).mode&0o777,0o600);
+    }
     const exported=await invoke(profile,{command:'export_file'});
     assert.equal(JSON.parse(await readFile(exported.path,'utf8')).metrics.length,3);
     await invoke(profile,{command:'delete'});
