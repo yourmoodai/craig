@@ -73,19 +73,32 @@ Bedrock Haiku 4.5 replaces the exhausted Kimi reviewer and unactivated Copilot
 transport. It is a metered CI-only reviewer, separate from local inference. GitHub
 OIDC grants short-lived access to one US inference profile through a dedicated
 environment restricted to main and develop. Live review remains disabled until
-account access and model qualification succeed. Bounded calls are not a hard
-dollar spending cap. Trusted
-base code reviews PR diffs as data; no PR executable receives review secrets.
-Required tests must pass before model review. One editable PR comment contains
-the overview and verdict; the CI verdict succeeds only for qualified, complete,
-clean current-head assessments. Findings and review failures fail the check.
-Model assessments do not submit formal GitHub reviews. An explicit size-policy
-exception permits a formal approval for PRs over 5,000 added plus deleted lines
-authored by a repository-wide code owner with write access, after required tests
-pass. Ownership comes from the base commit, with a narrowly scoped initial-import
-exception documented in the reviewer guide. This saves model usage on large owner
-changes but provides no model assessment; the comment must disclose that tradeoff.
-Branch protection remains unchanged.
+account access and model qualification succeed. Trusted base code reviews PR
+diffs as data; no PR executable receives review secrets. Required tests must
+pass for the exact head before review. A single editable comment carries the
+50–100 word overview, verdict, coverage, and cost. Complete qualified assessments
+submit a formal approval when clean or request changes for validated findings.
+Infrastructure failures fail CI without a defect review. There is no size-based
+or code-owner bypass; branch protection remains unchanged.
+
+Review packing owns contiguous change blocks, retaining stable evidence IDs and
+old/new coordinates through regrouping and subdivision. Dynamic token ceilings
+grow with reviewable units; full rendered prompts must still fit bounded input
+and output budgets. Supporting context is disclosed separately from primary
+coverage. Truncation or saturated findings causes smaller assessments; no parent
+counts as complete until all children finish. Fixed 48 KiB packing remains the
+baseline until the same bounded fixtures demonstrate preserved labels and lower
+adaptive cost. This trades extra planning and token-count calls for measurable
+coverage and spending control; semantic correctness is not guaranteed by packing.
+
+The $2 pilot shares an atomic ledger across qualification, comparison, assessment,
+verification, synthesis, and resumed attempts. At most $0.40 funds qualification
+and comparison. Reserve worst-case counted inference cost before calling Bedrock;
+retain uncertain charges after interruptions. CI persists a reservation before
+inference, restores reconciled ledgers, and abstains if spending history is missing.
+Pricing assumptions, thresholds, and run commands belong in the
+[reviewer guide](../../tools/adversarial_reviewer/README.md). Explicit prompt and
+result caching remain off until measured evidence justifies their complexity.
 Stale results are discarded.
 Non-executable PNG/JPEG/WebP files under `docs/assets` are disclosed exclusions;
 other binary omissions prevent approval. This can block merging when review

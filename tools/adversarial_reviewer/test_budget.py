@@ -1,0 +1,50 @@
+import concurrent.futures
+import tempfile
+import unittest
+
+from budget import BudgetError, Ledger
+
+
+class BudgetTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.path = directory.name+'/ledger.db'
+        self.ledger = Ledger(self.path)
+
+    def test_atomic_parallel_reservations_and_restart(self):
+        def reserve(index):
+            try:
+                Ledger(self.path).reserve(0, 200000, 'review', str(index))
+                return True
+            except BudgetError:
+                return False
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            results = list(executor.map(reserve,range(3)))
+        self.assertEqual(sum(results),1)
+        self.assertEqual(Ledger(self.path).summary()['committed_usd'],1.1)
+
+    def test_qualification_has_separate_shared_ceiling(self):
+        self.ledger.reserve(100000,0,'qualification','a')
+        self.ledger.reserve(100000,0,'qualification','b')
+        with self.assertRaises(BudgetError):
+            self.ledger.reserve(200000,0,'qualification','c')
+        self.ledger.reserve(200000,0,'review','d')
+
+    def test_missing_usage_retains_reservation(self):
+        key = self.ledger.reserve(200,4096,'review','a')
+        before = self.ledger.summary()['committed_usd']
+        with self.assertRaises(BudgetError):
+            self.ledger.reconcile(key,{},1)
+        self.assertEqual(self.ledger.summary()['committed_usd'],before)
+        self.ledger.reconcile(key,{'usage':{'inputTokens':200,'outputTokens':30},'stopReason':'max_tokens'},1)
+        self.assertLess(self.ledger.summary()['committed_usd'],before)
+        with self.assertRaises(BudgetError):
+            self.ledger.reconcile(key,{'usage':{'inputTokens':200,'outputTokens':30}},1)
+
+    def test_provider_overrun_halts_resumed_calls(self):
+        key = self.ledger.reserve(1,1,'review','a')
+        with self.assertRaises(BudgetError):
+            self.ledger.reconcile(key,{'usage':{'inputTokens':2,'outputTokens':2}},1)
+        with self.assertRaisesRegex(BudgetError,'halted'):
+            Ledger(self.path).reserve(1,1,'review','b')

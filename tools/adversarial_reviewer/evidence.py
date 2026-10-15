@@ -5,6 +5,20 @@ import re
 FIELDS = {"location", "invariant", "scenario", "correction"}
 
 
+def location_ranges(anchors):
+    """Consecutive source coordinates share a range; finding IDs remain unambiguous."""
+    ranges = []
+    for number, anchor in enumerate(anchors, 1):
+        side = anchor.get('side', 'new')
+        if (ranges and ranges[-1]['file'] == anchor['file'] and ranges[-1]['side'] == side
+                and side != 'file' and ranges[-1]['last_line']+1 == anchor['line']):
+            ranges[-1].update(last=number, last_line=anchor['line'])
+        else:
+            ranges.append({'first': number, 'last': number, 'file': anchor['file'], 'side': side,
+                           'first_line': anchor['line'], 'last_line': anchor['line']})
+    return '\n'.join(f"ids {r['first']}-{r['last']}: {r['file']} ({r['side']}) lines {r['first_line']}-{r['last_line']}" for r in ranges)
+
+
 def locations(diff):
     path, line = None, None
     result = {}

@@ -12,7 +12,8 @@ The application detector and personal-review judges remain offline.
 GitHub Actions assumes `arn:aws:iam::463509296941:role/craig-bedrock-review`
 through OIDC. The `bedrock-review` GitHub environment admits only the `main` and
 `develop` branches. The role trusts only this repository/environment and the
-`sts.amazonaws.com` audience. Its inline policy permits only `bedrock:InvokeModel`
+`sts.amazonaws.com` audience. Its inline policy permits `bedrock:CountTokens` for the selected foundation model
+and only `bedrock:InvokeModel`
 for the selected US inference profile and its three destination models, with a
 profile condition on foundation-model access. The exact policies are in
 [`iam/trust.json`](iam/trust.json) and [`iam/invoke.json`](iam/invoke.json).
@@ -21,17 +22,58 @@ No AWS access keys or SSO credentials are stored in GitHub.
 The environment variables `BEDROCK_REVIEW_ROLE_ARN` and `BEDROCK_REVIEW_MODEL`
 select that role and model. Set `BEDROCK_REVIEW_ENABLED=true` only after account
 model access and live qualification succeed. Bedrock is metered API usage, not
-free Copilot credits. Request/output limits, deadlines, no SDK retries, and the
-large-PR exception bound work but do not constitute a hard dollar spending cap.
+free Copilot credits. The pilot shares a $2 inference budget, including at most $0.40 for qualification
+and strategy comparison. An atomic SQLite ledger reserves counted input plus
+maximum output before every call. Actual usage releases unused reservations;
+missing usage and interrupted calls retain their maximum cost. Budget exhaustion
+leaves coverage incomplete. This bounds modeled inference cost at the pinned US
+rates ($1.10/M input, $5.50/M output), not taxes or unrelated AWS usage.
 
-For local qualification after SSO login:
+CI serializes the pilot across PRs. It uploads a reservation before inference and
+reconciles it with a durable ledger afterward. Resumed runs restore that ledger;
+an unresolved, deleted, or expired reservation prevents further spending. Keep
+these artifacts for the pilot's lifetime. The ledger contains token metrics and
+prompt hashes, not prompt text. Use CI as the pilot's sole spending authority;
+local inference must not use an independent copy of the $2 allowance.
+
+For a local token-count dry run after SSO login (no inference charges):
 
 ```sh
 AWS_PROFILE=awill AWS_REGION=us-east-1 \
-BEDROCK_REVIEW_ENABLED=true \
-BEDROCK_REVIEW_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0 \
-python3 tools/adversarial_reviewer/evaluate_model.py
+python3 tools/adversarial_reviewer/adversarial_review.py \
+  --base origin/main --head HEAD --strategy adaptive --dry-run \
+  --json-output .cache/review-pilot/adaptive-manifest.json
 ```
+
+Use `--strategy baseline` for the 48 KiB comparison. Manifests list primary units,
+stable evidence IDs, full input counts, repeated supporting context, omissions,
+and maximum first-pass cost. Verification and subdivision need additional funds.
+The workflow records both manifests, qualification results, usage, and latency.
+
+A primary unit is a contiguous addition/deletion block plus its assigned context.
+The adaptive primary-diff ceilings are 4,000 tokens for up to eight units, 8,000
+for nine through 32, and 16,000 thereafter. Packing prefers the same file, changed
+references, then directories; ordinary batches admit at most eight files and
+16 units. Oversized units split on source lines, retaining old/new coordinates.
+Renames and mode-only changes have file-level evidence. Deletions remain reviewable.
+Consecutive evidence locations use compact ranges in prompts; stable IDs remain
+in the manifest, avoiding a repeated file path and identifier on every source line.
+Each primary unit has one owner; supporting context does not increase coverage.
+
+The complete rendered prompt is counted with Bedrock `CountTokens` and bounded
+at 48,000 input tokens and 128 KiB. Supplemental context is capped at 8,000 tokens
+(currently an intentionally conservative 8,000 UTF-8 bytes); omitted support is
+listed. Assessments and verification permit 4,096 output tokens; overviews permit
+512. Truncated responses or three findings trigger subdivision, never approval
+from a partial parent. Indivisible changes, missing context, or exhausted budget
+remain incomplete. Explicit prompt caching and result caching are disabled.
+
+Qualification exercises benign changes and seeded defects, then compares both
+strategies on the same clean and four-defect batches. Adaptive packing is selected
+only when coverage and expected labels survive and its measured cost is lower;
+otherwise the qualified baseline remains selected. Neither strategy is qualified
+by unit tests alone. Account model access and the Anthropic use-case form remain
+prerequisites for the live comparison.
 
 Calls have no tools or agent execution. Only trusted checkout code runs; PR diffs
 are data. A private temporary request file is removed after each invocation.
@@ -51,20 +93,13 @@ followed by **Approved** or **Request changes**. Findings and review failures ap
 separately; chunk details and exclusions are collapsed below them.
 
 One bot-owned PR comment tracks waiting for tests, failed prerequisites, and the
-latest assessment. The publisher updates that comment rather than submitting
-formal GitHub reviews for model assessments. The `adversarial verdict` CI job passes for a qualified,
-complete, clean current-head assessment with a valid overview. Findings, unavailable
-synthesis, and incomplete coverage fail the job. Existing branch protection still
-requires a human approval; historical formal reviews remain unchanged.
-Independent chunks continue after a failure within the shared time budget.
-
-PRs with more than 5,000 added plus deleted lines can instead receive a size-policy
-approval after all required tests pass. The author must have write access and be
-listed in the base commit's repository-wide `.github/CODEOWNERS` rule. Path-specific
-or team ownership uses normal review. PR #1 has an explicit exception for `awill1988`
-against the initial base commit, which lacks CODEOWNERS. The policy updates the same
-status comment, clearly states that model review was skipped, and submits one formal
-approval per head commit. It does not change branch protection or merge the PR.
+latest assessment. It includes a 50–100 word overview, verdict, coverage, and
+committed cost. A qualified, complete, clean current-head assessment submits a
+formal GitHub approval after verification, commit-message, and release checks
+pass for that head. Validated findings submit `REQUEST_CHANGES`; infrastructure
+failures fail the check without submitting a defect review. Repeated publication
+updates the same comment and does not duplicate an unchanged formal verdict.
+There is no large-PR or code-owner approval bypass. Branch protection is unchanged.
 
 Non-executable PNG/JPEG/WebP files under `docs/assets` are excluded from code-review
 coverage and listed as unreviewed assets. Other binary changes remain unresolved
@@ -75,3 +110,8 @@ architecture; Core ML uses a separate namespace. Compiler, Cargo inputs, and Rus
 flags remain part of the cache key. Builds and tests always execute. Job summaries
 record cache hits, restore/build duration, and existing cache bytes for comparison;
 cache size is sampled before the current job saves its cache.
+
+The token-count contract is documented in [AWS CountTokens](https://docs.aws.amazon.com/bedrock/latest/userguide/count-tokens.html).
+Usage and stop reasons come from [Converse](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html).
+The pilot rates match the Haiku 4.5 rates in [AWS's cost assessment](https://aws.amazon.com/blogs/machine-learning/live-meeting-assistant-with-amazon-transcribe-amazon-bedrock-and-strands-agents/);
+recheck rates before authorizing another pilot.

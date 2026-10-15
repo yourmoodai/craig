@@ -37,7 +37,7 @@ def synthesize_overview(report):
     failure = 'invalid overview length or structure'
     for _ in range(2):
         try:
-            response = complete(messages, deadline)
+            response = complete(messages, deadline, purpose="overview")
             overview = response.get('overview') if isinstance(response, dict) else None
             if isinstance(overview, str) and 50 <= len(overview.split()) <= 100:
                 return ' '.join(overview.split())
@@ -72,6 +72,10 @@ def finalize(report, *, qualified, synthesize=True):
     report['review_failures'] = failures
     clean = qualified and report.get('complete') and report['synthesis_complete'] and not failures and not report.get('findings') and report.get('disposition') == 'APPROVE'
     report['disposition'] = 'APPROVE' if clean else 'REQUEST_CHANGES'
+    import os
+    if os.environ.get('REVIEW_BUDGET_LEDGER'):
+        from budget import Ledger
+        report['budget'] = Ledger(os.environ['REVIEW_BUDGET_LEDGER']).summary()
     report['body'] = render(report)
     return report
 
@@ -82,6 +86,8 @@ def render(report):
         return html.escape(str(value)).replace('\\', '\\\\').replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace('#', '\\#')
     verdict = 'Approved' if report['disposition'] == 'APPROVE' else 'Request changes'
     lines = ['## Code review', '', prose(report['overview']), '', f'**Verdict: {verdict}**', '']
+    if report.get('budget'):
+        lines += [f"Pilot committed cost (including uncertain calls): ${report['budget']['committed_usd']:.4f} / ${report['budget']['limit_usd']:.2f}.", '']
     if report.get('findings'):
         lines += ['### Findings', '']
         for finding in report['findings']:

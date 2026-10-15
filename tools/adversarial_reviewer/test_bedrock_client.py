@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import time
+import tempfile
 import unittest
 from unittest.mock import patch
 import bedrock_client as client
@@ -9,17 +10,19 @@ import bedrock_client as client
 
 class BedrockClientTests(unittest.TestCase):
     def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
         env = patch.dict(os.environ, BEDROCK_REVIEW_ENABLED='true', AWS_REGION='us-east-1',
-                         BEDROCK_REVIEW_MODEL=client.MODEL, GITHUB_TOKEN='private canary')
+                         BEDROCK_REVIEW_MODEL=client.MODEL, GITHUB_TOKEN='private canary', REVIEW_BUDGET_LEDGER=temp.name+'/ledger.db')
         env.start()
         self.addCleanup(env.stop)
 
     def invoke(self, text='{}', stop='end_turn', code=0):
-        output = json.dumps({'stopReason': stop, 'output': {'message': {'content': [{'text': text}]}}})
+        output = json.dumps({'usage': {'inputTokens':20, 'outputTokens':20}, 'stopReason': stop, 'output': {'message': {'content': [{'text': text}]}}})
         def respond(argv, **kwargs):
             from pathlib import Path
             self.request = json.loads(Path(argv[argv.index('--cli-input-json')+1].removeprefix('file://')).read_text())
-            return subprocess.CompletedProcess([], code, output, 'private canary')
+            return subprocess.CompletedProcess([], code, json.dumps({'inputTokens':20}) if 'count-tokens' in argv else output, 'private canary')
         with patch('bedrock_client.subprocess.run', side_effect=respond) as run:
             value = client.complete([{'role': 'system', 'content': 'rules'}, {'role': 'user', 'content': 'synthetic diff'}], time.monotonic()+10)
             return value, run.call_args
@@ -29,7 +32,7 @@ class BedrockClientTests(unittest.TestCase):
         self.assertEqual(value, {'findings': []})
         request = self.request
         self.assertEqual(request['system'], [{'text': 'rules'}])
-        self.assertEqual(request['inferenceConfig']['maxTokens'], 8192)
+        self.assertEqual(request['inferenceConfig']['maxTokens'], 4096)
         self.assertNotIn('toolConfig', request)
         self.assertNotIn('GITHUB_TOKEN', call.kwargs['env'])
         self.assertEqual(call.kwargs['env']['AWS_MAX_ATTEMPTS'], '1')

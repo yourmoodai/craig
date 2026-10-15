@@ -127,6 +127,11 @@ class TestAdversarialReviewer(unittest.TestCase):
                 },
             ) as provider:
                 result = run_model_reviewer("primary diff", [], "", supporting_context=support)
+            if not included:
+                self.assertEqual(result[0], 'COMMENT')
+                self.assertIn('subdivision required', result[2])
+                provider.assert_not_called()
+                continue
             self.assertEqual(result[0], "APPROVE")
             messages = provider.call_args.args[0]
             self.assertLessEqual(sum(len(m["content"].encode()) for m in messages), CONTEXT_TOKENS)

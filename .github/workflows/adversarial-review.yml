@@ -67,7 +67,7 @@ jobs:
     needs: scope
     runs-on: ubuntu-24.04
     concurrency:
-      group: review-pr-${{ needs.scope.outputs.pr }}
+      group: bedrock-haiku45-pilot
       cancel-in-progress: false
     timeout-minutes: 120
     environment:
@@ -103,34 +103,18 @@ jobs:
           script: |
             const gate = require('./tools/adversarial_reviewer/test_gate.cjs');
             await gate({github, context, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, output:process.env.RUNNER_TEMP+'/review-tests.json'});
-      - name: apply large code-owner PR policy
-        id: size_policy
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const args = {github, context, core, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER};
-            const policy = require('./tools/adversarial_reviewer/large_pr.cjs');
-            const eligible = await policy.eligible(args);
-            if (eligible) {
-              const evidence = JSON.parse(require('node:fs').readFileSync(process.env.RUNNER_TEMP+'/review-tests.json','utf8'));
-              await require('./tools/adversarial_reviewer/publish.cjs')({...args,phase:'policy',evidence});
-            }
-            core.setOutput('approved', eligible ? 'true' : 'false');
       - uses: actions/setup-python@v5
-        if: steps.size_policy.outputs.approved != 'true'
         with:
           python-version: '3.12'
       - name: fetch diff without checkout
-        if: steps.size_policy.outputs.approved != 'true'
         env:
           PR_NUMBER: ${{ needs.scope.outputs.pr }}
         run: git fetch origin "pull/$PR_NUMBER/head"
       - uses: actions/setup-node@v4
-        if: steps.size_policy.outputs.approved != 'true'
         with:
           node-version: 24.22.0
       - name: assume bedrock review role
-        if: steps.size_policy.outputs.approved != 'true' && vars.BEDROCK_REVIEW_ENABLED == 'true'
+        if: vars.BEDROCK_REVIEW_ENABLED == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.BEDROCK_REVIEW_ROLE_ARN }}
@@ -138,8 +122,21 @@ jobs:
           allowed-account-ids: '463509296941'
           role-duration-seconds: 3600
           role-session-name: craig-review-${{ github.run_id }}
+      - name: restore pilot budget
+        if: vars.BEDROCK_REVIEW_ENABLED == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./tools/adversarial_reviewer/pilot.cjs')({github,context});
+      - name: persist pilot reservation
+        if: vars.BEDROCK_REVIEW_ENABLED == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: haiku45-pilot-20261015-reserved-${{ github.run_id }}-${{ github.run_attempt }}
+          path: review-result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
       - name: qualify and assess
-        if: steps.size_policy.outputs.approved != 'true'
         env:
           BEDROCK_REVIEW_ENABLED: ${{ vars.BEDROCK_REVIEW_ENABLED }}
           BEDROCK_REVIEW_MODEL: ${{ vars.BEDROCK_REVIEW_MODEL }}
@@ -147,14 +144,23 @@ jobs:
           HEAD_SHA: ${{ needs.scope.outputs.head }}
           REVIEW_TEST_EVIDENCE: ${{ runner.temp }}/review-tests.json
         run: python3 tools/adversarial_reviewer/run_ci.py
+      - name: reconcile pilot reservation
+        if: always() && vars.BEDROCK_REVIEW_ENABLED == 'true' && hashFiles('review-result/settled.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: haiku45-pilot-20261015-settled-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            review-result/ledger.db
+            review-result/settled.json
+          retention-days: 90
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
-        if: steps.size_policy.outputs.approved != 'true'
         with:
           name: adversarial-report
-          path: review-result/report.json
+          path: review-result/
+          retention-days: 90
           if-no-files-found: error
       - name: publish verdict
-        if: steps.size_policy.outputs.approved != 'true'
         uses: actions/github-script@v7
         with:
           script: |

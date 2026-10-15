@@ -3,10 +3,15 @@
 import copy
 import unittest
 
-from evidence import locations, validate
+from evidence import locations, location_ranges, validate
 
 
 class TestEvidence(unittest.TestCase):
+    def test_compact_ranges_preserve_every_location(self):
+        anchors = [{'file': 'a', 'line': n, 'side': 'new'} for n in range(10,13)]
+        anchors += [{'file':'a', 'line':13, 'side':'old'}, {'file':'a', 'line':0, 'side':'file'}]
+        self.assertEqual(location_ranges(anchors), 'ids 1-3: a (new) lines 10-12\nids 4-4: a (old) lines 13-13\nids 5-5: a (file) lines 0-0')
+
     def setUp(self):
         self.anchors = list(
             locations(

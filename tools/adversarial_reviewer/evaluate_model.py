@@ -3,6 +3,7 @@
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
+import os
 import time
 from adversarial_review import REVIEW_SECONDS, REVIEW_WORKERS, run_model_reviewer
 
@@ -72,6 +73,7 @@ CASES = (
 
 
 def main():
+    os.environ['REVIEW_BUDGET_PHASE'] = 'qualification'
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
     deadline = time.monotonic() + REVIEW_SECONDS
