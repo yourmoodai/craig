@@ -40,7 +40,10 @@ test('review entrypoint responds through a directory alias', async()=>{
     assert.deepEqual(JSON.parse(preserved.stdout),{version:1,status:'error',code:'review_unavailable'});
     if(process.platform==='win32') {
       const script=join(alias,'bridge/review.mjs');
-      const short=execFileSync('cmd.exe',['/d','/c',`for %I in ("${script}") do @echo %~sI`],{encoding:'utf8'}).trim();
+      // Keep cmd syntax in a batch file; CreateProcess quoting is not cmd quoting.
+      await writeFile(join(temporary,'short-path.cmd'),'@for %%I in ("%CRAIG_TEST_ENTRYPOINT%") do @echo %%~fsI\r\n');
+      const short=execFileSync('cmd.exe',['/d','/c','short-path.cmd'],{cwd:temporary,env:{...process.env,CRAIG_TEST_ENTRYPOINT:script},encoding:'utf8'}).trim();
+      assert.equal(await realpath(short),await realpath(script));
       const short_result=spawnSync(process.execPath,[short],{input:'invalid json',encoding:'utf8',timeout:10000});
       assert.equal(short_result.status,1);
       assert.deepEqual(JSON.parse(short_result.stdout),{version:1,status:'error',code:'review_unavailable'});
