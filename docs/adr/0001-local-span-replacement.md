@@ -77,7 +77,13 @@ base code reviews PR diffs as data; no PR executable receives review secrets.
 Required tests must pass before model review. One editable PR comment contains
 the overview and verdict; the CI verdict succeeds only for qualified, complete,
 clean current-head assessments. Findings and review failures fail the check.
-Formal GitHub reviews are not submitted; human approval requirements remain.
+Model assessments do not submit formal GitHub reviews. An explicit size-policy
+exception permits a formal approval for PRs over 5,000 added plus deleted lines
+authored by a repository-wide code owner with write access, after required tests
+pass. Ownership comes from the base commit, with a narrowly scoped initial-import
+exception documented in the reviewer guide. This saves model usage on large owner
+changes but provides no model assessment; the comment must disclose that tradeoff.
+Branch protection remains unchanged.
 Stale results are discarded.
 Non-executable PNG/JPEG/WebP files under `docs/assets` are disclosed exclusions;
 other binary omissions prevent approval. This can block merging when review

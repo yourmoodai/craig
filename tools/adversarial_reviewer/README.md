@@ -32,11 +32,19 @@ separately; chunk details and exclusions are collapsed below them.
 
 One bot-owned PR comment tracks waiting for tests, failed prerequisites, and the
 latest assessment. The publisher updates that comment rather than submitting
-formal GitHub reviews. The `adversarial verdict` CI job passes only for a qualified,
+formal GitHub reviews for model assessments. The `adversarial verdict` CI job passes for a qualified,
 complete, clean current-head assessment with a valid overview. Findings, unavailable
 synthesis, and incomplete coverage fail the job. Existing branch protection still
 requires a human approval; historical formal reviews remain unchanged.
 Independent chunks continue after a failure within the shared time budget.
+
+PRs with more than 5,000 added plus deleted lines can instead receive a size-policy
+approval after all required tests pass. The author must have write access and be
+listed in the base commit's repository-wide `.github/CODEOWNERS` rule. Path-specific
+or team ownership uses normal review. PR #1 has an explicit exception for `awill1988`
+against the initial base commit, which lacks CODEOWNERS. The policy updates the same
+status comment, clearly states that model review was skipped, and submits one formal
+approval per head commit. It does not change branch protection or merge the PR.
 
 Non-executable PNG/JPEG/WebP files under `docs/assets` are excluded from code-review
 coverage and listed as unreviewed assets. Other binary changes remain unresolved

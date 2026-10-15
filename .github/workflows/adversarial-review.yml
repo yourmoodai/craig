@@ -83,20 +83,37 @@ jobs:
           script: |
             const gate = require('./tools/adversarial_reviewer/test_gate.cjs');
             await gate({github, context, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, output:process.env.RUNNER_TEMP+'/review-tests.json'});
+      - name: apply large code-owner PR policy
+        id: size_policy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const args = {github, context, core, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER};
+            const policy = require('./tools/adversarial_reviewer/large_pr.cjs');
+            const eligible = await policy.eligible(args);
+            if (eligible) {
+              const evidence = JSON.parse(require('node:fs').readFileSync(process.env.RUNNER_TEMP+'/review-tests.json','utf8'));
+              await require('./tools/adversarial_reviewer/publish.cjs')({...args,phase:'policy',evidence});
+            }
+            core.setOutput('approved', eligible ? 'true' : 'false');
       - uses: actions/setup-python@v5
+        if: steps.size_policy.outputs.approved != 'true'
         with:
           python-version: '3.12'
       - uses: actions/setup-node@v4
+        if: steps.size_policy.outputs.approved != 'true'
         with:
           node-version: 24.22.0
       - name: fetch diff without checkout
+        if: steps.size_policy.outputs.approved != 'true'
         env:
           PR_NUMBER: ${{ needs.scope.outputs.pr }}
         run: git fetch origin "pull/$PR_NUMBER/head"
       - name: install pinned copilot cli
-        if: vars.COPILOT_BILLING_VERIFIED == 'true'
+        if: steps.size_policy.outputs.approved != 'true' && vars.COPILOT_BILLING_VERIFIED == 'true'
         run: npm install --global @github/copilot@1.0.98
       - name: qualify and assess
+        if: steps.size_policy.outputs.approved != 'true'
         env:
           COPILOT_BILLING_VERIFIED: ${{ vars.COPILOT_BILLING_VERIFIED }}
           COPILOT_REVIEW_MODEL: ${{ vars.COPILOT_REVIEW_MODEL }}
@@ -106,11 +123,13 @@ jobs:
           REVIEW_TEST_EVIDENCE: ${{ runner.temp }}/review-tests.json
         run: python3 tools/adversarial_reviewer/run_ci.py
       - uses: actions/upload-artifact@v4
+        if: steps.size_policy.outputs.approved != 'true'
         with:
           name: adversarial-report
           path: review-result/report.json
           if-no-files-found: error
       - name: publish verdict
+        if: steps.size_policy.outputs.approved != 'true'
         uses: actions/github-script@v7
         with:
           script: |

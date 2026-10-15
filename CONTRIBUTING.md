@@ -129,7 +129,9 @@ an unqualified candidate. Source archives are not installable release bundles.
 Copilot waits for required tests, then updates one PR comment with a 50–100 word
 overview and an Approved or Request changes verdict. The `adversarial verdict`
 CI job passes only for qualified, complete, clean reviews with valid synthesis;
-findings or review failures fail the job. It does not submit formal GitHub reviews.
+findings or review failures fail the job. Code-owner PRs over 5,000 changed lines
+may instead receive an explicit size-policy approval after required tests pass,
+including a formal GitHub approval. See the reviewer guide for eligibility.
 Static documentation images are explicitly excluded from code-review coverage.
 See [reviewer verification](tools/adversarial_reviewer/README.md). Existing required
 human/PR approvals and stale-review dismissal remain in effect. Live review is
