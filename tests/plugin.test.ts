@@ -71,7 +71,7 @@ test('slash commands bypass replacement', async ($, on) => {
 });
 
 test('inspection command adds no transcript text or model context', async ($, on) => {
-  on('ui.open', () => ({value:undefined}));
+  on('ui.open', ($, e) => {expect(e.focus).toBe(true);return {value:undefined};});
   const result = await $.command.run({command:'craig',args:'',origin:{kind:'composer'},presentation:{isFullscreen:true,columns:80}});
   expect(result.text).toBeUndefined();
   expect(result.context).toBeUndefined();
@@ -125,6 +125,17 @@ test('history controls default to three days and cap selection at five',async($,
   await ui.press({key:'days-5'});
   expect(await ui.find({type:'Text',text:/lookback: 5 days/})).toBeDefined();
   expect(await ui.find({key:'days-6'})).toBeUndefined();
+  await ui.unmount();
+});
+
+test('rejected consent remains disabled in the metrics pane',async($,on)=>{
+  mock.store(on);mock.clock(on,{now:1791800000000});
+  on('process.run',()=>({value:{exitCode:1,stdout:'',stderr:''}}));
+  const ui=await $.ui.mount({plugin:'craig',surface:'terminal',component:'Pane',requestId:'craig',props:{title:'local replacement',isFocused:true,bodyColumns:80,placement:'inline',scroll:{offset:0,bodyRows:30},view:{}}});
+  await ui.press({key:'personal-metrics'});
+  await ui.press({key:'live'});
+  expect(await ui.find({type:'Text',text:/personal metrics setting could not be changed/})).toBeDefined();
+  expect(await ui.find({key:'live',text:/enable live metrics/})).toBeDefined();
   await ui.unmount();
 });
 

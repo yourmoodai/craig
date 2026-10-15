@@ -9,6 +9,7 @@ import sys
 import tempfile
 import urllib.request
 import zipfile
+from bridge_check import request as bridge_request
 
 release=Path(sys.argv[1]).resolve()
 archive=next(release.glob('craig-*.zip'))
@@ -39,17 +40,20 @@ with tempfile.TemporaryDirectory(prefix='craig release ') as temporary:
         urllib.request.urlretrieve(url,path)
     subprocess.run([str(native/('craig'+suffix)),'prepare'],env=env,check=True,timeout=600)
     env['CRAIG_MODEL_DIR']=str(directory)
-    result=subprocess.run([str(node),str(root/'bridge/cli.mjs'),'rewrite'],input=json.dumps({'version':1,'text':'You idiot, do not delete the test.'}),text=True,capture_output=True,env=env,check=True)
+    result=subprocess.run([str(node),str(root/'bridge/cli.mjs'),'rewrite'],input=json.dumps({'version':1,'text':'You idiot, do not delete the test.'}),text=True,capture_output=True,env=env,check=True,timeout=60)
     assert json.loads(result.stdout)['text']=='You ya ya ya, do not delete the test.'
     profile=root/'profile';profile.mkdir();env['CLAUDE_CONFIG_DIR']=str(profile)
     def request(command):
-        r=subprocess.run([str(node),str(root/'bridge/review.mjs')],input=json.dumps(command),text=True,capture_output=True,env=env,check=True,timeout=60)
-        return json.loads(r.stdout)['value']
+        return bridge_request([str(node),str(root/'bridge/review.mjs')],command,env,'smoke_'+command['command'])
     started=False
     try:
         state=request({'command':'status'})
         started=True
         assert state['consent']['live'] is False and state['consent']['history'] is False
     finally:
-        if started: request({'command':'shutdown'})
+        if started:
+            failed=sys.exc_info()[0] is not None
+            try: request({'command':'shutdown'})
+            except Exception:
+                if not failed: raise
 print('packaged replacement and private worker passed without developer tools')

@@ -35,7 +35,22 @@ test('review entrypoint responds through a directory alias', async()=>{
     const result=spawnSync(process.execPath,[join(alias,'bridge/review.mjs')],{input:'invalid json',encoding:'utf8',timeout:10000});
     assert.equal(result.status,1);
     assert.deepEqual(JSON.parse(result.stdout),{version:1,status:'error',code:'review_unavailable'});
+    const preserved=spawnSync(process.execPath,['--preserve-symlinks-main',join(alias,'bridge/review.mjs')],{input:'invalid json',encoding:'utf8',timeout:10000});
+    assert.equal(preserved.status,1);
+    assert.deepEqual(JSON.parse(preserved.stdout),{version:1,status:'error',code:'review_unavailable'});
+    if(process.platform==='win32') {
+      const script=join(alias,'bridge/review.mjs');
+      const short=execFileSync('cmd.exe',['/d','/c',`for %I in ("${script}") do @echo %~sI`],{encoding:'utf8'}).trim();
+      const short_result=spawnSync(process.execPath,[short],{input:'invalid json',encoding:'utf8',timeout:10000});
+      assert.equal(short_result.status,1);
+      assert.deepEqual(JSON.parse(short_result.stdout),{version:1,status:'error',code:'review_unavailable'});
+    }
   } finally {await rm(temporary,{recursive:true,force:true});}
+});
+test('importing the review library does not consume stdin or print a response',()=>{
+  const result=spawnSync(process.execPath,['--input-type=module','-e',"await import('./bridge/review.mjs'); console.log('imported');"],{cwd:root,input:'invalid json',encoding:'utf8',timeout:10000});
+  assert.equal(result.status,0);
+  assert.equal(result.stdout.trim(),'imported');
 });
 function invoke(profile, request, extra_env={}) {
   return new Promise((done,reject)=>{

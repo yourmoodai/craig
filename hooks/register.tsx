@@ -36,7 +36,7 @@ export function register(on: On) {
     return next(e);
   });
   on('command.run', { command: 'craig' }, async ($) => {
-    await $.ui.open({ id: 'craig', title: 'local replacement', closeOnEscape: true });
+    await $.ui.open({ id: 'craig', title: 'local replacement', focus: true, closeOnEscape: true });
     if (!runtime.ready) { await runtime.start({plugin:{root:$.plugin.root},process:{run:(argv,init)=>$.process.run(argv,init)}}); $.ui.invalidate('ui.render'); }
     return {};
   });
@@ -89,7 +89,7 @@ export function register(on: On) {
       <Text bold>personal metrics — active profile only; no prompt text is saved</Text>
       <Button key="inspection" label="inspection" onPress={()=>{review.view='inspection';$.ui.invalidate('ui.render');}} />
       <Text>30-day metrics retention; history scores describe stored text, not recovered originals</Text>
-      <Button key="live" label={review.consent.live?'disable live metrics':'enable live metrics and sampled local judge'} onPress={()=>review.toggle(host,'live')} />
+      <Button key="live" hotkey="l" label={review.consent.live?'disable live metrics':'enable live metrics and sampled local judge'} onPress={()=>review.toggle(host,'live')} />
       <Button key="history" label={review.consent.history?'disable history access':'enable history access across this profile'} onPress={()=>review.toggle(host,'history')} />
       <Text>lookback: {review.days} days; {new Date(review.now-review.days*86400000).toLocaleDateString()} to {new Date(review.now).toLocaleDateString()}</Text>
       <Box>{[1,2,3,4,5].map(days=><Button key={`days-${days}`} label={String(days)} onPress={()=>{review.days=days;$.ui.invalidate('ui.render');}} />)}</Box>
@@ -109,7 +109,7 @@ export function register(on: On) {
     return <Box flexDirection="column">
       <Text bold>local inspection — never added to model context</Text>
       <Text>{runtime.status}</Text>
-      <Button key="personal-metrics" label="personal metrics" onPress={async()=>{review.view='metrics';review.now=await $.clock.now();$.ui.invalidate('ui.render');}} />
+      <Button key="personal-metrics" hotkey="m" label="personal metrics" onPress={async()=>{review.view='metrics';review.now=await $.clock.now();$.ui.invalidate('ui.render');}} />
       <Button key="policy-evidence" label="policy evidence" onPress={()=>{review.view='policy';$.ui.invalidate('ui.render');}} />
       <Text>{latest ? '- ' + latest.original : 'no replacement in this session'}</Text>
       <Text>{latest ? '+ ' + latest.replacement : ''}</Text>
