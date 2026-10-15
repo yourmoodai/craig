@@ -48,12 +48,13 @@ class Terminal:
     def close(self):
         if self.master is None: self.process.close(force=True)
         else:
-            os.close(self.master)
             if self.process.poll() is None:
                 self.process.terminate()
                 try: self.process.wait(timeout=3)
                 except subprocess.TimeoutExpired:
                     self.process.kill();self.process.wait(timeout=3)
+            # Darwin can block close while the reader holds a pending PTY read.
+            os.close(self.master)
 
 root = Path(os.environ.get("CRAIG_PLUGIN_ROOT", Path(__file__).resolve().parent.parent)).resolve()
 original = "You idiot, do not delete the test."
@@ -103,7 +104,7 @@ def main():
         profile.mkdir()
         workspace = home / "workspace"
         workspace.mkdir()
-        config = {"hasCompletedOnboarding": True, "theme": "dark", "numStartups": 1, "projects": {str(workspace): {"hasTrustDialogAccepted": True, "hasCompletedProjectOnboarding": True}}, "customApiKeyResponses": {"approved": ["synthetic-local-key"], "rejected": []}}
+        config = {"hasCompletedOnboarding": True, "theme": "dark", "numStartups": 1, "projects": {str(workspace): {"hasTrustDialogAccepted": False, "hasCompletedProjectOnboarding": True}}, "customApiKeyResponses": {"approved": ["synthetic-local-key"], "rejected": []}}
         (home / ".claude.json").write_text(json.dumps(config))
         (profile / ".claude.json").write_text(json.dumps(config))
         server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Provider)
@@ -132,8 +133,21 @@ def main():
                     raise RuntimeError(f'{stage}: unexpected_authentication')
                 visible=re.sub(rb'\x1b\[[0-?]*[ -/]*[@-~]',b'',output)
                 if stage=='ready' and b'trust' in visible and b'No,' in visible:
-                    terminal.write(b'\x1b[B\r');output=b''
-                elif stage=='ready' and '❯'.encode() in visible:
+                    # The pinned host redraws its initial selection during startup.
+                    # Drain that output before navigating the synthetic workspace dialog.
+                    trust_ready_at=time.monotonic()+1
+                    stage='trust_ready';output=b'';deadline=time.monotonic()+10
+                elif stage=='trust_ready' and time.monotonic()>=trust_ready_at:
+                    terminal.write(b'\x1b[B')
+                    print('installed stage: trust_selection',flush=True)
+                    stage='trust_selection';output=b'';deadline=time.monotonic()+10
+                elif stage=='trust_selection' and re.search('❯\\s*Yes,\\s*I\\s*trust\\s*this\\s*folder'.encode(),visible):
+                    # Wait for the selection redraw before sending Enter; a combined
+                    # arrow/Enter write can be consumed as one terminal input event.
+                    terminal.write(b'\r')
+                    print('installed stage: trusted',flush=True)
+                    stage='trusted';output=b'';deadline=time.monotonic()+45
+                elif stage in ('ready','trusted') and '❯'.encode() in visible and b'No,' not in visible:
                     terminal.write(b'/craig')
                     stage='command';output=b'';deadline=time.monotonic()+10
                 elif stage=='command' and b'/craig' in visible:
