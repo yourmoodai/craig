@@ -51,116 +51,6 @@ fn write_reply(
     Ok(())
 }
 
-#[cfg(test)]
-mod transport_tests {
-    use super::*;
-    use std::{
-        io::Read,
-        os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle},
-        sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-        time::{Duration, Instant},
-    };
-    use windows_sys::Win32::{Storage::FileSystem::*, System::Pipes::*};
-
-    fn pair() -> (OwnedHandle, std::fs::File) {
-        static NEXT: AtomicUsize = AtomicUsize::new(0);
-        let name = format!(
-            "\\\\.\\pipe\\craig-write-test-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        );
-        let pipe = unsafe {
-            CreateNamedPipeW(
-                wide(&name).as_ptr(),
-                PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
-                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT | PIPE_REJECT_REMOTE_CLIENTS,
-                1,
-                1024,
-                1024,
-                0,
-                null(),
-            )
-        }; // 1 KiB buffers force backpressure
-        assert_ne!(pipe, INVALID_HANDLE_VALUE);
-        let server = unsafe { OwnedHandle::from_raw_handle(pipe) };
-        let client = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(name)
-            .unwrap();
-        let connected = unsafe {
-            ConnectNamedPipe(pipe, null_mut()) != 0 || GetLastError() == ERROR_PIPE_CONNECTED
-        };
-        assert!(connected);
-        (server, client)
-    }
-
-    #[test]
-    fn partial_writes_deliver_the_entire_response() {
-        let (server, mut client) = pair();
-        let bytes = vec![b'x'; 256 * 1024]; // 256 KiB
-        let reader = std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(30));
-            let mut result = vec![0; 256 * 1024];
-            client.read_exact(&mut result).unwrap();
-            result
-        });
-        let result = write_reply(
-            server.as_raw_handle(),
-            &bytes,
-            &AtomicBool::new(false),
-            Duration::from_secs(3),
-        );
-        // The reader consumes the expected length; flushing prevents close from
-        // discarding the final buffered bytes before that read completes.
-        if result.is_ok() {
-            unsafe {
-                FlushFileBuffers(server.as_raw_handle());
-            }
-        }
-        drop(server);
-        assert!(result.is_ok());
-        assert_eq!(reader.join().unwrap(), bytes);
-    }
-
-    #[test]
-    fn stalled_disconnected_and_cancelled_readers_are_bounded() {
-        let bytes = vec![b'x'; 256 * 1024]; // 256 KiB
-        let (server, client) = pair();
-        let start = Instant::now();
-        assert!(
-            write_reply(
-                server.as_raw_handle(),
-                &bytes,
-                &AtomicBool::new(false),
-                Duration::from_millis(50)
-            )
-            .is_err()
-        );
-        assert!(start.elapsed() < Duration::from_secs(2));
-        drop(client);
-        assert!(
-            write_reply(
-                server.as_raw_handle(),
-                &bytes,
-                &AtomicBool::new(false),
-                Duration::from_secs(1)
-            )
-            .is_err()
-        );
-        let (server, _client) = pair();
-        assert!(
-            write_reply(
-                server.as_raw_handle(),
-                &bytes,
-                &AtomicBool::new(true),
-                Duration::from_secs(1)
-            )
-            .is_err()
-        );
-    }
-}
-
 struct Descriptor(PSECURITY_DESCRIPTOR);
 impl Drop for Descriptor {
     fn drop(&mut self) {
@@ -418,4 +308,114 @@ pub fn serve() -> ReviewResult<()> {
     let _ = worker.cancel(None);
     let _ = thread.join();
     result
+}
+
+#[cfg(test)]
+mod transport_tests {
+    use super::*;
+    use std::{
+        io::Read,
+        os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle},
+        sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+        time::{Duration, Instant},
+    };
+    use windows_sys::Win32::{Storage::FileSystem::*, System::Pipes::*};
+
+    fn pair() -> (OwnedHandle, std::fs::File) {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+        let name = format!(
+            "\\\\.\\pipe\\craig-write-test-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        );
+        let pipe = unsafe {
+            CreateNamedPipeW(
+                wide(&name).as_ptr(),
+                PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
+                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT | PIPE_REJECT_REMOTE_CLIENTS,
+                1,
+                1024,
+                1024,
+                0,
+                null(),
+            )
+        }; // 1 KiB buffers force backpressure
+        assert_ne!(pipe, INVALID_HANDLE_VALUE);
+        let server = unsafe { OwnedHandle::from_raw_handle(pipe) };
+        let client = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(name)
+            .unwrap();
+        let connected = unsafe {
+            ConnectNamedPipe(pipe, null_mut()) != 0 || GetLastError() == ERROR_PIPE_CONNECTED
+        };
+        assert!(connected);
+        (server, client)
+    }
+
+    #[test]
+    fn partial_writes_deliver_the_entire_response() {
+        let (server, mut client) = pair();
+        let bytes = vec![b'x'; 256 * 1024]; // 256 KiB
+        let reader = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(30));
+            let mut result = vec![0; 256 * 1024];
+            client.read_exact(&mut result).unwrap();
+            result
+        });
+        let result = write_reply(
+            server.as_raw_handle(),
+            &bytes,
+            &AtomicBool::new(false),
+            Duration::from_secs(3),
+        );
+        // The reader consumes the expected length; flushing prevents close from
+        // discarding the final buffered bytes before that read completes.
+        if result.is_ok() {
+            unsafe {
+                FlushFileBuffers(server.as_raw_handle());
+            }
+        }
+        drop(server);
+        assert!(result.is_ok());
+        assert_eq!(reader.join().unwrap(), bytes);
+    }
+
+    #[test]
+    fn stalled_disconnected_and_cancelled_readers_are_bounded() {
+        let bytes = vec![b'x'; 256 * 1024]; // 256 KiB
+        let (server, client) = pair();
+        let start = Instant::now();
+        assert!(
+            write_reply(
+                server.as_raw_handle(),
+                &bytes,
+                &AtomicBool::new(false),
+                Duration::from_millis(50)
+            )
+            .is_err()
+        );
+        assert!(start.elapsed() < Duration::from_secs(2));
+        drop(client);
+        assert!(
+            write_reply(
+                server.as_raw_handle(),
+                &bytes,
+                &AtomicBool::new(false),
+                Duration::from_secs(1)
+            )
+            .is_err()
+        );
+        let (server, _client) = pair();
+        assert!(
+            write_reply(
+                server.as_raw_handle(),
+                &bytes,
+                &AtomicBool::new(true),
+                Duration::from_secs(1)
+            )
+            .is_err()
+        );
+    }
 }
