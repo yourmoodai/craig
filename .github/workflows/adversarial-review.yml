@@ -42,6 +42,26 @@ jobs:
             core.setOutput('pr', pr.number);
             core.setOutput('head', pr.head.sha);
             core.setOutput('base', pr.base.sha);
+  oidc:
+    name: verify bedrock oidc
+    needs: scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment:
+      name: bedrock-review
+      deployment: false
+    permissions:
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.BEDROCK_REVIEW_ROLE_ARN }}
+          aws-region: us-east-1
+          allowed-account-ids: '463509296941'
+          role-duration-seconds: 900
+          role-session-name: craig-oidc-${{ github.run_id }}
+      - name: verify assumed identity without inference
+        run: aws sts get-caller-identity --query Arn --output text
   review:
     name: adversarial verdict
     needs: scope
@@ -51,13 +71,13 @@ jobs:
       cancel-in-progress: false
     timeout-minutes: 120
     environment:
-      name: default
+      name: bedrock-review
       deployment: false
     permissions:
       contents: read
       pull-requests: write
       actions: read
-      copilot-requests: write
+      id-token: write
     env:
       HEAD_SHA: ${{ needs.scope.outputs.head }}
       PR_NUMBER: ${{ needs.scope.outputs.pr }}
@@ -100,24 +120,29 @@ jobs:
         if: steps.size_policy.outputs.approved != 'true'
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@v4
-        if: steps.size_policy.outputs.approved != 'true'
-        with:
-          node-version: 24.22.0
       - name: fetch diff without checkout
         if: steps.size_policy.outputs.approved != 'true'
         env:
           PR_NUMBER: ${{ needs.scope.outputs.pr }}
         run: git fetch origin "pull/$PR_NUMBER/head"
-      - name: install pinned copilot cli
-        if: steps.size_policy.outputs.approved != 'true' && vars.COPILOT_BILLING_VERIFIED == 'true'
-        run: npm install --global @github/copilot@1.0.98
+      - uses: actions/setup-node@v4
+        if: steps.size_policy.outputs.approved != 'true'
+        with:
+          node-version: 24.22.0
+      - name: assume bedrock review role
+        if: steps.size_policy.outputs.approved != 'true' && vars.BEDROCK_REVIEW_ENABLED == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.BEDROCK_REVIEW_ROLE_ARN }}
+          aws-region: us-east-1
+          allowed-account-ids: '463509296941'
+          role-duration-seconds: 3600
+          role-session-name: craig-review-${{ github.run_id }}
       - name: qualify and assess
         if: steps.size_policy.outputs.approved != 'true'
         env:
-          COPILOT_BILLING_VERIFIED: ${{ vars.COPILOT_BILLING_VERIFIED }}
-          COPILOT_REVIEW_MODEL: ${{ vars.COPILOT_REVIEW_MODEL }}
-          GITHUB_TOKEN: ${{ github.token }}
+          BEDROCK_REVIEW_ENABLED: ${{ vars.BEDROCK_REVIEW_ENABLED }}
+          BEDROCK_REVIEW_MODEL: ${{ vars.BEDROCK_REVIEW_MODEL }}
           BASE_SHA: ${{ needs.scope.outputs.base }}
           HEAD_SHA: ${{ needs.scope.outputs.head }}
           REVIEW_TEST_EVIDENCE: ${{ runner.temp }}/review-tests.json

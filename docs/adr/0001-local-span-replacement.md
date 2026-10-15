@@ -69,10 +69,12 @@ Tag releases must match package versions and be reachable from main. Publish
 immutable assets before updating the marketplace pointer; retain prior releases
 for rollback. No release has qualified until these gates pass.
 
-Copilot replaces the original Kimi reviewer after its usage credits were exhausted.
-It is a CI-only reviewer, separate from local inference. Live review remains disabled
-until included organization credits and hard no-overage controls are verified;
-organization access alone does not establish free usage. Trusted
+Bedrock Haiku 4.5 replaces the exhausted Kimi reviewer and unactivated Copilot
+transport. It is a metered CI-only reviewer, separate from local inference. GitHub
+OIDC grants short-lived access to one US inference profile through a dedicated
+environment restricted to main and develop. Live review remains disabled until
+account access and model qualification succeed. Bounded calls are not a hard
+dollar spending cap. Trusted
 base code reviews PR diffs as data; no PR executable receives review secrets.
 Required tests must pass before model review. One editable PR comment contains
 the overview and verdict; the CI verdict succeeds only for qualified, complete,

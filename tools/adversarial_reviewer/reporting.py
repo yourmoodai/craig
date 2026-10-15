@@ -3,7 +3,7 @@ import html
 import json
 import time
 
-from copilot_client import complete, CopilotError
+from bedrock_client import complete, BedrockError
 
 
 def fallback_overview(report):
@@ -41,7 +41,7 @@ def synthesize_overview(report):
             overview = response.get('overview') if isinstance(response, dict) else None
             if isinstance(overview, str) and 50 <= len(overview.split()) <= 100:
                 return ' '.join(overview.split())
-        except CopilotError as error:
+        except BedrockError as error:
             raise ValueError(str(error)) from None
         except (ValueError, TypeError):
             failure = 'invalid overview structure'

@@ -15,11 +15,11 @@ report = {'commit_id': head, 'complete': False, 'qualified': False,
           'summary': 'Review unavailable; qualification or assessment did not complete.'}
 finalize(report, qualified=False, synthesize=False)
 try:
-    if os.environ.get('COPILOT_BILLING_VERIFIED') != 'true':
-        report['review_failures'].append('Copilot is disabled until included organization credits and a hard no-overage control are verified.')
+    if os.environ.get('BEDROCK_REVIEW_ENABLED') != 'true':
+        report['review_failures'].append('Bedrock review is disabled until OIDC and model qualification are configured.')
         from reporting import render
         report['body'] = render(report)
-        raise ValueError('billing unverified')
+        raise ValueError('bedrock disabled')
     qualified = subprocess.run([sys.executable, str(root/'evaluate_model.py')], timeout=1000).returncode == 0
     if qualified:
         subprocess.run([sys.executable, str(root/'adversarial_review.py'), '--base', os.environ['BASE_SHA'],

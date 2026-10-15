@@ -1,25 +1,45 @@
 # Adversarial code review
 
 Adapted from [awill1988/whip-it](https://github.com/awill1988/whip-it/tree/main/tools/adversarial_reviewer)
-under the retained MIT license. Copilot evaluates concrete failure scenarios against
+under the retained MIT license. Bedrock evaluates concrete failure scenarios against
 numbered diff evidence; this is separate from Markdown and commit-message linting.
 
 Run `python3 -m unittest discover -s tools/adversarial_reviewer` for transport,
-evidence, coverage, and disposition tests. CI uses Copilot CLI 1.0.98 and the
-organization-scoped `GITHUB_TOKEN`; no separate provider key is needed.
+evidence, coverage, and disposition tests. CI uses AWS CLI v2 and Bedrock Converse
+with `us.anthropic.claude-haiku-4-5-20251001-v1:0` in `us-east-1`.
+The application detector and personal-review judges remain offline.
 
-Live calls default to disabled. Before setting the repository variable
-`COPILOT_BILLING_VERIFIED=true`, an organization owner must verify usable included
-credits, a hard no-overage spending control, and the policy allowing Copilot CLI
-to bill `yourmoodai`. This variable records that verification; it does not enforce
-GitHub billing limits itself. Set `COPILOT_REVIEW_MODEL` to an explicitly allowed
-model identifier, then run workflow qualification before relying on its verdict.
-Organization access is not a promise of free usage. No paid-provider fallback is
-configured. Missing entitlement or exhausted credits leaves review unavailable.
+GitHub Actions assumes `arn:aws:iam::463509296941:role/craig-bedrock-review`
+through OIDC. The `bedrock-review` GitHub environment admits only the `main` and
+`develop` branches. The role trusts only this repository/environment and the
+`sts.amazonaws.com` audience. Its inline policy permits only `bedrock:InvokeModel`
+for the selected US inference profile and its three destination models, with a
+profile condition on foundation-model access. The exact policies are in
+[`iam/trust.json`](iam/trust.json) and [`iam/invoke.json`](iam/invoke.json).
+No AWS access keys or SSO credentials are stored in GitHub.
 
-The CLI runs in an empty temporary directory with an isolated home, no tools,
-no built-in MCP servers, and no custom repository instructions. Review evidence
-is supplied in the prompt. Only the publisher updates the PR comment.
+The environment variables `BEDROCK_REVIEW_ROLE_ARN` and `BEDROCK_REVIEW_MODEL`
+select that role and model. Set `BEDROCK_REVIEW_ENABLED=true` only after account
+model access and live qualification succeed. Bedrock is metered API usage, not
+free Copilot credits. Request/output limits, deadlines, no SDK retries, and the
+large-PR exception bound work but do not constitute a hard dollar spending cap.
+
+For local qualification after SSO login:
+
+```sh
+AWS_PROFILE=awill AWS_REGION=us-east-1 \
+BEDROCK_REVIEW_ENABLED=true \
+BEDROCK_REVIEW_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0 \
+python3 tools/adversarial_reviewer/evaluate_model.py
+```
+
+Calls have no tools or agent execution. Only trusted checkout code runs; PR diffs
+are data. A private temporary request file is removed after each invocation.
+Responses must finish with `end_turn` and parse as a JSON object; token exhaustion,
+filtered output, invalid JSON, and provider failures cannot approve. Whole JSON
+Markdown fences are accepted because Haiku sometimes emits them. Transport errors
+omit provider response bodies and review evidence. Only the publisher updates
+the PR comment.
 
 Qualification includes paired Node evaluation cases whose expected behavior is
 checked by executing fixed fixtures. The reviewer receives observations from
