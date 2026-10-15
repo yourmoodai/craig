@@ -3,7 +3,7 @@ import html
 import json
 import time
 
-from kimi_client import complete, KimiError
+from copilot_client import complete, CopilotError
 
 
 def fallback_overview(report):
@@ -34,16 +34,19 @@ def synthesize_overview(report):
         {'role': 'user', 'content': content},
     ]
     deadline = time.monotonic() + 480
+    failure = 'invalid overview length or structure'
     for _ in range(2):
         try:
             response = complete(messages, deadline)
             overview = response.get('overview') if isinstance(response, dict) else None
             if isinstance(overview, str) and 50 <= len(overview.split()) <= 100:
                 return ' '.join(overview.split())
-        except (KimiError, ValueError, TypeError):
-            pass
+        except CopilotError as error:
+            raise ValueError(str(error)) from None
+        except (ValueError, TypeError):
+            failure = 'invalid overview structure'
         messages.append({'role': 'user', 'content': 'Return only valid JSON with an overview of 50–100 words.'})
-    raise ValueError('overview synthesis unavailable or invalid')
+    raise ValueError(failure)
 
 
 def finalize(report, *, qualified, synthesize=True):
@@ -62,8 +65,8 @@ def finalize(report, *, qualified, synthesize=True):
         try:
             report['overview'] = synthesize_overview(report)
             report['synthesis_complete'] = True
-        except ValueError:
-            failures.append('The combined overview could not be generated; rerun synthesis.')
+        except ValueError as error:
+            failures.append(f'The combined overview could not be generated: {error}.')
     if not report['synthesis_complete']:
         report['overview'] = fallback_overview(report)
     report['review_failures'] = failures

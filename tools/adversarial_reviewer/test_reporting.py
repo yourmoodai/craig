@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 from reporting import finalize, fallback_overview
-from kimi_client import KimiError
+from copilot_client import CopilotError
 
 OVERVIEW = ('This change updates the review pipeline to assess independent code chunks and combine their results into a concise overview. '
             'The publisher derives approval from complete coverage and verified findings, while retaining individual results for inspection. '
@@ -36,9 +36,9 @@ class ReportingTests(unittest.TestCase):
 
     def test_unavailable_synthesis_fails_closed_with_bounded_overview(self):
         for response in [{'overview':'short'}, {'overview':'word '*101}, None]:
-            with patch('reporting.complete', side_effect=KimiError('timeout') if response is None else None, return_value=response) as model:
+            with patch('reporting.complete', side_effect=CopilotError('timeout') if response is None else None, return_value=response) as model:
                 result=finalize(self.report(),qualified=True)
-            self.assertEqual(model.call_count,2)
+            self.assertEqual(model.call_count,1 if response is None else 2)
             self.assertEqual(result['disposition'],'REQUEST_CHANGES')
             self.assertTrue(50 <= len(result['overview'].split()) <= 100)
             self.assertEqual(result['findings'],[])

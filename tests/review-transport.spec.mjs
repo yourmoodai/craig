@@ -30,3 +30,12 @@ test('review transport accepts one complete protocol response',async()=>{
     assert.deepEqual(await exchange_at(endpoint,{command:'status'},500),{ready:true});
   });
 });
+test('oversized response errors remain explicit and the next request succeeds',async()=>{
+  let requests=0;
+  await with_server(socket=>socket.once('data',()=>socket.end(JSON.stringify(++requests===1
+    ? {version:1,status:'error',code:'review_response_too_large'}
+    : {version:1,status:'ok',value:{ready:true}})+'\n')),async endpoint=>{
+    await assert.rejects(exchange_at(endpoint,{command:'export'},500),/review_response_too_large/);
+    assert.deepEqual(await exchange_at(endpoint,{command:'status'},500),{ready:true});
+  });
+});

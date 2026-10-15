@@ -71,7 +71,7 @@ fn serve() -> ReviewResult<()> {
                     Ok(value) => serde_json::json!({"version":1,"status":"ok","value":value}),
                     Err(code) => serde_json::json!({"version":1,"status":"error","code":code}),
                 };
-                let _ = writeln!(stream, "{response}");
+                let _ = stream.write_all(&craig_review::transport::response_bytes(&response));
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 std::thread::sleep(std::time::Duration::from_millis(25))

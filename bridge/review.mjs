@@ -38,7 +38,13 @@ async function start(allow_mismatch=false) {
   await access(binary).catch(()=>{throw Error('review_not_built');});
   const child=spawn(binary,['serve'],{cwd:root,env:{...process.env,CLAUDE_CONFIG_DIR:profile},detached:true,stdio:'ignore'});
   child.on('error',()=>{});child.unref();
-  while(Date.now()<deadline){await sleep(100);try{await exchange({command:'status'},Math.max(1,Math.min(1000,deadline-Date.now())));return;}catch{}}
+  while(Date.now()<deadline){
+    await sleep(100);
+    let ready;
+    try{ready=await exchange({command:'status'},Math.max(1,Math.min(1000,deadline-Date.now())));}catch{continue;}
+    if(!allow_mismatch && ready.runtime_fingerprint!==runtime_fingerprint) throw Error('review_configuration_mismatch');
+    return;
+  }
   throw Error('review_unavailable');
 }
 export async function request_review(request) {await start(request.command==='shutdown');return exchange(request);}

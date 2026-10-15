@@ -25,7 +25,7 @@ from adversarial_review import (
     CONTEXT_TOKENS,
     batch_chunks,
 )
-from kimi_client import KimiError
+from copilot_client import CopilotError
 
 
 class TestAdversarialReviewer(unittest.TestCase):
@@ -246,10 +246,10 @@ class TestAdversarialReviewer(unittest.TestCase):
                 self.assertEqual([c.args[1] for c in runner.call_args_list], [125, 125])
 
     def test_provider_failure_cannot_approve(self):
-        with patch("adversarial_review.complete", side_effect=KimiError("kimi HTTP 401")):
+        with patch("adversarial_review.complete", side_effect=CopilotError("copilot execution failed")):
             disposition, _, summary = run_model_reviewer("diff", [], "")
         self.assertEqual(disposition, "COMMENT")
-        self.assertIn("kimi HTTP 401", summary)
+        self.assertIn("copilot execution failed", summary)
 
     def test_chat_roles_preserve_untrusted_diff_as_data(self):
         with patch(

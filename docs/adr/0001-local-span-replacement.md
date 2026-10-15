@@ -69,7 +69,10 @@ Tag releases must match package versions and be reachable from main. Publish
 immutable assets before updating the marketplace pointer; retain prior releases
 for rollback. No release has qualified until these gates pass.
 
-Kimi is a CI-only adversarial reviewer, separate from local inference. Trusted
+Copilot replaces the original Kimi reviewer after its usage credits were exhausted.
+It is a CI-only reviewer, separate from local inference. Live review remains disabled
+until included organization credits and hard no-overage controls are verified;
+organization access alone does not establish free usage. Trusted
 base code reviews PR diffs as data; no PR executable receives review secrets.
 Required tests must pass before model review. One editable PR comment contains
 the overview and verdict; the CI verdict succeeds only for qualified, complete,

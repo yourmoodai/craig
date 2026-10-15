@@ -1,12 +1,25 @@
 # Adversarial code review
 
 Adapted from [awill1988/whip-it](https://github.com/awill1988/whip-it/tree/main/tools/adversarial_reviewer)
-under the retained MIT license. Kimi evaluates concrete failure scenarios against
+under the retained MIT license. Copilot evaluates concrete failure scenarios against
 numbered diff evidence; this is separate from Markdown and commit-message linting.
 
 Run `python3 -m unittest discover -s tools/adversarial_reviewer` for transport,
-evidence, coverage, and disposition tests. With `KIMI_API_KEY` configured, run
-`python3 tools/adversarial_reviewer/evaluate_model.py` for live qualification.
+evidence, coverage, and disposition tests. CI uses Copilot CLI 1.0.98 and the
+organization-scoped `GITHUB_TOKEN`; no separate provider key is needed.
+
+Live calls default to disabled. Before setting the repository variable
+`COPILOT_BILLING_VERIFIED=true`, an organization owner must verify usable included
+credits, a hard no-overage spending control, and the policy allowing Copilot CLI
+to bill `yourmoodai`. This variable records that verification; it does not enforce
+GitHub billing limits itself. Set `COPILOT_REVIEW_MODEL` to an explicitly allowed
+model identifier, then run workflow qualification before relying on its verdict.
+Organization access is not a promise of free usage. No paid-provider fallback is
+configured. Missing entitlement or exhausted credits leaves review unavailable.
+
+The CLI runs in an empty temporary directory with an isolated home, no tools,
+no built-in MCP servers, and no custom repository instructions. Review evidence
+is supplied in the prompt. Only the publisher updates the PR comment.
 
 Qualification includes paired Node evaluation cases whose expected behavior is
 checked by executing fixed fixtures. The reviewer receives observations from

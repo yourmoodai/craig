@@ -57,6 +57,7 @@ jobs:
       contents: read
       pull-requests: write
       actions: read
+      copilot-requests: write
     env:
       HEAD_SHA: ${{ needs.scope.outputs.head }}
       PR_NUMBER: ${{ needs.scope.outputs.pr }}
@@ -92,9 +93,14 @@ jobs:
         env:
           PR_NUMBER: ${{ needs.scope.outputs.pr }}
         run: git fetch origin "pull/$PR_NUMBER/head"
+      - name: install pinned copilot cli
+        if: vars.COPILOT_BILLING_VERIFIED == 'true'
+        run: npm install --global @github/copilot@1.0.98
       - name: qualify and assess
         env:
-          KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+          COPILOT_BILLING_VERIFIED: ${{ vars.COPILOT_BILLING_VERIFIED }}
+          COPILOT_REVIEW_MODEL: ${{ vars.COPILOT_REVIEW_MODEL }}
+          GITHUB_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ needs.scope.outputs.base }}
           HEAD_SHA: ${{ needs.scope.outputs.head }}
           REVIEW_TEST_EVIDENCE: ${{ runner.temp }}/review-tests.json

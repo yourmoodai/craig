@@ -126,11 +126,13 @@ all targets, exercises the archive, and gates tag publication on installed-host 
 The generated release marketplace points at a checksummed ZIP; never point it at
 an unqualified candidate. Source archives are not installable release bundles.
 
-Kimi waits for required tests, then updates one PR comment with a 50–100 word
+Copilot waits for required tests, then updates one PR comment with a 50–100 word
 overview and an Approved or Request changes verdict. The `adversarial verdict`
 CI job passes only for qualified, complete, clean reviews with valid synthesis;
 findings or review failures fail the job. It does not submit formal GitHub reviews.
 Static documentation images are explicitly excluded from code-review coverage.
 See [reviewer verification](tools/adversarial_reviewer/README.md). Existing required
-human/PR approvals and stale-review dismissal remain in effect. The environment
-secret is `KIMI_API_KEY` in `default`; never put its value in code or logs.
+human/PR approvals and stale-review dismissal remain in effect. Live review is
+disabled until included organization credits and no-overage controls are verified;
+the reviewer guide documents activation. Authentication uses the workflow's
+`GITHUB_TOKEN`; do not copy personal credentials into CI.

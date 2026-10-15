@@ -4,6 +4,7 @@ pub mod history;
 pub mod judge;
 pub mod policy;
 pub mod store;
+pub mod transport;
 #[cfg(feature = "judge")]
 pub mod worker;
 

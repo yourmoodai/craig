@@ -110,7 +110,7 @@ def main():
                     .replace("\r", "%0D")
                     .replace("\n", "%0A")
                 )
-                print(f"::error title=kimi reviewer qualification failed::{message}", flush=True)
+                print(f"::error title=copilot reviewer qualification failed::{message}", flush=True)
                 return 1
     return 0
 
