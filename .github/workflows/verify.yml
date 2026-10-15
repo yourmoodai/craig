@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   coreml:
     runs-on: macos-15
@@ -13,8 +14,26 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - run: cargo clippy -p craig --features coreml --all-targets -- -D warnings
+      - name: restore rust dependencies
+        id: rust_cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: coreml-macos-15-${{ runner.arch }}
+          cache-on-failure: true
+      - name: native build
+        run: cargo clippy -p craig --features coreml --all-targets -- -D warnings
       - run: cargo test -p craig --features coreml
+      - name: summarize cache measurements
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          CACHE_HIT: ${{ steps.rust_cache.outputs.cache-hit }}
+          CACHE_GROUP: coreml-macos-15-${{ runner.arch }}
+          CACHE_JOB: coreml
+        with:
+          script: |
+            await require('./scripts/release/cache-summary.cjs')({github, context, core});
   native:
     strategy:
       matrix:
@@ -30,7 +49,14 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: restore rust dependencies
+        id: rust_cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: native-${{ matrix.os }}-${{ runner.arch }}
+          cache-on-failure: true
+      - name: native build
+        run: npm run build
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: npm run check
@@ -47,3 +73,14 @@ jobs:
         env:
           CRAIG_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
         run: cargo test --profile profiling -p craig-lab --test cli -- --ignored
+      - name: summarize cache measurements
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          CACHE_HIT: ${{ steps.rust_cache.outputs.cache-hit }}
+          CACHE_GROUP: native-${{ matrix.os }}-${{ runner.arch }}
+          CACHE_JOB: native (${{ matrix.os }})
+        with:
+          script: |
+            await require('./scripts/release/cache-summary.cjs')({github, context, core});

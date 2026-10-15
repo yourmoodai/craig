@@ -1,9 +1,8 @@
-"""Exercise the actual workflow publisher against GitHub-shaped responses."""
+"""Exercise the comment publisher against GitHub-shaped responses."""
 import json
 from pathlib import Path
 import shutil
 import subprocess
-import textwrap
 import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -14,32 +13,51 @@ class ReviewPolicyTests(unittest.TestCase):
         report.update(changes.pop('report',{}))
         clean=50 <= len(report['overview'].split()) <= 100 and report['qualified'] and report['complete'] and report['synthesis_complete'] and not report['review_failures'] and report['disposition']=='APPROVE' and not report['findings']
         report['body']=changes.pop('body','**Verdict: '+('Approved' if clean else 'Request changes')+'**')
-        case={'report':report,'head':'head','reviews':[],**changes}
-        policy=textwrap.dedent((ROOT/'.github/workflows/adversarial-review.yml').read_text().rsplit('script: |\n',1)[1])
+        case={'report':report,'head':'head','comments':[],'phase':'complete',**changes}
         harness='''
-const input=JSON.parse(process.argv[1]); const calls=[];
-process.env.EXPECTED_HEAD='head';process.env.PR_NUMBER='1';
-const context={repo:{owner:'yourmoodai',repo:'craig'}};
-const core={notice:()=>{}};
-const mockRequire=()=>({readFileSync:()=>JSON.stringify(input.report)});
-const github={rest:{pulls:{get:async()=>({data:{state:'open',head:{sha:input.head}}}),listReviews:()=>{},createReview:async r=>calls.push(r)}},paginate:async()=>input.reviews};
+const input=JSON.parse(process.argv[1]); const calls=[]; const failures=[];
+const context={repo:{owner:'yourmoodai',repo:'craig'},runId:42};
+const core={notice:()=>{},setFailed:message=>failures.push(message)};
+let reads=0;
+const github={rest:{pulls:{get:async()=>({data:{state:'open',head:{sha:input.staleAfterRead && reads++ ? 'new' : input.head}}})},issues:{listComments:'list',updateComment:async r=>calls.push({kind:'update',...r}),createComment:async r=>calls.push({kind:'create',...r})}},paginate:async()=>input.comments};
+const publish=require('./tools/adversarial_reviewer/publish.cjs');
+publish({github,context,core,head:'head',pr:1,report:input.report,phase:input.phase}).then(()=>console.log(JSON.stringify({calls,failures})));
 '''
-        result=subprocess.run(['node','--input-type=commonjs','-e',harness+'\n(async(require)=>{'+policy+'\n})(mockRequire).then(()=>console.log(JSON.stringify(calls)));',json.dumps(case)],capture_output=True,text=True,timeout=10)
+        result=subprocess.run(['node','--input-type=commonjs','-e',harness,json.dumps(case)],cwd=ROOT,capture_output=True,text=True,timeout=10)
         if case.get('invalid'):
             self.assertNotEqual(result.returncode,0)
-            return []
+            return {}
         self.assertEqual(result.returncode,0,result.stderr)
         return json.loads(result.stdout)
-    def test_clean_current_review_approves(self):
-        self.assertEqual(self.publish()[0]['event'],'APPROVE')
-    def test_findings_and_incomplete_reviews_request_changes(self):
+    def test_clean_current_review_updates_comment_and_passes(self):
+        result=self.publish()
+        self.assertEqual(result['calls'][0]['kind'],'create')
+        self.assertIn('**Verdict: Approved**',result['calls'][0]['body'])
+        self.assertEqual(result['failures'],[])
+    def test_findings_and_incomplete_reviews_fail_after_publication(self):
         for patch in [{'findings':[{'title':'defect'}]},{'complete':False},{'qualified':False},{'synthesis_complete':False},{'overview':'short'},{'review_failures':['timeout']},{'disposition':'REQUEST_CHANGES'},{'disposition':'COMMENT'}]:
-            self.assertEqual(self.publish(report=patch)[0]['event'],'REQUEST_CHANGES')
+            result=self.publish(report=patch)
+            self.assertIn('**Verdict: Request changes**',result['calls'][0]['body'])
+            self.assertEqual(len(result['failures']),1)
     def test_body_cannot_override_computed_verdict(self):
         self.publish(report={'complete':False},body='**Verdict: Approved**',invalid=True)
     def test_stale_review_is_discarded(self):
-        self.assertEqual(self.publish(head='new'),[])
-        self.assertEqual(self.publish(report={'commit_id':'old'}),[])
-    def test_duplicate_review_is_not_published(self):
-        review={'user':{'login':'github-actions[bot]'},'commit_id':'head','state':'APPROVED','body':'<!-- craig-adversarial-review -->'}
-        self.assertEqual(self.publish(reviews=[review]),[])
+        for changes in [{'head':'new'},{'report':{'commit_id':'old'}},{'staleAfterRead':True}]:
+            self.assertEqual(self.publish(**changes)['calls'],[])
+    def test_repeated_assessments_keep_the_same_comment(self):
+        body=self.publish()['calls'][0]['body']
+        comment={'id':8,'user':{'login':'github-actions[bot]','type':'Bot'},'body':body}
+        self.assertEqual(self.publish(comments=[comment])['calls'],[])
+        changed=self.publish(comments=[comment],report={'complete':False})
+        self.assertEqual(changed['calls'][0]['kind'],'update')
+        self.assertEqual(changed['calls'][0]['comment_id'],8)
+    def test_foreign_markers_are_not_owned(self):
+        comment={'id':8,'user':{'login':'someone','type':'User'},'body':'<!-- craig-adversarial-review -->'}
+        self.assertEqual(self.publish(comments=[comment])['calls'][0]['kind'],'create')
+    def test_waiting_and_failed_phases_share_the_comment(self):
+        result=self.publish(phase='waiting')
+        self.assertEqual(result['failures'],[])
+        comment={'id':8,'user':{'login':'github-actions[bot]','type':'Bot'},'body':result['calls'][0]['body']}
+        result=self.publish(phase='failed',comments=[comment])
+        self.assertEqual(result['calls'][0]['comment_id'],8)
+        self.assertEqual(len(result['failures']),1)

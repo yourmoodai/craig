@@ -13,24 +13,17 @@ on:
         type: string
 permissions:
   contents: read
-concurrency:
-  group: review-${{ github.event.pull_request.number || inputs.pr_number }}
-  cancel-in-progress: true
 jobs:
-  assess:
+  scope:
     if: github.event_name != 'pull_request_target' || github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
-    environment:
-      name: default
-      deployment: false
-    timeout-minutes: 120
     permissions:
       contents: read
       pull-requests: read
-      actions: read
     outputs:
       head: ${{ steps.scope.outputs.head }}
       pr: ${{ steps.scope.outputs.pr }}
+      base: ${{ steps.scope.outputs.base }}
     steps:
       - uses: actions/github-script@v7
         id: scope
@@ -49,17 +42,42 @@ jobs:
             core.setOutput('pr', pr.number);
             core.setOutput('head', pr.head.sha);
             core.setOutput('base', pr.base.sha);
+  review:
+    name: adversarial verdict
+    needs: scope
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: review-pr-${{ needs.scope.outputs.pr }}
+      cancel-in-progress: false
+    timeout-minutes: 120
+    environment:
+      name: default
+      deployment: false
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    env:
+      HEAD_SHA: ${{ needs.scope.outputs.head }}
+      PR_NUMBER: ${{ needs.scope.outputs.pr }}
+    steps:
       # Only trusted base code executes with secrets. PR code is diff data.
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: update review status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const publish = require('./tools/adversarial_reviewer/publish.cjs');
+            await publish({github, context, core, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, phase:'waiting'});
       - name: wait for required tests on this commit
         uses: actions/github-script@v7
         env:
-          HEAD_SHA: ${{ steps.scope.outputs.head }}
-          PR_NUMBER: ${{ steps.scope.outputs.pr }}
+          HEAD_SHA: ${{ needs.scope.outputs.head }}
+          PR_NUMBER: ${{ needs.scope.outputs.pr }}
         with:
           script: |
             const gate = require('./tools/adversarial_reviewer/test_gate.cjs');
@@ -72,13 +90,13 @@ jobs:
           node-version: 24.22.0
       - name: fetch diff without checkout
         env:
-          PR_NUMBER: ${{ steps.scope.outputs.pr }}
+          PR_NUMBER: ${{ needs.scope.outputs.pr }}
         run: git fetch origin "pull/$PR_NUMBER/head"
       - name: qualify and assess
         env:
           KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
-          BASE_SHA: ${{ steps.scope.outputs.base }}
-          HEAD_SHA: ${{ steps.scope.outputs.head }}
+          BASE_SHA: ${{ needs.scope.outputs.base }}
+          HEAD_SHA: ${{ needs.scope.outputs.head }}
           REVIEW_TEST_EVIDENCE: ${{ runner.temp }}/review-tests.json
         run: python3 tools/adversarial_reviewer/run_ci.py
       - uses: actions/upload-artifact@v4
@@ -86,38 +104,22 @@ jobs:
           name: adversarial-report
           path: review-result/report.json
           if-no-files-found: error
-  publish:
-    needs: assess
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: read
-      pull-requests: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: adversarial-report
-          path: review-result
-      - uses: actions/github-script@v7
-        env:
-          EXPECTED_HEAD: ${{ needs.assess.outputs.head }}
-          PR_NUMBER: ${{ needs.assess.outputs.pr }}
+      - name: publish verdict
+        uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const report = JSON.parse(fs.readFileSync('review-result/report.json', 'utf8'));
-            const args = {...context.repo, pull_number:Number(process.env.PR_NUMBER)};
-            const pr = (await github.rest.pulls.get(args)).data;
-            if (pr.state !== 'open' || pr.head.sha !== process.env.EXPECTED_HEAD || report.commit_id !== pr.head.sha) {
-              core.notice('stale review discarded'); return;
-            }
-            if (typeof report.body !== 'string' || !report.body.trim() || report.body.length > 60000 || /co-authored-by|generated-by|assisted-by|reviewed with|🤖/i.test(report.body)) throw Error('invalid review body');
-            const words = typeof report.overview === 'string' ? report.overview.trim().split(/\s+/).length : 0;
-            const clean = words >= 50 && words <= 100 && report.qualified === true && report.complete === true && report.synthesis_complete === true && report.disposition === 'APPROVE' && Array.isArray(report.findings) && report.findings.length === 0 && Array.isArray(report.review_failures) && report.review_failures.length === 0;
-            const event = clean ? 'APPROVE' : 'REQUEST_CHANGES';
-            const state = clean ? 'APPROVED' : 'CHANGES_REQUESTED';
-            const verdict = clean ? 'Approved' : 'Request changes';
-            if (!report.body.includes('**Verdict: '+verdict+'**')) throw Error('review body disagrees with computed verdict');
-            const marker = '<!-- craig-adversarial-review -->';
-            const reviews = await github.paginate(github.rest.pulls.listReviews,args);
-            if (reviews.some(r => r.user.login === 'github-actions[bot]' && r.commit_id === pr.head.sha && r.state === state && r.body.includes(marker))) return;
-            await github.rest.pulls.createReview({...args,commit_id:pr.head.sha,event,body:marker+'\n'+report.body});
+            const report = JSON.parse(require('node:fs').readFileSync('review-result/report.json', 'utf8'));
+            const publish = require('./tools/adversarial_reviewer/publish.cjs');
+            await publish({github, context, core, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, phase:'complete', report});
+            core.setOutput('published', 'true');
+        id: verdict
+      - name: publish unavailable status
+        if: failure() && steps.verdict.outputs.published != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const publish = require('./tools/adversarial_reviewer/publish.cjs');
+            const fs = require('node:fs');
+            const path = process.env.RUNNER_TEMP+'/review-tests.json';
+            const evidence = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : undefined;
+            await publish({github, context, core, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, phase:'failed', evidence});

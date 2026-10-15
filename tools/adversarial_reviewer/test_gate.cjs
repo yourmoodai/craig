@@ -14,7 +14,10 @@ module.exports = async function gate({github, context, head, pr, output, sleep =
     if (pull.state !== 'open' || pull.draft || pull.head.sha !== head) throw Error('review target is stale');
     const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {...context.repo, head_sha:head, event:'pull_request', per_page:100});
     const selected = select_runs(runs, head);
-    if (selected.some(run => run?.status === 'completed' && run.conclusion !== 'success')) throw Error('required tests did not pass');
+    if (selected.some(run => run?.status === 'completed' && run.conclusion !== 'success')) {
+      require('node:fs').writeFileSync(output, JSON.stringify({head, runs:selected.filter(Boolean).map(run=>({id:run.id, conclusion:run.conclusion}))}));
+      throw Error('required tests did not pass');
+    }
     if (selected.every(run => run?.status === 'completed' && run.conclusion === 'success')) {
       const evidence = {head, runs:[]};
       for (const run of selected) {
