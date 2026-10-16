@@ -21,14 +21,20 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
+      eligible: ${{ steps.scope.outputs.eligible }}
       head: ${{ steps.scope.outputs.head }}
       pr: ${{ steps.scope.outputs.pr }}
       base: ${{ steps.scope.outputs.base }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/github-script@v7
         id: scope
         env:
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          BOOTSTRAP_CODEOWNERS: ${{ vars.ADVERSARIAL_BOOTSTRAP_CODEOWNERS }}
         with:
           script: |
             if (context.eventName === 'push') {
@@ -39,12 +45,16 @@ jobs:
             if (!/^[1-9][0-9]*$/.test(process.env.PR_NUMBER)) throw Error('invalid PR');
             const pr = (await github.rest.pulls.get({...context.repo, pull_number:Number(process.env.PR_NUMBER)})).data;
             if (pr.state !== 'open' || pr.draft) throw Error('PR is not ready');
+            const eligible = await require('./tools/adversarial_reviewer/author_gate.cjs')({github,context,pr,bootstrap:process.env.BOOTSTRAP_CODEOWNERS});
+            core.setOutput('eligible', String(eligible));
+            if (!eligible) core.notice('adversarial review skipped: PR author is not an authorized code owner');
             core.setOutput('pr', pr.number);
             core.setOutput('head', pr.head.sha);
             core.setOutput('base', pr.base.sha);
   cancel_siblings:
     name: cancel sibling ci on failure
     needs: scope
+    if: needs.scope.outputs.eligible == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 105
     permissions:
@@ -64,6 +74,7 @@ jobs:
   oidc:
     name: verify bedrock oidc
     needs: scope
+    if: needs.scope.outputs.eligible == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment:
@@ -84,6 +95,7 @@ jobs:
   review:
     name: adversarial verdict
     needs: scope
+    if: needs.scope.outputs.eligible == 'true'
     runs-on: ubuntu-24.04
     concurrency:
       group: bedrock-haiku45-pilot
