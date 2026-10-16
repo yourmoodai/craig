@@ -8,7 +8,7 @@ import tempfile
 import zipfile
 
 from budget import Ledger, BudgetError
-from chunk_plan import bounded_strategy
+from chunk_plan import ASSESSMENT_LIMIT, bounded_strategy
 from reporting import finalize, render, fallback_overview
 from qualify import qualify
 
@@ -67,7 +67,7 @@ try:
     strategy = bounded_strategy(qualification['strategy'], manifests)
     Path('review-result/strategy.json').write_text(json.dumps({
         'qualified_preference': qualification['strategy'], 'selected': strategy,
-        'assessment_limit': 128}))
+        'assessment_limit': ASSESSMENT_LIMIT}))
     subprocess.run([sys.executable, str(root/'adversarial_review.py'), '--base', os.environ['BASE_SHA'],
                     '--head', head, '--strategy', strategy, '--fail-on', 'none',
                     '--json-output', str(path)], timeout=2400, check=False)

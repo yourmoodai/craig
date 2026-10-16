@@ -21,7 +21,7 @@ test('pilot restores reconciliation, rejects uncertain or missing history',async
   process.chdir(temp);
   try {
     await restore(fixture());
-    assert.equal(JSON.parse(fs.readFileSync('review-result/reservation.json')).maximum_usd,2);
+    assert.equal(JSON.parse(fs.readFileSync('review-result/reservation.json')).maximum_usd,10);
     await restore(fixture({artifacts:[reserved,settled]}));
     assert.equal(fs.readFileSync('review-result/previous-ledgers/11.zip','utf8'),'ledger archive');
     const olderIdReservation={...reserved,id:3,name:prefix+'reserved-6-1',workflow_run:{id:6}};

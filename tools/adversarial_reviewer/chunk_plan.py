@@ -7,6 +7,8 @@ import re
 
 from budget import cost, RESERVED_INPUT_TOKENS
 
+ASSESSMENT_LIMIT = 512
+
 HUNK = re.compile(r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
 
 
@@ -141,7 +143,7 @@ def plan(diff, count, messages, *, strategy='adaptive'):
     def fits(group):
         text = render(group)
         if strategy == 'baseline':
-            return len(text.encode()) <= 49152  # 48 KiB baseline
+            return len({u.path for u in group}) == 1 and len(text.encode()) <= 49152  # 48 KiB baseline
         # This estimate only packs candidates; CountTokens enforces the actual ceiling.
         return len(group) <= 16 and len({u.path for u in group}) <= 8 and len(text.encode()) <= target*4
 
@@ -215,8 +217,8 @@ def manifest(planned):
 
 def bounded_strategy(preferred, manifests):
     """A fixture win cannot promote a plan that exceeds the execution limit."""
-    if len(manifests[preferred]['chunks']) > 128:
+    if len(manifests[preferred]['chunks']) > ASSESSMENT_LIMIT:
         preferred = 'baseline'
-    if len(manifests[preferred]['chunks']) > 128:
+    if len(manifests[preferred]['chunks']) > ASSESSMENT_LIMIT:
         raise ValueError('initial plan exceeds assessment limit')
     return preferred

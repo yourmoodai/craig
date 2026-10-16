@@ -15,21 +15,21 @@ class BudgetTests(unittest.TestCase):
     def test_atomic_parallel_reservations_and_restart(self):
         def reserve(index):
             try:
-                Ledger(self.path).reserve(0, 650000, 'review', str(index))
+                Ledger(self.path).reserve(0, 3000000, 'review', str(index))
                 return True
             except BudgetError:
                 return False
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             results = list(executor.map(reserve,range(3)))
         self.assertEqual(sum(results),1)
-        self.assertEqual(Ledger(self.path).summary()['committed_usd'],1.2025)
+        self.assertEqual(Ledger(self.path).summary()['committed_usd'],5.55)
 
     def test_qualification_has_separate_shared_ceiling(self):
-        self.ledger.reserve(250000,0,'qualification','a')
-        self.ledger.reserve(250000,0,'qualification','b')
+        self.ledger.reserve(1500000,0,'qualification','a')
+        self.ledger.reserve(1500000,0,'qualification','b')
         with self.assertRaises(BudgetError):
-            self.ledger.reserve(250000,0,'qualification','c')
-        self.ledger.reserve(250000,0,'review','d')
+            self.ledger.reserve(1500000,0,'qualification','c')
+        self.ledger.reserve(1500000,0,'review','d')
 
     def test_missing_usage_retains_reservation(self):
         key = self.ledger.reserve(200,4096,'review','a')
@@ -64,7 +64,7 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(self.ledger.summary()['committed_usd'], 0.2)
         with self.assertRaises(BudgetError):
             self.ledger.reserve(3_000_000,0,'qualification','over ceiling')
-        for invalid in (-1, True, 2_000_000_001):
+        for invalid in (-1, True, 10_000_000_001):
             with self.assertRaises(BudgetError):
                 self.ledger.record_external_reservation(invalid)
 

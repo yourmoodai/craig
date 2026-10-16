@@ -2,7 +2,7 @@
 import time
 
 from bedrock_client import BedrockError, count_tokens
-from chunk_plan import anchors, manifest, plan, render, subdivide
+from chunk_plan import ASSESSMENT_LIMIT, anchors, manifest, plan, render, subdivide
 
 
 def assess_plan(diff, files, context, report, deadline, strategy, dry_run):
@@ -27,13 +27,13 @@ def assess_plan(diff, files, context, report, deadline, strategy, dry_run):
     while pending:
         identity, units, support = pending.pop(0)
         attempts += 1
-        if time.monotonic() >= deadline or attempts > 128:
+        if time.monotonic() >= deadline or attempts > ASSESSMENT_LIMIT:
             disposition, findings, summary = 'COMMENT', [], 'review incomplete: execution budget exhausted'
         else:
             disposition, findings, summary = run_model_reviewer(
                 render(units), sorted({u.path for u in units}), context, anchors(units),
                 deadline=deadline, supporting_context='\nSupporting evidence (context only):\n'+support if support else '')
-        if 'subdivision required' in summary and attempts < 128 and time.monotonic() < deadline:
+        if 'subdivision required' in summary and attempts < ASSESSMENT_LIMIT and time.monotonic() < deadline:
             try:
                 children = subdivide(units)
                 report['subdivisions'].append({'parent': identity, 'unit_ids': [u.id for u in units], 'reason': summary})

@@ -52,6 +52,15 @@ class ChunkPlanTests(unittest.TestCase):
             self.assertLessEqual(chunk['input_tokens'],48000)
         self.assertEqual(manifest(planned)['original_units'],33)
 
+    def test_baseline_isolates_files_and_preserves_related_support(self):
+        diff = change('a.py', '+import b\n') + change('b.py')
+        planned = plan(diff, count, messages, strategy='baseline')
+        self.assertEqual(len(planned['chunks']), 2)
+        self.assertTrue(all(len({u.path for u in c['units']}) == 1 for c in planned['chunks']))
+        self.assertEqual({u.id for c in planned['chunks'] for u in c['units']},
+                         {u.id for u in parse(diff)})
+        self.assertIn('b.py', planned['chunks'][0]['support'])
+
     def test_support_never_repeats_primary_units(self):
         planned = plan(change('a.py', '+import b\n')+change('b.py'), count, messages)
         self.assertEqual(len(planned['chunks']),1)
@@ -90,7 +99,7 @@ class ChunkPlanTests(unittest.TestCase):
                 return 'COMMENT', [], 'review incomplete: verification introduced a new finding; subdivision required.'
             return 'REQUEST_CHANGES', [{'file': files[0]+':1'}], 'verified concrete failure'
         with patch('adversarial_review.run_model_reviewer', side_effect=assess) as model:
-            report = review_diff(diff, ['a.py', 'b.py'], strategy='baseline')
+            report = review_diff(diff, ['a.py', 'b.py'], strategy='adaptive')
         self.assertTrue(report['complete'])
         self.assertEqual(model.call_count, 3)
         self.assertEqual(len(report['findings']), 2)
@@ -98,10 +107,10 @@ class ChunkPlanTests(unittest.TestCase):
 
     def test_full_plan_must_fit_even_after_fixture_promotion(self):
         from chunk_plan import bounded_strategy
-        manifests = {'baseline': {'chunks': [None]*67}, 'adaptive': {'chunks': [None]*167}}
+        manifests = {'baseline': {'chunks': [None]*67}, 'adaptive': {'chunks': [None]*513}}
         self.assertEqual(bounded_strategy('adaptive', manifests), 'baseline')
         manifests['adaptive']['chunks'] = [None]*50
         self.assertEqual(bounded_strategy('adaptive', manifests), 'adaptive')
-        manifests['baseline']['chunks'] = [None]*129
+        manifests['baseline']['chunks'] = [None]*513
         with self.assertRaises(ValueError):
             bounded_strategy('baseline', manifests)
