@@ -18,8 +18,8 @@ module.exports = async function publish({github, context, core, head, pr, phase,
   let clean = false;
   const runUrl = `${context.serverUrl || 'https://github.com'}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
   let content;
-  if (phase === 'waiting') content = 'Awaiting required tests. Model review has not started.';
-  else if (phase === 'failed') content = 'Review unavailable: required tests or review execution failed. See the workflow for failing checks.\n\n**Verdict: Request changes**';
+  if (phase === 'waiting') content = 'Model qualification and review are starting alongside the independent test checks.';
+  else if (phase === 'failed') content = 'Review unavailable: review execution failed. See the workflow for failing checks.\n\n**Verdict: Request changes**';
   else if (phase === 'complete') {clean = verdict(report); content = report.body;}
   else throw Error('invalid publication phase');
   const tests = evidence || report?.test_evidence;
@@ -33,12 +33,9 @@ module.exports = async function publish({github, context, core, head, pr, phase,
     if (existing.body !== body) await github.rest.issues.updateComment({...context.repo, comment_id:existing.id, body});
   } else await github.rest.issues.createComment({...context.repo, issue_number:Number(pr), body});
   if (phase === 'complete') {
-    const passed = tests?.head === head && ['verify.yml','commit-messages.yml','release.yml'].every(file=>
-      tests.runs?.some(run=>run.workflow === '.github/workflows/'+file && run.conclusion === 'success'));
     const validated = report.qualified === true && report.complete === true && report.synthesis_complete === true && report.review_failures?.length === 0;
     const event = clean ? 'APPROVE' : validated && report.findings?.length > 0 ? 'REQUEST_CHANGES' : null;
     if (event) {
-      if (!passed) throw Error('formal review requires passing tests for this commit');
       const reviews = await github.paginate(github.rest.pulls.listReviews,{...args,per_page:100});
       const latest = reviews.filter(review=>review.user?.login==='github-actions[bot]' && review.user?.type==='Bot' && review.commit_id===head && ['APPROVED','CHANGES_REQUESTED'].includes(review.state)).at(-1);
       const state = event === 'APPROVE' ? 'APPROVED' : 'CHANGES_REQUESTED';

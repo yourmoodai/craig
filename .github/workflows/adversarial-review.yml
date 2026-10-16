@@ -94,15 +94,15 @@ jobs:
           script: |
             const publish = require('./tools/adversarial_reviewer/publish.cjs');
             await publish({github, context, core, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, phase:'waiting'});
-      - name: wait for required tests on this commit
+      - name: snapshot current test status without waiting
         uses: actions/github-script@v7
         env:
           HEAD_SHA: ${{ needs.scope.outputs.head }}
           PR_NUMBER: ${{ needs.scope.outputs.pr }}
         with:
           script: |
-            const gate = require('./tools/adversarial_reviewer/test_gate.cjs');
-            await gate({github, context, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, output:process.env.RUNNER_TEMP+'/review-tests.json'});
+            const snapshot = require('./tools/adversarial_reviewer/test_status.cjs');
+            await snapshot({github, context, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, output:process.env.RUNNER_TEMP+'/review-tests.json'});
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

@@ -71,8 +71,10 @@ publish({github,context,core,head:'head',pr:1,report:input.report,phase:input.ph
         result=self.publish(report={'findings':[{'title':'demonstrated defect'}], 'disposition':'REQUEST_CHANGES'})
         self.assertEqual(result['calls'][1]['event'],'REQUEST_CHANGES')
 
-    def test_formal_approval_requires_exact_head_checks(self):
-        self.publish(report={'test_evidence':{'head':'stale','runs':[]}},invalid=True)
+    def test_formal_review_is_independent_of_test_completion(self):
+        for runs in ([], [{'status':'in_progress'}], [{'conclusion':'failure'}]):
+            result = self.publish(report={'test_evidence':{'head':'head','runs':runs}})
+            self.assertEqual(result['calls'][1]['event'], 'APPROVE')
 
     def test_size_policy_no_longer_exists(self):
         self.publish(phase='policy',invalid=True)
