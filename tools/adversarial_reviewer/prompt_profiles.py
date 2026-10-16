@@ -1,4 +1,4 @@
-"""Explicit experimental settings; production defaults remain unchanged."""
+"""Scoped prompt variants for bounded reviewer experiments."""
 from contextlib import contextmanager
 from contextvars import ContextVar
 
