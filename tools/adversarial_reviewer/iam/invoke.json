@@ -4,26 +4,7 @@
     {
       "Effect": "Allow",
       "Action": "bedrock:InvokeModel",
-      "Resource": "arn:aws:bedrock:us-east-1:463509296941:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
-    },
-    {
-      "Effect": "Allow",
-      "Action": "bedrock:InvokeModel",
-      "Resource": [
-        "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
-        "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
-        "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
-      ],
-      "Condition": {
-        "StringEquals": {
-          "bedrock:InferenceProfileArn": "arn:aws:bedrock:us-east-1:463509296941:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
-        }
-      }
-    },
-    {
-      "Effect": "Allow",
-      "Action": "bedrock:CountTokens",
-      "Resource": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
+      "Resource": "arn:aws:bedrock:us-east-1::foundation-model/zai.glm-4.7-flash"
     }
   ]
 }

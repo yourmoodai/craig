@@ -15,21 +15,21 @@ class BudgetTests(unittest.TestCase):
     def test_atomic_parallel_reservations_and_restart(self):
         def reserve(index):
             try:
-                Ledger(self.path).reserve(0, 200000, 'review', str(index))
+                Ledger(self.path).reserve(0, 3000000, 'review', str(index))
                 return True
             except BudgetError:
                 return False
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             results = list(executor.map(reserve,range(3)))
         self.assertEqual(sum(results),1)
-        self.assertEqual(Ledger(self.path).summary()['committed_usd'],1.1)
+        self.assertEqual(Ledger(self.path).summary()['committed_usd'],1.2)
 
     def test_qualification_has_separate_shared_ceiling(self):
-        self.ledger.reserve(100000,0,'qualification','a')
-        self.ledger.reserve(100000,0,'qualification','b')
+        self.ledger.reserve(2000000,0,'qualification','a')
+        self.ledger.reserve(2000000,0,'qualification','b')
         with self.assertRaises(BudgetError):
-            self.ledger.reserve(200000,0,'qualification','c')
-        self.ledger.reserve(200000,0,'review','d')
+            self.ledger.reserve(2000000,0,'qualification','c')
+        self.ledger.reserve(2000000,0,'review','d')
 
     def test_missing_usage_retains_reservation(self):
         key = self.ledger.reserve(200,4096,'review','a')
@@ -48,3 +48,9 @@ class BudgetTests(unittest.TestCase):
             self.ledger.reconcile(key,{'usage':{'inputTokens':2,'outputTokens':2}},1)
         with self.assertRaisesRegex(BudgetError,'halted'):
             Ledger(self.path).reserve(1,1,'review','b')
+
+    def test_preflight_reservation_survives_restart_once(self):
+        self.ledger.record_preflight()
+        Ledger(self.path).record_preflight()
+        self.assertEqual(self.ledger.summary()['committed_usd'], 0.03)
+        self.assertEqual(len(self.ledger.summary()['calls']), 1)

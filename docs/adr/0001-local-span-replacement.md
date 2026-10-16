@@ -69,11 +69,10 @@ Tag releases must match package versions and be reachable from main. Publish
 immutable assets before updating the marketplace pointer; retain prior releases
 for rollback. No release has qualified until these gates pass.
 
-Bedrock Haiku 4.5 replaces the exhausted Kimi reviewer and unactivated Copilot
+Bedrock GLM 4.7 Flash replaces the exhausted Kimi reviewer and unactivated Copilot
 transport. It is a metered CI-only reviewer, separate from local inference. GitHub
-OIDC grants short-lived access to one US inference profile through a dedicated
-environment restricted to main and develop. Live review remains disabled until
-account access and model qualification succeed. Trusted base code reviews PR
+OIDC grants short-lived access to one regional model through a dedicated
+environment restricted to main and develop. Account access enables live qualification; PR review remains gated on its success. Trusted base code reviews PR
 diffs as data; no PR executable receives review secrets. Required tests must
 pass for the exact head before review. A single editable comment carries the
 50–100 word overview, verdict, coverage, and cost. Complete qualified assessments
@@ -88,12 +87,13 @@ and output budgets. Supporting context is disclosed separately from primary
 coverage. Truncation or saturated findings causes smaller assessments; no parent
 counts as complete until all children finish. Fixed 48 KiB packing remains the
 baseline until the same bounded fixtures demonstrate preserved labels and lower
-adaptive cost. This trades extra planning and token-count calls for measurable
+adaptive cost. This trades extra local packing estimates for measurable
 coverage and spending control; semantic correctness is not guaranteed by packing.
 
 The $2 pilot shares an atomic ledger across qualification, comparison, assessment,
 verification, synthesis, and resumed attempts. At most $0.40 funds qualification
-and comparison. Reserve worst-case counted inference cost before calling Bedrock;
+and comparison. GLM Flash lacks token counting: estimate packing locally and reserve full model
+input capacity plus maximum output before calling Bedrock;
 retain uncertain charges after interruptions. CI persists a reservation before
 inference, restores reconciled ledgers, and abstains if spending history is missing.
 Pricing assumptions, thresholds, and run commands belong in the

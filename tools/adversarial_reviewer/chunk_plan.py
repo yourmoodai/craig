@@ -5,7 +5,7 @@ import json
 from pathlib import PurePosixPath
 import re
 
-from budget import cost
+from budget import cost, RESERVED_INPUT_TOKENS
 
 HUNK = re.compile(r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
 
@@ -205,8 +205,18 @@ def manifest(planned):
                'files': sorted({u.path for u in c['units']}),
                'evidence_ids': [a['id'] for a in anchors(c['units'])],
                **{k: c[k] for k in ('input_tokens', 'support_tokens', 'omitted_support', 'prompt_sha256')},
-               'maximum_assessment_usd': cost(c['input_tokens'], 4096)/1e9}
+               'maximum_assessment_usd': cost(RESERVED_INPUT_TOKENS, 4096)/1e9}
               for i, c in enumerate(planned['chunks'], 1)]
     return {**{k: v for k, v in planned.items() if k != 'chunks'}, 'chunks': chunks,
+            'token_count_method': 'utf8_bytes_plus_template_allowance_estimate',
             'maximum_first_pass_usd': sum(c['maximum_assessment_usd'] for c in chunks),
             'note': 'verification, subdivision and synthesis require additional reservations'}
+
+
+def bounded_strategy(preferred, manifests):
+    """A fixture win cannot promote a plan that exceeds the execution limit."""
+    if len(manifests[preferred]['chunks']) > 128:
+        preferred = 'baseline'
+    if len(manifests[preferred]['chunks']) > 128:
+        raise ValueError('initial plan exceeds assessment limit')
+    return preferred

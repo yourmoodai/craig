@@ -7,8 +7,9 @@ import uuid
 
 LIMIT = 2_000_000_000  # nanodollars: $2 pilot, including uncertain calls
 QUALIFICATION_LIMIT = 400_000_000  # nanodollars: $0.40
-INPUT_RATE = 1100  # nanodollars per token; US Haiku 4.5 on-demand
-OUTPUT_RATE = 5500
+INPUT_RATE = 70  # nanodollars per token; US GLM 4.7 Flash on-demand
+OUTPUT_RATE = 400
+RESERVED_INPUT_TOKENS = 262144  # 256 Ki tokens; above the published 203K context
 
 
 class BudgetError(Exception):
@@ -33,6 +34,12 @@ class Ledger:
                 yield db
         finally:
             db.close()
+
+    def record_preflight(self):
+        """Retain the $0.03 reserved for account probes before CI owned the pilot."""
+        with self.connect() as db:
+            db.execute("INSERT OR IGNORE INTO calls VALUES (?, 'qualification', ?, ?, NULL, NULL)",
+                       ('account-probes-20261015', 'haiku55-and-glm47-access-probes', 30_000_000))
 
     def reserve(self, inputs, outputs, phase, identity):
         if phase not in ('qualification', 'review') or any(type(n) is not int or n < 0 for n in (inputs, outputs)):

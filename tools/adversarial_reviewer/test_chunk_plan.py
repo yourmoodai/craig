@@ -82,3 +82,13 @@ class ChunkPlanTests(unittest.TestCase):
             report = review_diff(change(),['a.py'],strategy='adaptive')
         self.assertFalse(report['complete'])
         model.assert_not_called()
+
+    def test_full_plan_must_fit_even_after_fixture_promotion(self):
+        from chunk_plan import bounded_strategy
+        manifests = {'baseline': {'chunks': [None]*67}, 'adaptive': {'chunks': [None]*167}}
+        self.assertEqual(bounded_strategy('adaptive', manifests), 'baseline')
+        manifests['adaptive']['chunks'] = [None]*50
+        self.assertEqual(bounded_strategy('adaptive', manifests), 'adaptive')
+        manifests['baseline']['chunks'] = [None]*129
+        with self.assertRaises(ValueError):
+            bounded_strategy('baseline', manifests)

@@ -22,9 +22,11 @@ class BedrockClientTests(unittest.TestCase):
         def respond(argv, **kwargs):
             from pathlib import Path
             self.request = json.loads(Path(argv[argv.index('--cli-input-json')+1].removeprefix('file://')).read_text())
-            return subprocess.CompletedProcess([], code, json.dumps({'inputTokens':20}) if 'count-tokens' in argv else output, 'private canary')
+            return subprocess.CompletedProcess([], code, output, 'private canary')
         with patch('bedrock_client.subprocess.run', side_effect=respond) as run:
             value = client.complete([{'role': 'system', 'content': 'rules'}, {'role': 'user', 'content': 'synthetic diff'}], time.monotonic()+10)
+            self.assertEqual(run.call_count, 1)
+            self.assertIn('converse', run.call_args.args[0])
             return value, run.call_args
 
     def test_bounded_tool_free_request(self):
@@ -72,3 +74,16 @@ class BedrockClientTests(unittest.TestCase):
             with self.assertRaisesRegex(client.BedrockError, 'request exceeds'):
                 client.complete([{'role': 'user', 'content': 'x'*client.MAX_REQUEST_BYTES}], time.monotonic()+10)
             run.assert_not_called()
+
+    def test_packing_estimate_is_local_and_counts_utf8_bytes(self):
+        with patch('bedrock_client.subprocess.run') as run:
+            self.assertEqual(client.count_tokens([{'role':'user','content':'é'}]), 1154)
+            run.assert_not_called()
+
+    def test_timeout_retains_full_context_reservation(self):
+        from budget import Ledger, cost, RESERVED_INPUT_TOKENS
+        with patch('bedrock_client.subprocess.run', side_effect=subprocess.TimeoutExpired('aws', 1)):
+            with self.assertRaises(client.BedrockError):
+                client.complete([{'role':'user','content':'diff'}], time.monotonic()+10)
+        summary = Ledger(os.environ['REVIEW_BUDGET_LEDGER']).summary()
+        self.assertEqual(summary['committed_usd'], cost(RESERVED_INPUT_TOKENS,4096)/1e9)

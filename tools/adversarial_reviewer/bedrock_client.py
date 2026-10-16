@@ -7,12 +7,12 @@ import subprocess
 import tempfile
 import time
 
-from budget import Ledger, BudgetError
+from budget import Ledger, BudgetError, RESERVED_INPUT_TOKENS
 
 MAX_RESPONSE_BYTES = 1048576  # 1 MiB
 MAX_REQUEST_BYTES = 524288  # 512 KiB
 
-MODEL = 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
+MODEL = 'zai.glm-4.7-flash'
 
 
 class BedrockError(Exception):
@@ -25,14 +25,9 @@ def conversation(messages):
 
 
 def count_tokens(messages, deadline=None):
-    if os.environ.get('AWS_REGION') != 'us-east-1':
-        raise BedrockError('token counting requires explicit us-east-1 region')
-    envelope = invoke('count-tokens', {'modelId': MODEL.removeprefix('us.'),
-                      'input': {'converse': conversation(messages)}}, deadline or time.monotonic()+240)
-    value = envelope.get('inputTokens')
-    if type(value) is not int or value < 0:
-        raise BedrockError('invalid token count')
-    return value
+    """Estimate packing size without claiming an exact model token count."""
+    # GLM Flash has no CountTokens API. Spending reserves full context separately.
+    return 1024 + sum(128 + len(m['content'].encode('utf-8')) for m in messages)
 
 
 def invoke(operation, payload, deadline):
@@ -91,7 +86,7 @@ def complete(messages, deadline, *, purpose='assessment', identity=None):
     ledger = Ledger(path)
     identity = identity or hashlib.sha256(json.dumps(messages, sort_keys=True).encode()).hexdigest()
     try:
-        key = ledger.reserve(inputs, payload['inferenceConfig']['maxTokens'],
+        key = ledger.reserve(RESERVED_INPUT_TOKENS, payload['inferenceConfig']['maxTokens'],
                              os.environ.get('REVIEW_BUDGET_PHASE', 'review'), purpose+':'+identity)
         started = time.monotonic()
         envelope = invoke('converse', payload, deadline)
@@ -99,6 +94,8 @@ def complete(messages, deadline, *, purpose='assessment', identity=None):
     except BudgetError as error:
         raise BedrockError(str(error)) from None
     try:
+        if envelope['usage']['inputTokens'] > 48000:
+            raise BedrockError('actual input exceeds token budget; subdivision required')
         if envelope.get('stopReason') == 'max_tokens':
             raise BedrockError('response incomplete: subdivision required')
         if envelope.get('stopReason') != 'end_turn':

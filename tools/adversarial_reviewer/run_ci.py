@@ -7,6 +7,7 @@ import sys
 import zipfile
 
 from budget import Ledger
+from chunk_plan import bounded_strategy
 from reporting import finalize, render
 from qualify import qualify
 
@@ -31,7 +32,8 @@ try:
             Path('review-result/ledger.db').write_bytes(data)
     os.environ['REVIEW_BUDGET_LEDGER'] = str(Path('review-result/ledger.db').resolve())
     ledger = Ledger(os.environ['REVIEW_BUDGET_LEDGER'])
-    # Dry runs are token-count requests only. Both strategies describe the exact head.
+    ledger.record_preflight()
+    # Dry runs estimate packing locally for the exact head.
     for strategy in ('baseline', 'adaptive'):
         subprocess.run([sys.executable, str(root/'adversarial_review.py'), '--base', os.environ['BASE_SHA'],
                         '--head', head, '--strategy', strategy, '--dry-run', '--json-output',
@@ -39,8 +41,14 @@ try:
     qualification = qualify('review-result/qualification.json')
     if not qualification['qualified']:
         raise ValueError('model qualification or baseline comparison did not pass')
+    manifests = {s: json.loads(Path(f'review-result/{s}-manifest.json').read_text())['manifest']
+                 for s in ('baseline', 'adaptive')}
+    strategy = bounded_strategy(qualification['strategy'], manifests)
+    Path('review-result/strategy.json').write_text(json.dumps({
+        'qualified_preference': qualification['strategy'], 'selected': strategy,
+        'assessment_limit': 128}))
     subprocess.run([sys.executable, str(root/'adversarial_review.py'), '--base', os.environ['BASE_SHA'],
-                    '--head', head, '--strategy', qualification['strategy'], '--fail-on', 'none',
+                    '--head', head, '--strategy', strategy, '--fail-on', 'none',
                     '--json-output', str(path)], timeout=2400, check=False)
     if not path.exists():
         raise ValueError('review did not produce a report')
