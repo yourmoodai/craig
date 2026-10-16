@@ -1,7 +1,9 @@
 const marker = '<!-- craig-adversarial-review -->';
 
 function verdict(report) {
-  if (typeof report.body !== 'string' || !report.body.trim() || report.body.length > 60000 || /co-authored-by|generated-by|assisted-by|reviewed with|🤖/i.test(report.body)) throw Error('invalid review body');
+  if (typeof report.body !== 'string' || !report.body.trim()) throw Error('review body is empty or missing');
+  if (report.body.length > 60000) throw Error(`review body exceeds publication limit: ${report.body.length} characters`);
+  if (/co-authored-by|generated-by|assisted-by|reviewed with|🤖/i.test(report.body)) throw Error('review body contains prohibited attribution');
   const words = typeof report.overview === 'string' ? report.overview.trim().split(/\s+/).length : 0;
   const clean = words >= 50 && words <= 100 && report.qualified === true && report.complete === true && report.synthesis_complete === true && report.disposition === 'APPROVE' && Array.isArray(report.findings) && report.findings.length === 0 && Array.isArray(report.review_failures) && report.review_failures.length === 0;
   if (!report.body.includes('**Verdict: '+(clean ? 'Approved' : 'Request changes')+'**')) throw Error('review body disagrees with computed verdict');

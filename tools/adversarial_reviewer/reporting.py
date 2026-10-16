@@ -105,7 +105,7 @@ def finalize(report, *, qualified, synthesize=True):
     return report
 
 
-def render(report):
+def render(report, *, compact=False):
     # Escape generated prose so chunk data cannot forge headings or HTML controls.
     def prose(value):
         return html.escape(str(value)).replace('\\', '\\\\').replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace('#', '\\#')
@@ -123,12 +123,20 @@ def render(report):
         lines += ['- ' + prose(failure) for failure in report['review_failures']]
         lines += ['']
     lines += ['<details>', '<summary>Chunk coverage and exclusions</summary>', '', prose(report.get('summary', 'Review unavailable.')), '']
+    if compact:
+        lines += ['Chunk summaries below are shortened. Full summaries and evidence are preserved in `report.json` in the adversarial-report artifact linked through the CI run above.', '']
     for chunk in report.get('chunks', []):
         status = 'reviewed' if chunk['complete'] else 'not fully reviewed'
-        lines += [f"### Chunk {chunk['index']} — {status}", '', prose(chunk['file']), '', prose(chunk['summary']), '']
+        summary = str(chunk['summary'])
+        if compact and len(summary) > 160:
+            summary = summary[:160] + '… (full summary in artifact)'
+        lines += [f"### Chunk {chunk['index']} — {status}", '', prose(chunk['file']), '', prose(summary), '']
     for path in report.get('excluded_assets', []):
         lines += [f'- Excluded documentation image (not reviewed): {prose(path)}']
     for path in report.get('omitted_binary_changes', []):
         lines += [f'- Unresolved binary coverage: {prose(path)}']
     lines += ['', '</details>']
-    return '\n'.join(lines)
+    body = '\n'.join(lines)
+    if len(body.encode('utf-16-le')) // 2 > 55000 and not compact:
+        return render(report, compact=True)
+    return body

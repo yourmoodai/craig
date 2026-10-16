@@ -74,3 +74,16 @@ class ReportingTests(unittest.TestCase):
             finalize(report,qualified=True)
         model.assert_not_called()
         self.assertEqual(report['disposition'],'REQUEST_CHANGES')
+
+    def test_large_report_preserves_every_chunk_and_full_evidence(self):
+        from reporting import render
+        chunks = [dict(index=n, file=f'file{n}.rs', complete=True,
+                       summary='behavior ' * 70) for n in range(172)]
+        report = self.report(chunks=chunks, overview=OVERVIEW)
+        body = render(report)
+        self.assertLess(len(body.encode('utf-16-le')) // 2, 55000)
+        for chunk in chunks:
+            self.assertIn(f"### Chunk {chunk['index']} —", body)
+            self.assertIn(chunk['file'], body)
+            self.assertEqual(chunk['summary'], 'behavior ' * 70)
+        self.assertIn('full summary in artifact', body)
