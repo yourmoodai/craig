@@ -307,3 +307,15 @@ fn worker_queue_is_bounded_and_cancel_clears_pending_text() {
             .all(|m| m["judge_status"] == "cancelled")
     );
 }
+
+#[test]
+fn history_window_accepts_nonnegative_times_near_epoch() {
+    assert!(window(4 * DAY_MS, 1, 4 * DAY_MS).unwrap());
+    assert!(window(0, 5, 0).unwrap());
+    assert!(window(DAY_MS, 5, 0).unwrap());
+    assert!(!window(DAY_MS, 5, -1).unwrap());
+    assert!(!window(DAY_MS, 1, DAY_MS + 1).unwrap());
+    assert!(!window(4 * DAY_MS, 1, 3 * DAY_MS - 1).unwrap());
+    assert!(window(-1, 1, 0).is_err());
+    assert!(window(i64::MAX, 5, i64::MAX).unwrap());
+}

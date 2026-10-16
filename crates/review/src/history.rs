@@ -57,10 +57,11 @@ pub struct ClaudeHistory<'a> {
     pub profile: &'a Path,
 }
 pub fn window(now: i64, days: u8, timestamp: i64) -> ReviewResult<bool> {
-    if !(1..=5).contains(&days) || now < 5 * DAY_MS {
+    if !(1..=5).contains(&days) || now < 0 {
         return Err("invalid_history_window".into());
     }
-    Ok(timestamp >= now - i64::from(days) * DAY_MS && timestamp <= now)
+    let start = (now - i64::from(days) * DAY_MS).max(0);
+    Ok(timestamp >= start && timestamp <= now)
 }
 impl HistorySource for ClaudeHistory<'_> {
     fn index(&self, now: i64, days: u8) -> ReviewResult<HistoryIndex> {
