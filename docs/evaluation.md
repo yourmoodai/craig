@@ -589,7 +589,7 @@ stored user text with up to four preceding eligible stored user messages. Neithe
 captures the full conversation or authenticates a person's intent. The UI reports
 counts and uncertainty, not a personal offensiveness grade. Features, retention,
 export ownership, and opt-in controls are documented in
-[personal review](../README.md#personal-review).
+[personal review](usage.md#personal-review).
 
 ## Unverified boundaries
 

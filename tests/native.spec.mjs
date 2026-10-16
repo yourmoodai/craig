@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { spawn, spawnSync } from 'node:child_process';
 const { applyReplacements, loadDetector } = createRequire(import.meta.url)('../native/index.cjs');
-test('craig ignores the retired model environment variable', () => {
-  const env = {...process.env, MIDDLE_FINGER_MODEL_DIR:'/synthetic/retired-model', LOG_LEVEL:'silent'};
+test('craig ignores unrelated model environment variables', () => {
+  const env = {...process.env, UNRELATED_MODEL_DIR:'/synthetic/unrelated-model', LOG_LEVEL:'silent'};
   delete env.CRAIG_MODEL_DIR;
   const result = spawnSync(process.execPath, ['bridge/cli.mjs','doctor'], {env, encoding:'utf8'});
   assert.equal(result.status, 1);
