@@ -159,6 +159,7 @@ jobs:
         env:
           BEDROCK_REVIEW_ENABLED: ${{ vars.BEDROCK_REVIEW_ENABLED }}
           BEDROCK_REVIEW_MODEL: ${{ vars.BEDROCK_REVIEW_MODEL }}
+          BEDROCK_EXTERNAL_PROBE_NANODOLLARS: ${{ vars.BEDROCK_EXTERNAL_PROBE_NANODOLLARS }}
           BASE_SHA: ${{ needs.scope.outputs.base }}
           HEAD_SHA: ${{ needs.scope.outputs.head }}
           REVIEW_TEST_EVIDENCE: ${{ runner.temp }}/review-tests.json

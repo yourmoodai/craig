@@ -54,3 +54,16 @@ class BudgetTests(unittest.TestCase):
         Ledger(self.path).record_preflight()
         self.assertEqual(self.ledger.summary()['committed_usd'], 0.03)
         self.assertEqual(len(self.ledger.summary()['calls']), 1)
+
+    def test_external_probe_charges_are_cumulative_and_idempotent(self):
+        self.ledger.record_external_reservation(100_000_000)
+        Ledger(self.path).record_external_reservation(100_000_000)
+        self.ledger.record_external_reservation(50_000_000)
+        self.assertEqual(self.ledger.summary()['committed_usd'], 0.1)
+        self.ledger.record_external_reservation(200_000_000)
+        self.assertEqual(self.ledger.summary()['committed_usd'], 0.2)
+        with self.assertRaises(BudgetError):
+            self.ledger.reserve(3_000_000,0,'qualification','over ceiling')
+        for invalid in (-1, True, 2_000_000_001):
+            with self.assertRaises(BudgetError):
+                self.ledger.record_external_reservation(invalid)

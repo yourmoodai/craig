@@ -33,6 +33,7 @@ try:
     os.environ['REVIEW_BUDGET_LEDGER'] = str(Path('review-result/ledger.db').resolve())
     ledger = Ledger(os.environ['REVIEW_BUDGET_LEDGER'])
     ledger.record_preflight()
+    ledger.record_external_reservation(int(os.environ.get('BEDROCK_EXTERNAL_PROBE_NANODOLLARS') or '0'))
     # Dry runs estimate packing locally for the exact head.
     for strategy in ('baseline', 'adaptive'):
         subprocess.run([sys.executable, str(root/'adversarial_review.py'), '--base', os.environ['BASE_SHA'],

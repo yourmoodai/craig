@@ -41,6 +41,16 @@ class Ledger:
             db.execute("INSERT OR IGNORE INTO calls VALUES (?, 'qualification', ?, ?, NULL, NULL)",
                        ('account-probes-20261015', 'haiku55-and-glm47-access-probes', 30_000_000))
 
+    def record_external_reservation(self, amount):
+        """Import cumulative external probe costs without releasing prior reservations."""
+        if type(amount) is not int or not 0 <= amount <= LIMIT:
+            raise BudgetError('invalid external reservation')
+        if amount:
+            with self.connect() as db:
+                db.execute("INSERT INTO calls VALUES (?, 'qualification', ?, ?, NULL, NULL) "
+                           "ON CONFLICT(id) DO UPDATE SET reserved=MAX(reserved,excluded.reserved)",
+                           ('external-probes', 'external-qualification-probes', amount))
+
     def reserve(self, inputs, outputs, phase, identity):
         if phase not in ('qualification', 'review') or any(type(n) is not int or n < 0 for n in (inputs, outputs)):
             raise BudgetError('invalid reservation parameters')
