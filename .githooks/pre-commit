@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+cargo fmt --all --check
+cargo test --quiet -p commit_check

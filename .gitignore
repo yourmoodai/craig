@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.cache/
+*.heapprofile
+*.heapsnapshot
+.env
+.venv/
+__pycache__/
+target/
+native/*.node
+native/index.cjs
+native/index.d.ts
+.DS_Store
+Thumbs.db
+desktop.ini
+__MACOSX/

@@ -1,0 +1,133 @@
+{
+  "name": "craig",
+  "version": "0.1.0",
+  "description": "A local Claude Code mod that keeps a provider's tone policy out of your private draft.",
+  "type": "module",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "keywords": [
+    "privacy",
+    "local-inference",
+    "offline",
+    "open-source-models",
+    "span-replacement",
+    "claude-code-mod"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourmoodai/craig.git"
+  },
+  "homepage": "https://github.com/yourmoodai/craig#readme",
+  "bugs": {
+    "url": "https://github.com/yourmoodai/craig/issues"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "bin": {
+    "craig": "bridge/cli.mjs"
+  },
+  "scripts": {
+    "build": "napi build --manifest-path crates/node/Cargo.toml --package craig-node --platform --output-dir native --js index.cjs --dts index.d.ts --release && cargo build --release -p craig-cli -p craig-review --features craig-review/judge",
+    "build:debug": "napi build --manifest-path crates/node/Cargo.toml --package craig-node --platform --output-dir native --js index.cjs --dts index.d.ts",
+    "types:fetch": "node scripts/fetch-types.mjs",
+    "check": "npm run types:fetch && tsc -p tsconfig.json && tsc -p tsconfig.plugin.json",
+    "test": "cargo test --workspace && node --test tests/*.spec.mjs",
+    "test:plugin": "claude plugin test .",
+    "validate": "claude plugin validate --strict . && claude plugin validate --strict .claude-plugin/plugin.json",
+    "model:fetch": "node scripts/fetch-model.mjs",
+    "models:sync": "node scripts/sync-model-notice.mjs",
+    "models:verify": "node scripts/verify-models.mjs",
+    "eval:local": "node scripts/evaluate.mjs",
+    "build:lab": "cargo build --profile profiling -p craig-lab",
+    "review": "node bridge/review.mjs",
+    "build:review:debug": "cargo build -p craig-review --features judge",
+    "build:review:profiling": "cargo build --profile profiling -p craig-review --features judge",
+    "test:review": "cargo test -p craig-review --features judge",
+    "lab": "cargo run --profile profiling -p craig-lab --",
+    "lab:debug": "cargo run -p craig-lab --",
+    "lab:evaluate": "cargo run --profile profiling -p craig-lab -- evaluate",
+    "lab:calibrate": "cargo run --profile profiling -p craig-lab -- calibrate",
+    "lab:train": "cargo run --profile profiling -p craig-lab -- train",
+    "lab:package": "cargo run --profile profiling -p craig-lab -- package",
+    "run": "node bridge/cli.mjs",
+    "debug": "node --inspect-brk bridge/cli.mjs",
+    "profile:memory": "cargo build --profile profiling -p craig-cli && node --heap-prof scripts/profile.mjs",
+    "verify": "npm run models:verify && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && npm run check && npm test && npm run validate && npm run test:plugin",
+    "test:installed": "python3 scripts/test-installed-mod.py",
+    "run:review:debug": "cargo run -p craig-review --features judge -- serve",
+    "run:review:release": "target/release/craig-review serve",
+    "profile:review": "npm run build:review:profiling && node scripts/profile-review.mjs",
+    "policy:fetch": "target/release/craig-review policy-fetch",
+    "policy:evaluate": "target/release/craig-review policy-evaluate",
+    "policy:compare": "target/release/craig-review policy-compare",
+    "judge:setup": "target/release/craig-review judge-setup",
+    "policy:compare:debug": "cargo run -p craig-review --features judge -- policy-compare",
+    "policy:compare:profiling": "cargo run --profile profiling -p craig-review --features judge -- policy-compare",
+    "build:inference:debug": "cargo build -p craig --example inference",
+    "build:inference": "cargo build --profile profiling -p craig --examples",
+    "build:inference:accelerate": "cargo build --profile profiling -p craig --examples --features accelerate --target-dir target/accelerate",
+    "build:inference:metal": "cargo build --profile profiling -p craig --examples --features metal --target-dir target/metal",
+    "build:inference:ffi:accelerate": "napi build --manifest-path crates/node/Cargo.toml --package craig-node --features craig/accelerate --profile profiling --target-dir target/accelerate --output-dir .cache/native-accelerate --platform --js index.cjs --dts index.d.ts",
+    "bench:inference": "node scripts/benchmark-inference.mjs",
+    "profile:inference:memory": "node scripts/benchmark-inference.mjs",
+    "test:inference": "cargo test -p craig && node --test tests/benchmark.spec.mjs",
+    "build:inference:release": "cargo build --release -p craig --examples",
+    "model:export:coreml": "uv run --python 3.12 --with 'coremltools==9.0' --with 'torch==2.7.0' --with 'numpy==1.26.4' --with 'transformers==4.57.6' scripts/export-coreml.py",
+    "build:inference:coreml": "cargo build --profile profiling -p craig --examples --features coreml --target-dir target/coreml",
+    "build:inference:coreml:debug": "cargo build -p craig --examples --features coreml --target-dir target/coreml",
+    "build:inference:coreml:release": "cargo build --release -p craig --examples --features coreml --target-dir target/coreml",
+    "build:inference:ffi:metal": "napi build --manifest-path crates/node/Cargo.toml --package craig-node --features craig/metal --profile profiling --target-dir target/metal --output-dir .cache/native-metal --platform --js index.cjs --dts index.d.ts",
+    "build:inference:ffi:coreml": "napi build --manifest-path crates/node/Cargo.toml --package craig-node --features craig/coreml --profile profiling --target-dir target/coreml --output-dir .cache/native-coreml --platform --js index.cjs --dts index.d.ts",
+    "test:inference:coreml": "cargo test -p craig --features coreml --target-dir target/coreml",
+    "build:decisions": "cargo build --profile profiling -p craig-lab --bin decision && cargo build --profile profiling -p craig --example inference",
+    "build:decisions:debug": "cargo build -p craig-lab --bin decision && cargo build -p craig --example inference",
+    "build:decisions:release": "cargo build --release -p craig-lab --bin decision && cargo build --release -p craig --example inference",
+    "decisions": "target/profiling/decision",
+    "decisions:debug": "cargo run -p craig-lab --bin decision --",
+    "decisions:release": "target/release/decision",
+    "bench:decisions": "node scripts/benchmark-decisions.mjs",
+    "test:decisions": "cargo test -p craig decision::tests && cargo test -p craig-lab --bin decision && node --test tests/benchmark.spec.mjs tests/decision.spec.mjs",
+    "profile:decisions:memory": "cargo build --profile profiling -p craig --example inference_memory && node scripts/benchmark-inference.mjs --runner target/profiling/examples/inference_memory --detector crf --target-ms 500 --samples 1 --warmup 0 --fixtures-file tests/fixtures/decision-performance.json",
+    "test:decisions:parity": "node scripts/check-decision-parity.mjs",
+    "test:reviewer": "python3 -m unittest discover -s tools/adversarial_reviewer",
+    "release:stage": "python3 scripts/release/package.py stage",
+    "release:assemble": "python3 scripts/release/package.py assemble"
+  },
+  "files": [
+    "native",
+    "bridge",
+    "hooks",
+    "src/protocol.ts",
+    ".claude-plugin",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "models"
+  ],
+  "devDependencies": {
+    "@napi-rs/cli": "^3.10.8",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  },
+  "main": "native/index.cjs",
+  "types": "native/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./native/index.d.ts",
+      "require": "./native/index.cjs",
+      "default": "./native/index.cjs"
+    }
+  },
+  "napi": {
+    "binaryName": "craig",
+    "targets": [
+      "aarch64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc"
+    ]
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.220"
+  }
+}

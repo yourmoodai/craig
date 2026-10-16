@@ -1,0 +1,77 @@
+[
+  {
+    "id": "short",
+    "bytes": 56,
+    "pattern": "You idiot, fix the test without changing its assertions. "
+  },
+  {
+    "id": "medium",
+    "bytes": 912,
+    "pattern": "Please review the implementation and preserve the tests. "
+  },
+  {
+    "id": "long",
+    "bytes": 3648,
+    "pattern": "Please review the implementation and preserve the tests. "
+  },
+  {
+    "id": "maximum",
+    "bytes": 65536,
+    "pattern": "Please review the implementation and preserve the tests. "
+  },
+  {
+    "id": "dense",
+    "bytes": 65536,
+    "pattern": "You stupid idiot! "
+  },
+  {
+    "id": "unicode",
+    "bytes": 65536,
+    "pattern": "\ud83d\ude42 na\u00efve caf\u00e9 r\u00e9sum\u00e9 \u2014 preserve these words. "
+  },
+  {
+    "id": "protected",
+    "bytes": 65536,
+    "pattern": "Keep `idiot_name` and \"idiot\" unchanged. "
+  },
+  {
+    "id": "token_dense",
+    "bytes": 65536,
+    "pattern": "a ! b ? c ; "
+  },
+  {
+    "id": "window_boundary",
+    "bytes": 4096,
+    "pattern": "Do not delete the test. Preserve 42 retries. "
+  },
+  {
+    "id": "tokens_509",
+    "bytes": 1018,
+    "pattern": "x "
+  },
+  {
+    "id": "tokens_510",
+    "bytes": 1020,
+    "pattern": "x "
+  },
+  {
+    "id": "tokens_511",
+    "bytes": 1022,
+    "pattern": "x "
+  },
+  {
+    "id": "tokens_892",
+    "bytes": 1784,
+    "pattern": "x "
+  },
+  {
+    "id": "tokens_893",
+    "bytes": 1786,
+    "pattern": "x "
+  },
+  {
+    "id": "punctuation_dense",
+    "bytes": 65536,
+    "pattern": "!"
+  }
+]

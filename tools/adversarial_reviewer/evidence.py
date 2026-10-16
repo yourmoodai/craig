@@ -1,0 +1,82 @@
+"""Validate review locations against the exact diff sent to the reviewer."""
+
+import re
+
+FIELDS = {"location", "invariant", "scenario", "correction"}
+
+
+def location_ranges(anchors):
+    """Consecutive source coordinates share a range; finding IDs remain unambiguous."""
+    ranges = []
+    for number, anchor in enumerate(anchors, 1):
+        side = anchor.get('side', 'new')
+        if (ranges and ranges[-1]['file'] == anchor['file'] and ranges[-1]['side'] == side
+                and side != 'file' and ranges[-1]['last_line']+1 == anchor['line']):
+            ranges[-1].update(last=number, last_line=anchor['line'])
+        else:
+            ranges.append({'first': number, 'last': number, 'file': anchor['file'], 'side': side,
+                           'first_line': anchor['line'], 'last_line': anchor['line']})
+    return '\n'.join(f"ids {r['first']}-{r['last']}: {r['file']} ({r['side']}) lines {r['first_line']}-{r['last_line']}" for r in ranges)
+
+
+def locations(diff):
+    path, line = None, None
+    result = {}
+    for offset, text in enumerate(diff.splitlines()):
+        if text.startswith("diff --git "):
+            path, line = None, None
+        elif text.startswith("+++ b/"):
+            path = text[6:]
+        elif match := re.match(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@", text):
+            line = int(match[1])
+        elif path is not None and line is not None and text.startswith(("+", " ")):
+            result[offset] = {"file": path, "line": line, "evidence": text[1:]}
+            line += 1
+    return result
+
+
+def repetitive(text):
+    words = text.lower().split()
+    phrases = [tuple(words[i : i + 8]) for i in range(max(0, len(words) - 7))]
+    return any(phrases.count(phrase) >= 3 for phrase in set(phrases))
+
+
+def validate(response, anchors):
+    if not isinstance(response, dict) or set(response) != {"abstention", "rationale", "findings"}:
+        raise ValueError("invalid response fields")
+    abstention, rationale, findings = (response[k] for k in ("abstention", "rationale", "findings"))
+    if not isinstance(abstention, str) or len(abstention) > 600:
+        raise ValueError("invalid abstention reason")
+    if abstention.strip():
+        raise ValueError(f"model abstained: {abstention.strip()}")
+    if (
+        not isinstance(rationale, str)
+        or not 10 <= len(rationale.strip()) <= 1200
+        or repetitive(rationale)
+    ):
+        raise ValueError("missing or repetitive rationale")
+    if not isinstance(findings, list):
+        raise ValueError("invalid findings: expected array")
+    if len(findings) > 3:
+        raise ValueError(f"findings saturated ({len(findings)}); subdivision required")
+    disposition = "REQUEST_CHANGES" if findings else "APPROVE"
+    grounded = []
+    for finding in findings:
+        if not isinstance(finding, dict) or set(finding) != FIELDS:
+            raise ValueError("incomplete finding")
+        location = finding["location"]
+        if type(location) is not int or not 1 <= location <= len(anchors):
+            raise ValueError("invalid evidence location")
+        anchor = anchors[location - 1]
+        if not anchor["evidence"].strip():
+            raise ValueError("empty evidence")
+        for field in ("invariant", "scenario", "correction"):
+            value = finding[field]
+            if (
+                not isinstance(value, str)
+                or not 15 <= len(value.strip()) <= 600
+                or repetitive(value)
+            ):
+                raise ValueError("missing or repetitive explanation")
+        grounded.append({**finding, **anchor})
+    return disposition, rationale.strip(), grounded

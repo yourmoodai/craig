@@ -1,0 +1,6 @@
+{
+  "description": "Local offensive-span detection and configurable replacement with ya ya ya.",
+  "modules": [
+    "./register.tsx"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "yourmood.ai",
+  "description": "Local-first Claude Code mods for keeping private drafts under user control.",
+  "owner": {
+    "name": "yourmood.ai",
+    "url": "https://github.com/yourmoodai"
+  },
+  "plugins": [
+    {
+      "name": "craig",
+      "source": "./",
+      "description": "A Claude Code mod for keeping a provider's tone policy out of your private draft."
+    }
+  ]
+}

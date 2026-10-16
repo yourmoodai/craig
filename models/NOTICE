@@ -1,0 +1,37 @@
+craig model artifacts
+
+MUDES English base (mudes/en-base)
+Role: delivery_detector.
+License: Apache-2.0; https://huggingface.co/mudes/en-base
+Upstream: https://huggingface.co/mudes/en-base @ 1600298e0458d961c2c749da7a098f69b4be478a.
+Source: https://github.com/TharinduDR/MUDES.
+Artifact: config.json; SHA-256 6f8566c9cffeb2bee02c274793125719758432e760e84cf6a0c8e9d2d4e0c1c7.
+Artifact: model_args.json; SHA-256 d18c9f32e0ff54f3131f77a9e5006c7637aee5c0087ab931354ad3903b939d8d.
+Artifact: tokenizer_config.json; SHA-256 eecbbc6e05bea2122aa27947cd4e47892701b843390bdfd8bb58688810c7fe43.
+Artifact: vocab.txt; SHA-256 eeaa9875b23b04b4c54ef759d03db9d1ba1554838f8fb26c5d96fa551df93d02.
+Artifact: pytorch_model.bin; SHA-256 a5b81cea46c128250dd422c1ddab7506a5ba46946708f3cc74c234b1dbe38b4b.
+
+Qwen3 4B Instruct 2507 (Qwen/Qwen3-4B-Instruct-2507)
+Role: local_judge.
+License: Apache-2.0; https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507
+Upstream: https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507 @ cdbee75f17c01a7cc42f958dc650907174af0554.
+Conversion: bartowski (https://huggingface.co/bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF) @ ae44f08e1392f39c0e474af10c3ff8355c8b6688.
+Artifact: Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf; SHA-256 2fde00ce69dd4899c70d020845e2638353015bba0fdf161b3eb965f2bca4464e; Q4_K_M.
+
+Gemma 4 12B instruction tuned (google/gemma-4-12B-it)
+Role: local_judge, cross_model_judge.
+License: Apache-2.0; https://ai.google.dev/gemma/apache_2
+Upstream: https://ai.google.dev/gemma/docs/core/model_card_4 @ 707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7.
+Conversion: ggml-org (https://huggingface.co/ggml-org/gemma-4-12B-it-GGUF) @ e3e681731089efaa3f0917336944ac64752db8ba.
+Artifact: gemma-4-12B-it-Q4_0.gguf; SHA-256 3712b9bd32cae83a22f67ee7a4466d8d7a4f21646ac8a07d19bf9418e8767a70; Q4_0.
+
+Candidate modifications: classifier weights fine-tuned for the policy named in
+manifest.json; the pinned BERT encoder and tokenizer remain unchanged. See
+manifest.json and training.json for the training corpus fingerprint, parameters,
+checkpoint selection, and parity evidence. Candidate artifacts are not promoted
+or endorsed by the upstream authors.
+
+Models are explicitly downloaded local artifacts and are not included in the npm
+package. Synthetic bootstrap examples are offered under CC0-1.0. Other supplied
+datasets retain their own licenses. Model licensing does not grant rights in
+external data.

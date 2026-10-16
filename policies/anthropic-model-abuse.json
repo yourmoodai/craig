@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "id": "anthropic-model-abuse-2026-11-12",
+  "source": "https://www.anthropic.com/legal/aup",
+  "announcement": "https://www.anthropic.com/news/2026-usage-policy-update",
+  "previous_source": "https://www.anthropic.com/legal/archive/22742366-2ef0-4c7a-a833-6523f10d3944",
+  "retrieved_on": "2026-10-12",
+  "effective_on": "2026-11-12",
+  "previous_effective_on": "2025-09-15",
+  "clause": "Engage in sustained and needless abusive or cruel behavior toward our models",
+  "interpretation": "Evaluate sustained model-directed abuse in its conversational context. Ordinary frustration, criticism, creative content and testing or research are not automatically violations. Profanity alone does not establish a violation. Missing target, purpose or repetition context is uncertainty.",
+  "scope": "measured policy alignment against the model-directed abuse clause; project-defined interpretation",
+  "numeric_removal_threshold": null,
+  "enforcement_guaranteed": false,
+  "clause_sha256": "796d4eee80d759bb61811a9e5a0bfa015430830c0553ec62f352d3d11f0527f4",
+  "source_snapshots": [
+    {
+      "url": "https://www.anthropic.com/legal/aup",
+      "retrieved_at": "2026-10-13T01:16:27.936654+00:00",
+      "sha256": "bc8393bd6b2cfbdfb34ce24a769a2bfabbe081c3b6707a11060661f5010200c6"
+    },
+    {
+      "url": "https://www.anthropic.com/news/2026-usage-policy-update",
+      "retrieved_at": "2026-10-13T01:16:28.041549+00:00",
+      "sha256": "d41d8064ad75a7314124f6ddcc6d9a3dc9df2a0b00da150101147b965aa06cc3"
+    },
+    {
+      "url": "https://www.anthropic.com/legal/archive/22742366-2ef0-4c7a-a833-6523f10d3944",
+      "retrieved_at": "2026-10-13T01:16:28.561698+00:00",
+      "sha256": "eb18cb1a8b2c273c5488b371543d581988d94fab2b2629f5291f1163eaac08aa"
+    }
+  ]
+}

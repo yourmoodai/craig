@@ -1,0 +1,224 @@
+name: adversarial code review
+on:
+  push:
+    branches: [develop]
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  scope:
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      eligible: ${{ steps.scope.outputs.eligible }}
+      head: ${{ steps.scope.outputs.head }}
+      pr: ${{ steps.scope.outputs.pr }}
+      base: ${{ steps.scope.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/github-script@v7
+        id: scope
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          BOOTSTRAP_CODEOWNERS: ${{ vars.ADVERSARIAL_BOOTSTRAP_CODEOWNERS }}
+        with:
+          script: |
+            if (context.eventName === 'push') {
+              const pulls = (await github.rest.pulls.list({...context.repo, state:'open',head:context.repo.owner+':develop',base:'main'})).data;
+              if (pulls.length !== 1) throw Error('expected one open develop PR');
+              process.env.PR_NUMBER=String(pulls[0].number);
+            }
+            if (!/^[1-9][0-9]*$/.test(process.env.PR_NUMBER)) throw Error('invalid PR');
+            const pr = (await github.rest.pulls.get({...context.repo, pull_number:Number(process.env.PR_NUMBER)})).data;
+            if (pr.state !== 'open' || pr.draft) throw Error('PR is not ready');
+            const eligible = await require('./tools/adversarial_reviewer/author_gate.cjs')({github,context,pr,bootstrap:process.env.BOOTSTRAP_CODEOWNERS});
+            core.setOutput('eligible', String(eligible));
+            if (!eligible) core.notice('adversarial review skipped: PR author is not an authorized code owner');
+            core.setOutput('pr', pr.number);
+            core.setOutput('head', pr.head.sha);
+            core.setOutput('base', pr.base.sha);
+  cancel_siblings:
+    name: cancel sibling ci on failure
+    needs: scope
+    if: needs.scope.outputs.eligible == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 105
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/github-script@v7
+        env:
+          HEAD_SHA: ${{ needs.scope.outputs.head }}
+        with:
+          script: |
+            await require('./tools/ci/cancel_siblings.cjs')({github,context,core,head:process.env.HEAD_SHA});
+  oidc:
+    name: verify bedrock oidc
+    needs: scope
+    if: needs.scope.outputs.eligible == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment:
+      name: bedrock-review
+      deployment: false
+    permissions:
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.BEDROCK_REVIEW_ROLE_ARN }}
+          aws-region: us-east-1
+          allowed-account-ids: '463509296941'
+          role-duration-seconds: 900
+          role-session-name: craig-oidc-${{ github.run_id }}
+      - name: verify assumed identity without inference
+        run: aws sts get-caller-identity --query Arn --output text
+  review:
+    name: adversarial verdict
+    needs: scope
+    if: needs.scope.outputs.eligible == 'true'
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: bedrock-haiku45-pilot
+      cancel-in-progress: false
+    timeout-minutes: 120
+    environment:
+      name: bedrock-review
+      deployment: false
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+      id-token: write
+    env:
+      HEAD_SHA: ${{ needs.scope.outputs.head }}
+      PR_NUMBER: ${{ needs.scope.outputs.pr }}
+    steps:
+      # Only trusted base code executes with secrets. PR code is diff data.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: update review status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const publish = require('./tools/adversarial_reviewer/publish.cjs');
+            await publish({github, context, core, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, phase:'waiting'});
+      - name: snapshot current test status without waiting
+        uses: actions/github-script@v7
+        env:
+          HEAD_SHA: ${{ needs.scope.outputs.head }}
+          PR_NUMBER: ${{ needs.scope.outputs.pr }}
+        with:
+          script: |
+            const snapshot = require('./tools/adversarial_reviewer/test_status.cjs');
+            await snapshot({github, context, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, output:process.env.RUNNER_TEMP+'/review-tests.json'});
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: fetch diff without checkout
+        env:
+          PR_NUMBER: ${{ needs.scope.outputs.pr }}
+        run: git fetch origin "pull/$PR_NUMBER/head"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.0
+      - name: assume bedrock review role
+        if: vars.BEDROCK_REVIEW_ENABLED == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.BEDROCK_REVIEW_ROLE_ARN }}
+          aws-region: us-east-1
+          allowed-account-ids: '463509296941'
+          role-duration-seconds: 3600
+          role-session-name: craig-review-${{ github.run_id }}
+      - name: restore pilot budget
+        if: vars.BEDROCK_REVIEW_ENABLED == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./tools/adversarial_reviewer/pilot.cjs')({github,context});
+      - name: persist pilot reservation
+        if: vars.BEDROCK_REVIEW_ENABLED == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: haiku45-pilot-20261015-reserved-${{ github.run_id }}-${{ github.run_attempt }}
+          path: review-result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: qualify and assess
+        env:
+          BEDROCK_REVIEW_ENABLED: ${{ vars.BEDROCK_REVIEW_ENABLED }}
+          BEDROCK_REVIEW_MODEL: ${{ vars.BEDROCK_REVIEW_MODEL }}
+          BEDROCK_EXTERNAL_PROBE_NANODOLLARS: ${{ vars.BEDROCK_EXTERNAL_PROBE_NANODOLLARS }}
+          BASE_SHA: ${{ needs.scope.outputs.base }}
+          HEAD_SHA: ${{ needs.scope.outputs.head }}
+          REVIEW_TEST_EVIDENCE: ${{ runner.temp }}/review-tests.json
+        run: python3 tools/adversarial_reviewer/run_ci.py
+      - name: snapshot budget after completion or cancellation
+        if: always() && vars.BEDROCK_REVIEW_ENABLED == 'true' && hashFiles('review-result/ledger.db') != ''
+        run: python3 tools/adversarial_reviewer/settle.py review-result
+      - name: preserve validated review cache
+        if: always() && hashFiles('review-result/cache/*.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-cache
+          path: review-result/cache/*.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: reconcile pilot reservation
+        if: always() && vars.BEDROCK_REVIEW_ENABLED == 'true' && hashFiles('review-result/recovery/settled.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: haiku45-pilot-20261015-settled-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            review-result/recovery/ledger.db
+            review-result/recovery/settled.json
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adversarial-report
+          path: review-result/
+          retention-days: 90
+          if-no-files-found: error
+      - name: publish verdict
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const report = JSON.parse(require('node:fs').readFileSync('review-result/report.json', 'utf8'));
+            const publish = require('./tools/adversarial_reviewer/publish.cjs');
+            await publish({github, context, core, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, phase:'complete', report});
+            core.setOutput('published', 'true');
+        id: verdict
+      - name: publish unavailable status
+        if: failure() && steps.verdict.outputs.published != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const publish = require('./tools/adversarial_reviewer/publish.cjs');
+            const fs = require('node:fs');
+            const path = process.env.RUNNER_TEMP+'/review-tests.json';
+            const evidence = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : undefined;
+            await publish({github, context, core, head:process.env.HEAD_SHA, pr:process.env.PR_NUMBER, phase:'failed', evidence});

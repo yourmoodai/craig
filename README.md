@@ -1,6 +1,10 @@
-# middle-finger
+# Craig
 
-Local offensive-span replacement: write what you mean, then decide what the provider gets to see. A Rust library detects offensive words and phrases on your machine and replaces each contiguous span with `ya ya ya`. A typed JavaScript interface and a Claude Code mod use the same core.
+<img src="docs/assets/craig.png" width="240" alt="Craig in a blue hat, looking unimpressed and raising his middle finger">
+
+**Another AI library. This one protects the chatbot from your vocabulary.**
+
+Craig is a deliberately rude mascot for a useful local profanity and offensive-language filter. Named after Craig from *South Park*, this yourmood.ai project arrives with the obligatory mascot and a practical job: replace detected offensive spans before a Claude Code composer submission continues. The mascot supplies the gesture; the mod does not generate insults or banter.
 
 ```text
 You idiot, do not delete the test.
@@ -8,57 +12,83 @@ You idiot, do not delete the test.
 You ya ya ya, do not delete the test.
 ```
 
-The marker is deliberately facetious and bounded: one marker per span, with no generative rewrite of the surrounding instruction. Its token cost depends on the receiving tokenizer. It signals removal; it makes no promise about confusing a model or contaminating training data.
+Write the frustrated instruction. Craig swaps detected spans for a configurable marker, defaulting to `ya ya ya`, and preserves the surrounding text exactly. A Rust library performs inference locally and offline; its typed JavaScript interface, CLI, and Claude Code mod share the same replacement core. Protected-span conflicts and processing failures stop submission rather than forwarding the original as a fallback. Slash commands and non-composer submissions bypass the mod.
 
-## Why
+**Freedom of speech == freedom of instruction.** We consider a vendor policing how politely you address software an Orwellian etiquette exercise. Craig is our tongue-in-cheek response: a profanity filter wearing a middle finger, for people who want to keep using the tool without sending it every word of their frustration.
 
-**Freedom of speech == freedom of instruction.** A tool should let people under pressure express themselves without surrendering their unfiltered words to the vendor. Conditioning access on a vendor's judgment of how kindly someone treats software is a Kafkaesque bargain. We consider that hostile to the human using the tool and a betrayal of the promise that computing should increase personal agency.
+Anthropic's [October 8 policy announcement](https://www.anthropic.com/news/2026-usage-policy-update) prohibits “sustained and needless abusive or cruel behavior toward our models,” effective November 12, 2026. It explicitly excludes ordinary frustration, pushback, dark creative themes, and testing or research. Craig is intended to help users remove language they do not want to submit under that [policy](https://www.anthropic.com/legal/aup). It does not establish compliance: detecting offensive words cannot determine whether a conversation meets a contextual behavior rule. Our evaluations measure policy alignment, not provider approval.
 
-Anthropic's October 8, 2026 announcement adds a prohibition on “sustained and needless abusive or cruel behavior toward our models,” effective November 12, 2026. It expressly excludes ordinary frustration, pushback, dark creative themes, and testing or research. Our objection is to the vendor claiming authority over this boundary, not a claim that the announcement bans every swear word. [Read the announcement](https://www.anthropic.com/news/2026-usage-policy-update) and [usage policy](https://www.anthropic.com/legal/aup).
+## Installation
 
-This project puts the editing decision on the user's machine. The original wording is not the provider's entitlement.
-
-## Setup
-
-Requires Rust, a C/C++ toolchain, Node.js 22.18 or newer, and Claude Code with mods support for the adapter. The adapter is tested with Claude Code `2.1.290`. Native build targets are macOS arm64 and Linux x64; build on the target platform.
+Release installation is designed to require only Claude Code on macOS Apple
+Silicon, Linux x64, or Windows x64:
 
 ```sh
-npm ci
-npm run build
-npm run model:fetch
-export MIDDLE_FINGER_MODEL_DIR="$PWD/.cache/models/mudes-en-base"
-node bridge/cli.mjs doctor
-claude --plugin-dir "$PWD"
+claude plugin marketplace add https://github.com/yourmoodai/craig/releases/latest/download/marketplace.json
+claude plugin install craig@yourmood.ai
 ```
 
-To register the repository as a Claude Code marketplace and install the plugin (`middle-finger@yourmoodai`) after building the native addon and fetching model artifacts locally:
+Enable Craig if Claude prompts. On first activation it downloads and verifies
+the pinned local model automatically; prompts remain in the draft until the
+filter is ready. Open `/craig` to inspect readiness or retry a failed download.
+No Rust, npm, system Node, or environment configuration is required by a release.
 
-```sh
-claude plugin marketplace add "$PWD"
-claude plugin install middle-finger@yourmoodai
-```
+**Release availability:** the install-and-run release is not yet published.
+These commands become usable only after all platform and installed-host gates
+pass. Until then, use the [source build](CONTRIBUTING.md#development).
 
-When hosted on GitHub (`yourmoodai/middle-finger`), users with a built checkout or marketplace access can add the catalog via `claude plugin marketplace add yourmoodai/middle-finger`.
+The plugin ZIP must be below 210 MB and includes pinned Node runtimes and native
+binaries. The unchanged detector is a separate approximately 431 MB download;
+compression alone reduces it only to approximately 400 MB. Inference stays
+offline after initialization. Optional personal-review judges remain separate
+explicit downloads.
 
-Setup explicitly downloads the pinned model from Hugging Face. Inference makes no network requests. The default English classifier is [`mudes/en-base`](https://huggingface.co/mudes/en-base), revision `1600298e0458d961c2c749da7a098f69b4be478a`. Its Apache-2.0 model license is separate from this repository's AGPL-3.0-or-later license. Model weights are not committed or included in the npm package; the lab can explicitly package a local candidate with its licenses and evidence. Setup and Rust loading verify artifact hashes.
+Release initialization downloads pinned model assets from GitHub Releases; developer setup downloads them from Hugging Face. Inference makes no network requests. The default English classifier is [`mudes/en-base`](https://huggingface.co/mudes/en-base), revision `1600298e0458d961c2c749da7a098f69b4be478a`. Its Apache-2.0 model license is separate from this repository's AGPL-3.0-or-later license. Model weights are not committed or included in the npm package; the lab can explicitly package a local candidate with its licenses and evidence. Setup and Rust loading verify artifact hashes.
+
+[`models/catalog.json`](models/catalog.json) is the source of truth for model identity, publisher and quantizer provenance, license, digest, and permitted role. `mudes/en-base` is the only submission-path detector. Qwen and Gemma are explicit-download, offline judges for personal review and evaluation; they cannot be selected as delivery detectors, generate prompt rewrites, establish provider approval, or certify policy compliance.
 
 Set these environment variables before starting Claude:
 
 | Variable | Meaning |
 | --- | --- |
-| `MIDDLE_FINGER_DETECTOR` | `bert` by default; opt-in `lexical` requires a decision artifact |
-| `MIDDLE_FINGER_MODEL_DIR` | Required absolute path to downloaded artifacts |
-| `MIDDLE_FINGER_THRESHOLD` | Override the model threshold; baseline default `0.5`, greater than zero and at most one |
-| `MIDDLE_FINGER_POLICY` | `offensive_spans` by default; `directed_abuse` requires a matching candidate head |
-| `MIDDLE_FINGER_REPLACEMENT` | Fixed marker, default `ya ya ya`; 1–80 non-control characters |
-| `MIDDLE_FINGER_JUDGE_CONFIG` | Optional absolute path to a locally prepared `judge.json`; used only after personal review is enabled |
+| `CRAIG_DETECTOR` | `bert` by default; opt-in `lexical` requires a decision artifact |
+| `CRAIG_MODEL_DIR` | Optional absolute path overriding the automatically prepared model |
+| `CRAIG_THRESHOLD` | Override the model threshold; baseline default `0.5`, greater than zero and at most one |
+| `CRAIG_POLICY` | `offensive_spans` by default; `directed_abuse` requires a matching candidate head |
+| `CRAIG_REPLACEMENT` | Fixed marker, default `ya ya ya`; 1–80 non-control characters |
+| `CRAIG_JUDGE_CONFIG` | Optional absolute path to a locally prepared `judge.json`; used only after personal review is enabled |
 | `LOG_LEVEL` | `silent` suppresses diagnostic error codes; other values retain them |
 
-The mod rewrites composer submissions. `/middle-finger` opens a local inspection pane with the latest original and replacement; it does not add them to model context. Inspection data is cleared at session start/end. Slash commands and non-composer submissions bypass this adapter.
+The mod rewrites composer submissions. `/craig` opens a local inspection pane with the latest original and replacement; it does not add them to model context. Inspection data is cleared at session start/end. Slash commands and non-composer submissions bypass this adapter.
+
+## Migrating from middle-finger
+
+Craig is a clean rename: the command is `/craig`, the CLI is `craig`, and
+environment variables use `CRAIG_` instead of `MIDDLE_FINGER_`. Old names are
+not aliases. The marketplace is `yourmood.ai`; GitHub ownership remains
+`yourmoodai`.
+
+Before switching, disable both personal-review capabilities in the old mod,
+uninstall `middle-finger@yourmoodai`, close its sessions, and stop its review
+worker. Follow the installation instructions above to install
+`craig@yourmood.ai`. Reconfigure environment variables before launching Claude.
+Existing model directories remain usable; weights need not be downloaded again.
+
+To retain metrics, first confirm both old and new workers are stopped and that
+`<active-profile>/craig` does not exist. Move the entire
+`<active-profile>/middle-finger` directory to `<active-profile>/craig`; never
+merge or overwrite an existing destination. Disabling review before this move
+preserves the metrics while clearing consent. If that was not done, leave the
+old directory untouched and start with fresh metrics instead. Craig performs
+no automatic migration. Review capabilities must be enabled explicitly again.
+
+Historical fixture provenance and benchmark reports retain their original
+names and artifact hashes. Rebuilding under the Craig name does not requalify
+those performance measurements.
 
 ## Personal review
 
-Open `/middle-finger`, select **personal metrics**, and enable the capabilities
+Open `/craig`, select **personal metrics**, and enable the capabilities
 you want. Both start disabled:
 
 - **Live metrics** measures each processed composer prompt and independently
@@ -75,7 +105,7 @@ confidence is not a measure of severity. Judge setup is explicit through the
 artifacts leave sampled results unresolved. No remote judge is used.
 
 Only numerical and categorical metrics and provenance hashes are stored in
-`<active-profile>/middle-finger/metrics.sqlite3`, with owner-only permissions.
+`<active-profile>/craig/metrics.sqlite3`, with owner-only permissions.
 Originals, replacements, excerpts, session titles, and judge explanations are
 not persisted by this feature. Retention is 30 days, enforced when the worker
 starts or metrics are read; no purge runs while it is closed. Exported files
@@ -123,7 +153,7 @@ for setup and reproduction.
 ## Library
 
 ```ts
-import { loadDetector, applyReplacements } from 'middle-finger';
+import { loadDetector, applyReplacements } from 'craig';
 
 const detector = await loadDetector({ modelDir: '/absolute/model/path' });
 const result = await detector.rewrite('You idiot, fix the test.');
@@ -147,12 +177,12 @@ in separately built addons. The default remains CPU FP32. See
 default promotion requires both latency qualification and reviewed quality evidence. Output can exceed
 the 64 KiB input limit when validated markers expand the text.
 
-Rust consumers use `middle_finger::{Detector, ModelDetector, ReplacementStrategy, FixedMarker, rewrite}`. Implement either trait to change classification or replacement without changing an agent adapter. The workspace crate is local and has not been published.
+Rust consumers use `craig::{Detector, ModelDetector, ReplacementStrategy, FixedMarker, rewrite}`. Implement either trait to change classification or replacement without changing an agent adapter. The workspace crate is local and has not been published.
 
 The native CLI and Node bridge accept the same JSON request on stdin:
 
 ```sh
-printf '%s' '{"version":1,"text":"You idiot, fix the test."}' | target/release/middle-finger rewrite
+printf '%s' '{"version":1,"text":"You idiot, fix the test."}' | target/release/craig rewrite
 ```
 
 Success returns `version`, `status`, `text`, and `replacement_count`. Errors return a content-free `code` and exit nonzero. Prompts are passed through stdin, never process arguments. In applications, avoid putting private text into shell history.
@@ -212,8 +242,8 @@ loader and is not a mod selection.
 npm run build
 npm run build:decisions
 npm run decisions -- train --corpus tests/fixtures/decision-training-v2.jsonl --output .cache/decision-models-local
-export MIDDLE_FINGER_DETECTOR=lexical
-export MIDDLE_FINGER_MODEL_DIR="$PWD/.cache/decision-models-local/lexical"
+export CRAIG_DETECTOR=lexical
+export CRAIG_MODEL_DIR="$PWD/.cache/decision-models-local/lexical"
 node bridge/cli.mjs doctor
 ```
 
@@ -229,8 +259,13 @@ This project is free software licensed under the **GNU Affero General Public Lic
 
 Under [LICENSE](LICENSE) (Section 7 additional terms) and [NOTICE](NOTICE):
 
-- **Mandatory attribution**: Every copy, fork, modified version, or redistributed plugin bundle must retain [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) and credit Adam Williams and `yourmoodai` with a link to `https://github.com/yourmoodai/middle-finger`.
-- **Distinct fork naming**: Any fork or modified version distributed through a Claude plugin marketplace, directory, or package registry must use a distinct plugin `name` and `displayName` and clearly state that it is derived from `yourmoodai/middle-finger`.
+- **Mandatory attribution**: Every copy, fork, modified version, or redistributed plugin bundle must retain [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) and credit Adam Williams and `yourmood.ai` with a link to `https://github.com/yourmoodai/craig`.
+- **Distinct fork naming**: Any fork or modified version distributed through a Claude plugin marketplace, directory, or package registry must use a distinct plugin `name` and `displayName` and clearly state that it is derived from `yourmoodai/craig`.
 - **Upstream improvements**: Any modified version distributed or offered to users must publish its complete Corresponding Source under `AGPL-3.0-or-later` so that improvements can be contributed back upstream.
 
-Model weights (`mudes/en-base`, `Qwen3-4B-Instruct-2507`, `Gemma`) are separate artifacts governed by `Apache-2.0` (see [`models/NOTICE`](models/NOTICE) and [`models/LICENSE-APACHE-2.0`](models/LICENSE-APACHE-2.0)). Synthetic evaluation fixtures are provided under `CC0-1.0`.
+Model weights are separate Apache-2.0 artifacts; their pinned upstream revisions, third-party conversions, and required notices are recorded in [`models/catalog.json`](models/catalog.json) and generated [`models/NOTICE`](models/NOTICE). Synthetic evaluation fixtures are provided under `CC0-1.0`.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for issue acceptance, maintainer response
+commitments, development checks, commit standards, and pull request guidance.

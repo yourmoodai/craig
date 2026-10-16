@@ -1,0 +1,31 @@
+[workspace]
+members = ["crates/core", "crates/node", "crates/cli", "crates/lab", "crates/review", "tools/commit_check"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/yourmoodai/craig"
+homepage = "https://github.com/yourmoodai/craig"
+description = "Local offline offensive-span detection and deterministic replacement."
+
+[workspace.dependencies]
+craig = { path = "crates/core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[profile.release]
+lto = "thin"
+strip = "debuginfo"
+
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = false
+
+[patch.crates-io]
+candle-metal-kernels = { git = "https://github.com/huggingface/candle.git", rev = "31f35b147389700ed2a178ee66a91c3cc25cc80d" }
+candle-ug = { git = "https://github.com/huggingface/candle.git", rev = "31f35b147389700ed2a178ee66a91c3cc25cc80d" }

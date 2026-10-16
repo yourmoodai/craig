@@ -1,0 +1,23 @@
+[package]
+name = "craig-node"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description.workspace = true
+keywords = ["privacy", "local-inference", "offline", "open-source-models", "span-replacement"]
+categories = ["api-bindings", "text-processing"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+craig.workspace = true
+craig-review = { path = "../review" }
+napi = { version = "3", default-features = false, features = ["napi8"] }
+napi-derive = "3"
+
+[build-dependencies]
+napi-build = "2"
