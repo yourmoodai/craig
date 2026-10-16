@@ -105,38 +105,24 @@ def finalize(report, *, qualified, synthesize=True):
     return report
 
 
-def render(report, *, compact=False):
-    # Escape generated prose so chunk data cannot forge headings or HTML controls.
-    def prose(value):
-        return html.escape(str(value)).replace('\\', '\\\\').replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace('#', '\\#')
+def render(report):
+    def prose(value, limit):
+        value = html.escape(str(value)).replace('\\', '\\\\').replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace('#', '\\#')
+        encoded = value.encode('utf-16-le')
+        return value if len(encoded) <= limit*2 else encoded[:(limit-1)*2].decode('utf-16-le', errors='ignore') + '…'
     verdict = 'Approved' if report['disposition'] == 'APPROVE' else 'Request changes'
-    lines = ['## Code review', '', prose(report['overview']), '', f'**Verdict: {verdict}**', '']
+    lines = [prose(report['overview'], 900), '', f'**Verdict: {verdict}**', '',
+             f"Coverage: {report.get('completed_chunks', 0)}/{report.get('total_chunks', 0)} chunks."]
     if report.get('budget'):
-        lines += [f"Pilot committed cost (including uncertain calls): ${report['budget']['committed_usd']:.4f} / ${report['budget']['limit_usd']:.2f}.", '']
-    if report.get('findings'):
-        lines += ['### Findings', '']
-        for finding in report['findings']:
-            lines += [f"- {prose(finding['file'])}: {prose(finding['title'])}. {prose(finding['details'])}"]
-        lines += ['']
+        lines.append(f"Budget committed: ${report['budget']['committed_usd']:.4f} / ${report['budget']['limit_usd']:.2f}.")
+    findings = report.get('findings', [])
+    if findings:
+        lines += ['', 'Findings:']
+        for finding in findings[:3]:
+            lines.append('- ' + prose(finding['file'], 100) + ': ' + prose(finding['details'], 200))
+        if len(findings) > 3:
+            lines.append(f'{len(findings)-3} additional findings are in the artifact.')
     if report.get('review_failures'):
-        lines += ['### Review failures', '']
-        lines += ['- ' + prose(failure) for failure in report['review_failures']]
-        lines += ['']
-    lines += ['<details>', '<summary>Chunk coverage and exclusions</summary>', '', prose(report.get('summary', 'Review unavailable.')), '']
-    if compact:
-        lines += ['Chunk summaries below are shortened. Full summaries and evidence are preserved in `report.json` in the adversarial-report artifact linked through the CI run above.', '']
-    for chunk in report.get('chunks', []):
-        status = 'reviewed' if chunk['complete'] else 'not fully reviewed'
-        summary = str(chunk['summary'])
-        if compact and len(summary) > 160:
-            summary = summary[:160] + '… (full summary in artifact)'
-        lines += [f"### Chunk {chunk['index']} — {status}", '', prose(chunk['file']), '', prose(summary), '']
-    for path in report.get('excluded_assets', []):
-        lines += [f'- Excluded documentation image (not reviewed): {prose(path)}']
-    for path in report.get('omitted_binary_changes', []):
-        lines += [f'- Unresolved binary coverage: {prose(path)}']
-    lines += ['', '</details>']
-    body = '\n'.join(lines)
-    if len(body.encode('utf-16-le')) // 2 > 55000 and not compact:
-        return render(report, compact=True)
-    return body
+        lines += ['', f"Review incomplete: {len(report['review_failures'])} review failures; see artifact."]
+    lines += ['', 'Full findings, chunk summaries, exclusions, and evidence: `report.json` in the **adversarial-report** artifact linked from the CI run above.']
+    return '\n'.join(lines)

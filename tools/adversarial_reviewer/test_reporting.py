@@ -26,8 +26,8 @@ class ReportingTests(unittest.TestCase):
         self.assertEqual(report['disposition'],'APPROVE')
         self.assertTrue(50 <= len(report['overview'].split()) <= 100)
         self.assertLess(report['body'].index(OVERVIEW),report['body'].index('**Verdict: Approved**'))
-        self.assertIn('<details>',report['body'])
-        self.assertIn('not reviewed',report['body'])
+        self.assertNotIn('<details>',report['body'])
+        self.assertIn('artifact',report['body'])
 
     def test_invalid_overview_retries_once(self):
         with patch('reporting.complete', side_effect=[{'overview':'too short'},{'overview':OVERVIEW}]) as model:
@@ -81,9 +81,17 @@ class ReportingTests(unittest.TestCase):
                        summary='behavior ' * 70) for n in range(172)]
         report = self.report(chunks=chunks, overview=OVERVIEW)
         body = render(report)
-        self.assertLess(len(body.encode('utf-16-le')) // 2, 55000)
+        self.assertLess(len(body.encode('utf-16-le')) // 2, 2300)
         for chunk in chunks:
-            self.assertIn(f"### Chunk {chunk['index']} —", body)
-            self.assertIn(chunk['file'], body)
+            self.assertNotIn(f"### Chunk {chunk['index']} —", body)
             self.assertEqual(chunk['summary'], 'behavior ' * 70)
-        self.assertIn('full summary in artifact', body)
+        self.assertIn('adversarial-report', body)
+
+    def test_comment_is_bounded_with_unicode_and_many_findings(self):
+        from reporting import render
+        findings = [dict(file='🧪'*500, details='🧪'*2000) for _ in range(12)]
+        report = self.report(overview=OVERVIEW, findings=findings, disposition='REQUEST_CHANGES')
+        body = render(report)
+        self.assertLessEqual(len(body.encode('utf-16-le'))//2, 2300)
+        self.assertIn('9 additional findings', body)
+        self.assertEqual(len(report['findings']), 12)

@@ -36,7 +36,7 @@ class PromptExperimentTests(unittest.TestCase):
                 with self.assertRaises(BedrockError):
                     complete([{'role':'user','content':'synthetic'}],time.monotonic()+10)
             self.assertEqual(events[0]['response'],envelope)
-            self.assertEqual(events[0]['inference_config']['maxTokens'],4096)
+            self.assertEqual(events[0]['inference_config']['maxTokens'],1024)
 
     def test_limits_stop_before_another_reservation(self):
         with tempfile.TemporaryDirectory() as directory:

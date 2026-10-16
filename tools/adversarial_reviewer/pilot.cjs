@@ -45,5 +45,13 @@ module.exports = async function restore({github,context}) {
     const archive = await github.rest.actions.downloadArtifact({...context.repo,artifact_id:settled.id,archive_format:'zip'});
     fs.writeFileSync(`review-result/previous-ledgers/${settled.id}.zip`,Buffer.from(archive.data));
   }
+  fs.mkdirSync('review-result/previous-caches',{recursive:true});
+  const caches = owned.filter(a=>a.name==='review-cache' && !a.expired &&
+    Date.now()-Date.parse(a.created_at) <= 7*86400000).sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at)).slice(0,10);
+  for (const artifact of caches) {
+    if (artifact.size_in_bytes > 20000000) continue;
+    const archive = await github.rest.actions.downloadArtifact({...context.repo,artifact_id:artifact.id,archive_format:'zip'});
+    fs.writeFileSync(`review-result/previous-caches/${artifact.id}.zip`,Buffer.from(archive.data));
+  }
   fs.writeFileSync('review-result/reservation.json',JSON.stringify({pilot,run:context.runId,attempt:process.env.GITHUB_RUN_ATTEMPT,maximum_usd:10}));
 };

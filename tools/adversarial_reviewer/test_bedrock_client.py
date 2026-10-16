@@ -34,7 +34,7 @@ class BedrockClientTests(unittest.TestCase):
         self.assertEqual(value, {'findings': []})
         request = self.request
         self.assertEqual(request['system'], [{'text': 'rules'}])
-        self.assertEqual(request['inferenceConfig']['maxTokens'], 4096)
+        self.assertEqual(request['inferenceConfig']['maxTokens'], 1024)
         self.assertNotIn('toolConfig', request)
         self.assertNotIn('GITHUB_TOKEN', call.kwargs['env'])
         self.assertEqual(call.kwargs['env']['AWS_MAX_ATTEMPTS'], '1')
@@ -86,4 +86,16 @@ class BedrockClientTests(unittest.TestCase):
             with self.assertRaises(client.BedrockError):
                 client.complete([{'role':'user','content':'diff'}], time.monotonic()+10)
         summary = Ledger(os.environ['REVIEW_BUDGET_LEDGER']).summary()
-        self.assertEqual(summary['committed_usd'], cost(RESERVED_INPUT_TOKENS,4096)/1e9)
+        self.assertEqual(summary['committed_usd'], cost(RESERVED_INPUT_TOKENS,1024)/1e9)
+
+    def test_only_explicit_truncation_gets_one_larger_retry(self):
+        def envelope(stop):
+            return {'usage': {'inputTokens': 20, 'outputTokens': 20}, 'stopReason': stop,
+                    'output': {'message': {'content': [{'text': '{}'}]}}}
+        with patch('bedrock_client.invoke', side_effect=[envelope('max_tokens'), envelope('end_turn')]) as invoke:
+            self.assertEqual(client.complete([], time.monotonic()+10), {})
+            self.assertEqual([c.args[1]['inferenceConfig']['maxTokens'] for c in invoke.call_args_list], [1024,4096])
+        with patch('bedrock_client.invoke', return_value=envelope('max_tokens')) as invoke:
+            with self.assertRaises(client.BedrockError):
+                client.complete([], time.monotonic()+10)
+            self.assertEqual(invoke.call_count, 2)

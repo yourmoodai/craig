@@ -20,8 +20,30 @@ def fixture(index, case):
 
 
 def qualify(output):
+    from result_cache import key, get, put, measure
+    from bedrock_client import MODEL
+    from prompt_profiles import settings
+    identity = key('qualification', [MODEL, settings.get()[:2], CASES])
+    cached = get(identity, 86400)
+    if isinstance(cached, dict) and cached.get('qualified') is True and cached.get('cases') and all(c.get('passed') is True for c in cached['cases']) and cached.get('comparison', {}).get('baseline', {}).get('passed') is True:
+        measure('hit')
+        cached = {**cached, 'cache_hit': True, 'budget': Ledger(os.environ['REVIEW_BUDGET_LEDGER']).summary()}
+        Path(output).write_text(json.dumps(cached, indent=2)+'\n')
+        return cached
     with capture() as events:
-        return _qualify(output, events)
+        # Qualification must exercise the model, not cached fixture assessments.
+        cache = os.environ.get('REVIEW_CACHE_DISABLED')
+        os.environ['REVIEW_CACHE_DISABLED'] = 'true'
+        try:
+            result = _qualify(output, events)
+        finally:
+            if cache is not None:
+                os.environ['REVIEW_CACHE_DISABLED'] = cache
+            else:
+                os.environ.pop('REVIEW_CACHE_DISABLED', None)
+        if result['qualified']:
+            put(identity, result)
+        return result
 
 
 def _qualify(output, events):

@@ -68,14 +68,14 @@ def invoke(operation, payload, deadline):
         raise BedrockError('bedrock returned invalid JSON') from None
 
 
-def complete(messages, deadline, *, purpose='assessment', identity=None):
+def complete(messages, deadline, *, purpose='assessment', identity=None, expanded=False):
     if os.environ.get('BEDROCK_REVIEW_ENABLED') != 'true':
         raise BedrockError('bedrock review disabled')
     if os.environ.get('AWS_REGION') != 'us-east-1' or os.environ.get('BEDROCK_REVIEW_MODEL') != MODEL:
         raise BedrockError('bedrock region or model is not configured for this reviewer')
     profile, temperature, before_call = settings.get()
     payload = {'modelId': MODEL, **conversation(messages),
-               'inferenceConfig': {'maxTokens': 512 if purpose == 'overview' else 4096, 'temperature': temperature}}
+               'inferenceConfig': {'maxTokens': (4096 if expanded else {'overview': 256, 'verification': 1536}.get(purpose, 1024)), 'temperature': temperature}}
     if len(json.dumps(payload).encode()) > MAX_REQUEST_BYTES:
         raise BedrockError('bedrock request exceeds size limit')
     if deadline <= time.monotonic():
@@ -98,11 +98,15 @@ def complete(messages, deadline, *, purpose='assessment', identity=None):
         record(stage='transport', profile=profile, purpose=purpose, request_hash=identity,
                inference_config=payload['inferenceConfig'], response=envelope, seconds=time.monotonic()-started)
         ledger.reconcile(key, envelope, time.monotonic()-started)
+        from result_cache import measure
+        measure('call', input_tokens=envelope['usage']['inputTokens'], output_tokens=envelope['usage']['outputTokens'])
     except BudgetError as error:
         raise BedrockError(str(error)) from None
     try:
         if envelope['usage']['inputTokens'] > 48000:
             raise BedrockError('actual input exceeds token budget; subdivision required')
+        if envelope.get('stopReason') == 'max_tokens' and not expanded and purpose != 'overview':
+            return complete(messages, deadline, purpose=purpose, identity=identity, expanded=True)
         if envelope.get('stopReason') == 'max_tokens':
             raise BedrockError('response incomplete: subdivision required')
         if envelope.get('stopReason') != 'end_turn':

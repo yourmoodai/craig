@@ -179,6 +179,14 @@ jobs:
       - name: snapshot budget after completion or cancellation
         if: always() && vars.BEDROCK_REVIEW_ENABLED == 'true' && hashFiles('review-result/ledger.db') != ''
         run: python3 tools/adversarial_reviewer/settle.py review-result
+      - name: preserve validated review cache
+        if: always() && hashFiles('review-result/cache/*.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-cache
+          path: review-result/cache/*.json
+          retention-days: 7
+          if-no-files-found: error
       - name: reconcile pilot reservation
         if: always() && vars.BEDROCK_REVIEW_ENABLED == 'true' && hashFiles('review-result/recovery/settled.json') != ''
         uses: actions/upload-artifact@v4

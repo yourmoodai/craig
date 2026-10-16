@@ -2,7 +2,7 @@ const marker = '<!-- craig-adversarial-review -->';
 
 function verdict(report) {
   if (typeof report.body !== 'string' || !report.body.trim()) throw Error('review body is empty or missing');
-  if (report.body.length > 60000) throw Error(`review body exceeds publication limit: ${report.body.length} characters`);
+  if (report.body.length > 2300) throw Error(`review body exceeds publication limit: ${report.body.length} characters`);
   if (/co-authored-by|generated-by|assisted-by|reviewed with|🤖/i.test(report.body)) throw Error('review body contains prohibited attribution');
   const words = typeof report.overview === 'string' ? report.overview.trim().split(/\s+/).length : 0;
   const clean = words >= 50 && words <= 100 && report.qualified === true && report.complete === true && report.synthesis_complete === true && report.disposition === 'APPROVE' && Array.isArray(report.findings) && report.findings.length === 0 && Array.isArray(report.review_failures) && report.review_failures.length === 0;
@@ -26,7 +26,8 @@ module.exports = async function publish({github, context, core, head, pr, phase,
   else throw Error('invalid publication phase');
   const tests = evidence || report?.test_evidence;
   const links = tests?.head === head ? (tests.runs || []).filter(run=>Number.isSafeInteger(run.id) && run.id>0).map(run=>`[Test run ${run.id}](${context.serverUrl || 'https://github.com'}/${context.repo.owner}/${context.repo.repo}/actions/runs/${run.id})`).join(' · ') : '';
-  const body = `${marker}\nCommit: \`${head}\` · [CI evidence and review run](${runUrl})\n${links}\n\n${content}`;
+  const body = `${marker}\nCommit: \`${head}\` · [CI evidence and review run](${runUrl})\n\n\n${content}`;
+  if (body.length > 2500) throw Error('review comment exceeds 2500 characters');
   const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number:Number(pr), per_page:100});
   const existing = comments.filter(comment => comment.user?.login === 'github-actions[bot]' && comment.user?.type === 'Bot' && comment.body?.startsWith(marker)).sort((a,b)=>a.id-b.id)[0];
   // Recheck after pagination; a new commit may have arrived during the API calls.

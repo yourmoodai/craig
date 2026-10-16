@@ -22,7 +22,7 @@ def prompts(system, verification):
 new outcomes. Ground language and runtime claims in supplied execution evidence
 when available. Do not introduce speculative exceptions or behavior from other
 languages. If uncertain, narrow the claim to the demonstrated case.
-Keep the rationale to three sentences. Every sentence must support the disposition
+For clean changes use one sentence of at most 25 words. Keep findings concise. Every sentence must support the disposition
 or explain a specific uncertainty.'''
     return system + '\n\n' + precision, verification + '\n\n' + precision + '''
 Check the explanation as well as the verdict. Remove unsupported claims, even when

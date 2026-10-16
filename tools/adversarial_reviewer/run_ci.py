@@ -41,6 +41,10 @@ try:
         ledger.record_recovery(f"{recovery['run']}-{recovery['attempt']}", recovery['nanodollars'])
     ledger.record_preflight()
     ledger.record_external_reservation(int(os.environ.get('BEDROCK_EXTERNAL_PROBE_NANODOLLARS') or '0'))
+    from result_cache import restore
+    os.environ['REVIEW_RESULT_CACHE'] = str(Path('review-result/cache').resolve())
+    restore(Path('review-result/previous-caches').glob('*.zip'))
+    starting_cost = ledger.summary()['committed_usd']
     # Dry runs estimate packing locally for the exact head.
     for strategy in ('baseline', 'adaptive'):
         subprocess.run([sys.executable, str(root/'adversarial_review.py'), '--base', os.environ['BASE_SHA'],
@@ -82,6 +86,10 @@ finally:
     if ledger is not None:
         report['budget'] = ledger.summary()
         Path('review-result/settled.json').write_text(json.dumps(report['budget'], indent=2)+'\n')
+    from result_cache import measurements
+    report['usage'] = measurements()
+    if ledger is not None and 'starting_cost' in globals():
+        report['usage']['incremental_committed_usd'] = ledger.summary()['committed_usd']-starting_cost
     report['body'] = render(report)
     path.write_text(json.dumps(report, indent=2)+'\n')
     if os.environ.get('GITHUB_STEP_SUMMARY'):
