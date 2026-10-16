@@ -19,6 +19,7 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from diagnostics import record
+from prompt_profiles import prompts
 from evidence import locations, location_ranges, validate as validate_evidence
 from bedrock_client import BedrockError, complete
 from runtime_facts import runtime_facts
@@ -262,6 +263,7 @@ def run_heuristic_reviewer(diff: str, files: List[str]) -> Tuple[str, List[Dict]
 
 
 def review_messages(diff, files, doc_context, anchors, candidate=None, supporting_context=''):
+    system_prompt, verification_prompt = prompts(SYSTEM_PROMPT, VERIFICATION_PROMPT)
     content = (
         "Files changed:\n" + "\n".join(f"- {f}" for f in sorted(files)) + "\n\n"
         f"{doc_context}\n\n"
@@ -273,9 +275,9 @@ def review_messages(diff, files, doc_context, anchors, candidate=None, supportin
     )
     if candidate is not None:
         content += (
-            f"\n{VERIFICATION_PROMPT}\nCandidate findings to verify: {json.dumps(candidate)}\n"
+            f"\n{verification_prompt}\nCandidate findings to verify: {json.dumps(candidate)}\n"
         )
-    system = SYSTEM_PROMPT + '\n' + runtime_facts()
+    system = system_prompt + '\n' + runtime_facts()
     system += "\nReturn JSON matching this schema: " + json.dumps(RESPONSE_SCHEMA, sort_keys=True)
     content += supporting_context
     return [{"role": "system", "content": system}, {"role": "user", "content": content}]

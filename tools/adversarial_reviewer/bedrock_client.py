@@ -7,12 +7,14 @@ import subprocess
 import tempfile
 import time
 
-from budget import Ledger, BudgetError, RESERVED_INPUT_TOKENS
+from budget import Ledger, BudgetError, RESERVED_INPUT_TOKENS, cost
+from diagnostics import record
+from prompt_profiles import settings
 
 MAX_RESPONSE_BYTES = 1048576  # 1 MiB
 MAX_REQUEST_BYTES = 524288  # 512 KiB
 
-MODEL = 'zai.glm-4.7-flash'
+MODEL = 'deepseek.v3.2'
 
 
 class BedrockError(Exception):
@@ -26,7 +28,7 @@ def conversation(messages):
 
 def count_tokens(messages, deadline=None):
     """Estimate packing size without claiming an exact model token count."""
-    # GLM Flash has no CountTokens API. Spending reserves full context separately.
+    # DeepSeek V3.2 has no CountTokens API. Spending reserves full context separately.
     return 1024 + sum(128 + len(m['content'].encode('utf-8')) for m in messages)
 
 
@@ -71,8 +73,9 @@ def complete(messages, deadline, *, purpose='assessment', identity=None):
         raise BedrockError('bedrock review disabled')
     if os.environ.get('AWS_REGION') != 'us-east-1' or os.environ.get('BEDROCK_REVIEW_MODEL') != MODEL:
         raise BedrockError('bedrock region or model is not configured for this reviewer')
+    profile, temperature, before_call = settings.get()
     payload = {'modelId': MODEL, **conversation(messages),
-               'inferenceConfig': {'maxTokens': 512 if purpose == 'overview' else 4096, 'temperature': 0}}
+               'inferenceConfig': {'maxTokens': 512 if purpose == 'overview' else 4096, 'temperature': temperature}}
     if len(json.dumps(payload).encode()) > MAX_REQUEST_BYTES:
         raise BedrockError('bedrock request exceeds size limit')
     if deadline <= time.monotonic():
@@ -85,11 +88,15 @@ def complete(messages, deadline, *, purpose='assessment', identity=None):
         raise BedrockError('prompt exceeds token budget; subdivision required')
     ledger = Ledger(path)
     identity = identity or hashlib.sha256(json.dumps(messages, sort_keys=True).encode()).hexdigest()
+    if before_call is not None:
+        before_call(cost(RESERVED_INPUT_TOKENS, payload['inferenceConfig']['maxTokens']))
     try:
         key = ledger.reserve(RESERVED_INPUT_TOKENS, payload['inferenceConfig']['maxTokens'],
                              os.environ.get('REVIEW_BUDGET_PHASE', 'review'), purpose+':'+identity)
         started = time.monotonic()
         envelope = invoke('converse', payload, deadline)
+        record(stage='transport', profile=profile, purpose=purpose, request_hash=identity,
+               inference_config=payload['inferenceConfig'], response=envelope, seconds=time.monotonic()-started)
         ledger.reconcile(key, envelope, time.monotonic()-started)
     except BudgetError as error:
         raise BedrockError(str(error)) from None

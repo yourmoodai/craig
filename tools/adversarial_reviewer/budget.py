@@ -7,9 +7,9 @@ import uuid
 
 LIMIT = 2_000_000_000  # nanodollars: $2 pilot, including uncertain calls
 QUALIFICATION_LIMIT = 400_000_000  # nanodollars: $0.40
-INPUT_RATE = 70  # nanodollars per token; US GLM 4.7 Flash on-demand
-OUTPUT_RATE = 400
-RESERVED_INPUT_TOKENS = 262144  # 256 Ki tokens; above the published 203K context
+INPUT_RATE = 620  # nanodollars per token; US DeepSeek V3.2 standard on-demand
+OUTPUT_RATE = 1850
+RESERVED_INPUT_TOKENS = 167936  # 164 Ki tokens; full published context capacity
 
 
 class BudgetError(Exception):
