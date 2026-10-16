@@ -23,13 +23,18 @@ test('pilot restores reconciliation, rejects uncertain or missing history',async
     await restore(fixture());
     assert.equal(JSON.parse(fs.readFileSync('review-result/reservation.json')).maximum_usd,2);
     await restore(fixture({artifacts:[reserved,settled]}));
-    assert.equal(fs.readFileSync('review-result/previous-ledger.zip','utf8'),'ledger archive');
+    assert.equal(fs.readFileSync('review-result/previous-ledgers/11.zip','utf8'),'ledger archive');
+    const olderIdReservation={...reserved,id:3,name:prefix+'reserved-6-1',workflow_run:{id:6}};
+    const olderIdSettled={...settled,id:2,name:prefix+'settled-6-1',workflow_run:{id:6}};
+    await restore(fixture({artifacts:[reserved,settled,olderIdReservation,olderIdSettled],
+      runs:[{id:4,event:'push',head_branch:'develop'},{id:6,event:'push',head_branch:'develop'}]}));
+    assert.equal(fs.readFileSync('review-result/previous-ledgers/2.zip','utf8'),'ledger archive');
     await assert.rejects(restore(fixture({artifacts:[reserved]})),/unresolved/);
     await assert.rejects(restore(fixture({artifacts:[reserved,{...settled,expired:true}]})),/expired/);
     await assert.rejects(restore(fixture({jobs:[{run_attempt:1,steps:[{name:'persist pilot reservation',conclusion:'success'}]}]})),/missing/);
-    fs.unlinkSync('review-result/previous-ledger.zip');
+    fs.unlinkSync('review-result/previous-ledgers/11.zip');
     await restore(fixture({artifacts:[reserved,settled],runs:[{id:4,event:'pull_request',head_branch:'evil'}]}));
-    assert.equal(fs.existsSync('review-result/previous-ledger.zip'),false);
+    assert.equal(fs.existsSync('review-result/previous-ledgers/11.zip'),false);
   } finally {
     process.chdir(previous);
     fs.rmSync(temp,{recursive:true,force:true});

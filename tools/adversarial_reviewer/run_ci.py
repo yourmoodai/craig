@@ -4,9 +4,10 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import zipfile
 
-from budget import Ledger
+from budget import Ledger, BudgetError
 from chunk_plan import bounded_strategy
 from reporting import finalize, render, fallback_overview
 from qualify import qualify
@@ -23,15 +24,19 @@ ledger = None
 try:
     if os.environ.get('BEDROCK_REVIEW_ENABLED') != 'true':
         raise ValueError('bedrock review is disabled pending model access and qualification')
-    archive = Path('review-result/previous-ledger.zip')
-    if archive.exists():
-        with zipfile.ZipFile(archive) as z:
-            data = z.read('ledger.db')
-            if len(data) > 10_000_000:  # 10 MB ledger limit
-                raise ValueError('pilot ledger exceeds size limit')
-            Path('review-result/ledger.db').write_bytes(data)
     os.environ['REVIEW_BUDGET_LEDGER'] = str(Path('review-result/ledger.db').resolve())
     ledger = Ledger(os.environ['REVIEW_BUDGET_LEDGER'])
+    archives = list(Path('review-result/previous-ledgers').glob('*.zip'))
+    if Path('review-result/previous-ledger.zip').exists():
+        archives.append(Path('review-result/previous-ledger.zip'))
+    for archive in archives:
+        with zipfile.ZipFile(archive) as z:
+            if z.getinfo('ledger.db').file_size > 10_000_000:  # 10 MB ledger limit
+                raise ValueError('pilot ledger exceeds size limit')
+            with tempfile.NamedTemporaryFile(suffix='.db') as source:
+                source.write(z.read('ledger.db'))
+                source.flush()
+                ledger.merge(source.name)
     ledger.record_preflight()
     ledger.record_external_reservation(int(os.environ.get('BEDROCK_EXTERNAL_PROBE_NANODOLLARS') or '0'))
     # Dry runs estimate packing locally for the exact head.
@@ -69,7 +74,7 @@ try:
     if not path.exists():
         raise ValueError('review did not produce a report')
     report = json.loads(path.read_text())
-except (OSError, ValueError, subprocess.SubprocessError) as error:
+except (OSError, ValueError, BudgetError, subprocess.SubprocessError) as error:
     report['review_failures'].append('review execution unavailable: '+type(error).__name__)
 finally:
     if ledger is not None:

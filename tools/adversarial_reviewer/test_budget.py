@@ -67,3 +67,31 @@ class BudgetTests(unittest.TestCase):
         for invalid in (-1, True, 2_000_000_001):
             with self.assertRaises(BudgetError):
                 self.ledger.record_external_reservation(invalid)
+
+    def test_merge_preserves_forked_calls_and_cumulative_external_spending(self):
+        other = Ledger(self.path+'.other')
+        self.ledger.record_preflight()
+        other.record_preflight()
+        self.ledger.record_external_reservation(100)
+        other.record_external_reservation(200)
+        self.ledger.reserve(10,10,'qualification','first')
+        other.reserve(20,20,'qualification','second')
+        before = self.ledger.summary()['committed_usd']
+        self.ledger.merge(other.path)
+        merged = self.ledger.summary()
+        self.assertEqual(len(merged['calls']),4)
+        self.assertGreater(merged['committed_usd'],before)
+        self.ledger.merge(other.path)
+        self.assertEqual(self.ledger.summary(),merged)
+
+    def test_conflicting_history_cannot_replace_an_existing_charge(self):
+        other = Ledger(self.path+'.other')
+        key = self.ledger.reserve(20,20,'review','same-call')
+        self.ledger.reconcile(key,{'usage':{'inputTokens':10,'outputTokens':10}},1)
+        other.merge(self.path)
+        with other.connect() as db:
+            db.execute('UPDATE calls SET charged=charged+1 WHERE id=?',(key,))
+        before = self.ledger.summary()
+        with self.assertRaisesRegex(BudgetError,'conflicting'):
+            self.ledger.merge(other.path)
+        self.assertEqual(self.ledger.summary(),before)

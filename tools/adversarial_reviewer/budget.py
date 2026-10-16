@@ -41,6 +41,26 @@ class Ledger:
             db.execute("INSERT OR IGNORE INTO calls VALUES (?, 'qualification', ?, ?, NULL, NULL)",
                        ('account-probes-20261015', 'haiku55-and-glm47-access-probes', 30_000_000))
 
+    def merge(self, source):
+        """Union settled histories without dropping calls or repricing prior usage."""
+        with sqlite3.connect(source) as prior:
+            rows = prior.execute('SELECT id,phase,identity,reserved,charged,metrics FROM calls').fetchall()
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            for row in rows:
+                key, phase, identity, reserved, charged, metrics = row
+                if phase not in ('qualification', 'review') or type(reserved) is not int or reserved < 0 or (charged is not None and (type(charged) is not int or charged < 0)):
+                    raise BudgetError('invalid historical ledger row')
+                old = db.execute('SELECT id,phase,identity,reserved,charged,metrics FROM calls WHERE id=?', (key,)).fetchone()
+                if old is None:
+                    db.execute('INSERT INTO calls VALUES (?,?,?,?,?,?)', row)
+                elif key == 'external-probes' and old[1:3] == row[1:3] and old[4] is None and charged is None:
+                    db.execute('UPDATE calls SET reserved=MAX(reserved,?) WHERE id=?', (reserved,key))
+                elif old[:4] != row[:4] or (old[4] is not None and charged is not None and old[4:] != row[4:]):
+                    raise BudgetError('conflicting historical ledger rows')
+                elif old[4] is None and charged is not None:
+                    db.execute('UPDATE calls SET charged=?,metrics=? WHERE id=?', (charged,metrics,key))
+
     def record_external_reservation(self, amount):
         """Import cumulative external probe costs without releasing prior reservations."""
         if type(amount) is not int or not 0 <= amount <= LIMIT:

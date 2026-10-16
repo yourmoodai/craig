@@ -24,11 +24,12 @@ module.exports = async function restore({github,context}) {
     if (reserved.expired || !settled || settled.expired) throw Error('pilot has an unresolved or expired reservation; remaining budget is unavailable');
   }
   fs.mkdirSync('review-result',{recursive:true});
-  if (reservations.length) {
-    const latest = reservations.sort((a,b)=>b.id-a.id)[0];
-    const settled = finals.find(a=>a.name===latest.name.replace('-reserved-','-settled-'));
+  fs.mkdirSync('review-result/previous-ledgers',{recursive:true});
+  // Reconcile every branch of history; artifact IDs do not establish chronology.
+  for (const reserved of reservations) {
+    const settled = finals.find(a=>a.name===reserved.name.replace('-reserved-','-settled-'));
     const archive = await github.rest.actions.downloadArtifact({...context.repo,artifact_id:settled.id,archive_format:'zip'});
-    fs.writeFileSync('review-result/previous-ledger.zip',Buffer.from(archive.data));
+    fs.writeFileSync(`review-result/previous-ledgers/${settled.id}.zip`,Buffer.from(archive.data));
   }
   fs.writeFileSync('review-result/reservation.json',JSON.stringify({pilot,run:context.runId,attempt:process.env.GITHUB_RUN_ATTEMPT,maximum_usd:2}));
 };
