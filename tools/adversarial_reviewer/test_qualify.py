@@ -33,3 +33,13 @@ class QualificationTests(unittest.TestCase):
             result = qualify(directory+'/result.json')
         self.assertFalse(result['qualified'])
         compare.assert_not_called()
+
+    def test_interrupted_comparison_never_records_qualified(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cases = [(case[3], [], 'reviewed fixture behavior') for case in CASES]
+            with patch.dict(os.environ, REVIEW_BUDGET_LEDGER=directory+'/ledger.db'), \
+                    patch('qualify.run_model_reviewer', side_effect=cases), \
+                    patch('qualify.review_diff', side_effect=ValueError('interrupted')):
+                with self.assertRaises(ValueError):
+                    qualify(directory+'/result.json')
+            self.assertFalse(json.loads(Path(directory+'/result.json').read_text())['qualified'])

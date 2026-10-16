@@ -8,7 +8,7 @@ import zipfile
 
 from budget import Ledger
 from chunk_plan import bounded_strategy
-from reporting import finalize, render
+from reporting import finalize, render, fallback_overview
 from qualify import qualify
 
 root = Path(__file__).resolve().parent
@@ -38,8 +38,23 @@ try:
         subprocess.run([sys.executable, str(root/'adversarial_review.py'), '--base', os.environ['BASE_SHA'],
                         '--head', head, '--strategy', strategy, '--dry-run', '--json-output',
                         f'review-result/{strategy}-manifest.json'], check=True, timeout=2400)
+    baseline = json.loads(Path('review-result/baseline-manifest.json').read_text())
+    for field in ('files', 'total_lines', 'total_chunks', 'total_units', 'excluded_assets', 'test_evidence'):
+        report[field] = baseline[field]
+    report['overview'] = fallback_overview(report)
     qualification = qualify('review-result/qualification.json')
     if not qualification['qualified']:
+        report['summary'] = 'Live model qualification failed; PR assessment did not start.'
+        for case in qualification['cases']:
+            if not case['passed']:
+                report['review_failures'].append('qualification case failed: '+case['case']+'; '+case['summary'])
+        for strategy, comparison in qualification['comparison'].items():
+            for batch in comparison['batches']:
+                if not batch['passed']:
+                    report['review_failures'].append(f"{strategy} qualification failed: missing defects {batch['missing_defects']}; unexpected findings {batch['unexpected_findings']}")
+                    for chunk in batch['report'].get('chunks', []):
+                        if not chunk.get('complete'):
+                            report['review_failures'].append(chunk['summary'])
         raise ValueError('model qualification or baseline comparison did not pass')
     manifests = {s: json.loads(Path(f'review-result/{s}-manifest.json').read_text())['manifest']
                  for s in ('baseline', 'adaptive')}

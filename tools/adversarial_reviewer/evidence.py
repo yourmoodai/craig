@@ -55,8 +55,10 @@ def validate(response, anchors):
         or repetitive(rationale)
     ):
         raise ValueError("missing or repetitive rationale")
-    if not isinstance(findings, list) or len(findings) > 3:
-        raise ValueError("invalid findings")
+    if not isinstance(findings, list):
+        raise ValueError("invalid findings: expected array")
+    if len(findings) > 3:
+        raise ValueError(f"findings saturated ({len(findings)}); subdivision required")
     disposition = "REQUEST_CHANGES" if findings else "APPROVE"
     grounded = []
     for finding in findings:

@@ -53,7 +53,7 @@ def finalize(report, *, qualified, synthesize=True):
     report['qualified'] = qualified
     failures = []
     if not qualified:
-        failures.append('Reviewer qualification failed or credentials are unavailable; restore access and rerun qualification.')
+        failures.append('Reviewer qualification has not passed; inspect qualification results and any access errors before rerunning.')
     if not report.get('complete'):
         failures.append('Required review coverage is incomplete; resolve the failed chunks or unsupported binary changes and rerun.')
     if any(chunk.get('disposition') == 'COMMENT' for chunk in report.get('chunks', [])):

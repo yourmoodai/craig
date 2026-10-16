@@ -6,6 +6,7 @@ import time
 
 from adversarial_review import review_diff, run_model_reviewer
 from budget import Ledger
+from diagnostics import capture
 from evaluate_model import CASES
 
 
@@ -19,18 +20,22 @@ def fixture(index, case):
 
 
 def qualify(output):
+    with capture() as events:
+        return _qualify(output, events)
+
+
+def _qualify(output, events):
     ledger = Ledger(os.environ['REVIEW_BUDGET_LEDGER'])
     os.environ['REVIEW_BUDGET_PHASE'] = 'qualification'
-    result = {'qualified': False, 'strategy': 'baseline', 'cases': [], 'comparison': {}}
+    result = {'qualified': False, 'strategy': 'baseline', 'cases': [], 'comparison': {}, 'diagnostics': events}
     try:
         for index, case in enumerate(CASES):
             diff, filename = fixture(index, case)
             actual, findings, summary = run_model_reviewer(diff, [filename], '')
             passed = actual == case[3] and not summary.startswith('review incomplete:')
-            result['cases'].append({'case': case[0], 'passed': passed, 'summary': summary, 'findings': findings})
+            result['cases'].append({'case': case[0], 'passed': passed, 'summary': summary, 'findings': findings, 'expected': case[3], 'actual': actual})
             if not passed:
                 return result
-        result['qualified'] = True
         for strategy in ('baseline', 'adaptive'):
             before = ledger.summary()['committed_usd']
             prior_calls = len(ledger.summary()['calls'])
@@ -41,7 +46,8 @@ def qualify(output):
                 report = review_diff(''.join(d for d, _ in fixtures), [f for _, f in fixtures], strategy=strategy)
                 found = {finding['file'].rsplit(':', 1)[0] for finding in report['findings']}
                 expected = set() if disposition == 'APPROVE' else {f for _, f in fixtures}
-                batches.append({'passed': report['complete'] and found == expected, 'report': report})
+                batches.append({'passed': report['complete'] and found == expected, 'report': report,
+                                'missing_defects': sorted(expected-found), 'unexpected_findings': sorted(found-expected)})
             truncated = any((c.get('metrics') or {}).get('stop_reason') == 'max_tokens' for c in ledger.summary()['calls'][prior_calls:])
             result['comparison'][strategy] = {'batches': batches, 'cost_usd': ledger.summary()['committed_usd']-before,
                                                'seconds': time.monotonic()-began,
