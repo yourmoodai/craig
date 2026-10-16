@@ -1,9 +1,22 @@
 import {Runtime} from '../hooks/runtime';
+import {read_result} from '../src/protocol';
 import { test, expect, mock } from 'claude-code/testing';
 
 const original = 'You idiot, fix the test';
 const replacement = 'You ya ya ya, fix the test';
 const prompt = { text: original, origin: { kind: 'composer' as const }, wait: false };
+
+test('successful responses enforce the core nonblank text contract', () => {
+  for (const version of [1, 2]) {
+    for (const status of ['unchanged', 'rewritten']) {
+      for (const text of ['', ' ', '\t\n']) {
+        expect(() => read_result({version, status, text})).toThrow('invalid_response');
+      }
+      expect(read_result({version, status, text: '  valid text  '}).status).toBe(status);
+    }
+    expect(read_result({version, status: 'error', code: 'invalid_input'}).status).toBe('error');
+  }
+});
 
 test('only replacement text reaches downstream', async ($, on) => {
   let forwarded = '';

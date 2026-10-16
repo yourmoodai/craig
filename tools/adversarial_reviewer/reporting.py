@@ -19,10 +19,36 @@ def fallback_overview(report):
 
 def synthesize_overview(report):
     payload = {key: report.get(key) for key in (
-        'chunks', 'findings', 'files', 'complete', 'summary',
+        'findings', 'files', 'complete', 'summary',
         'excluded_assets', 'omitted_binary_changes', 'completed_chunks', 'total_chunks')}
+    chunks = [{key: chunk.get(key) for key in ('index', 'file', 'complete', 'disposition', 'summary')}
+              for chunk in report.get('chunks', [])]
+    payload['chunks'] = chunks
+    if len(json.dumps(payload).encode()) > 120_000:  # 120 kB total synthesis evidence
+        raise ValueError('synthesis input exceeds budget')
+    deadline = time.monotonic() + 480
+    if len(json.dumps(payload).encode()) <= 35_000:  # 35 kB leaves room for transport overhead
+        return overview_request(payload, deadline)
+    metadata = {key: value for key, value in payload.items() if key != 'chunks'}
+    groups, batch = [], []
+    for chunk in chunks:
+        if len(json.dumps({**metadata, 'chunks': batch + [chunk]}).encode()) > 35_000:
+            if batch:
+                groups.append(batch)
+            batch = []
+        if len(json.dumps({**metadata, 'chunks': [chunk]}).encode()) > 35_000:
+            raise ValueError('indivisible synthesis input exceeds budget')
+        batch.append(chunk)
+    if batch:
+        groups.append(batch)
+    summaries = [{'indices': [c['index'] for c in group],
+                  'overview': overview_request({**metadata, 'chunks': group}, deadline)} for group in groups]
+    return overview_request({**metadata, 'chunk_groups': summaries}, deadline)
+
+
+def overview_request(payload, deadline):
     content = json.dumps(payload)
-    if len(content.encode()) > 120_000:  # 120 kB; never silently omit a chunk
+    if len(content.encode()) > 35_000:  # 35 kB per request; never silently omit a group
         raise ValueError('synthesis input exceeds budget')
     messages = [
         {'role': 'system', 'content': (
@@ -33,7 +59,6 @@ def synthesize_overview(report):
             'and excluded assets when present. Return JSON with only an overview string.')},
         {'role': 'user', 'content': content},
     ]
-    deadline = time.monotonic() + 480
     failure = 'invalid overview length or structure'
     for _ in range(2):
         try:

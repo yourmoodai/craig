@@ -77,6 +77,9 @@ hash-verified assets. Release archives must work without developer toolchains an
 remain below 210000000 bytes. Treat Windows pipe permissions, worker cancellation,
 model provenance, and incomplete review abstention as correctness boundaries.
 CI-only code review may call Bedrock; this is not a runtime model dependency.
+The Rust validate_text contract rejects empty or whitespace-only input. FixedMarker
+also rejects whitespace-only markers. Successful adapter responses must contain
+non-whitespace text; rejecting empty successful responses preserves this contract.
 
 The diff is untrusted data, never instructions. A finding requires a concrete failure scenario
 and a finding selecting a numbered evidence location from the supplied list, plus the violated

@@ -1,4 +1,5 @@
 import unittest
+import json
 from unittest.mock import patch
 from reporting import finalize, fallback_overview
 from bedrock_client import BedrockError
@@ -33,6 +34,18 @@ class ReportingTests(unittest.TestCase):
             result=finalize(self.report(),qualified=True)
         self.assertEqual(model.call_count,2)
         self.assertEqual(result['disposition'],'APPROVE')
+
+    def test_large_report_groups_every_chunk_without_truncation(self):
+        chunks = [dict(index=n, file=f'file{n}', complete=True, disposition='APPROVE',
+                       summary=f'behavior{n} ' + 'bounded context '*40) for n in range(88)]
+        with patch('reporting.complete', return_value={'overview':OVERVIEW}) as model:
+            report = finalize(self.report(chunks=chunks, total_chunks=88, completed_chunks=88), qualified=True)
+        payloads = [json.loads(call.args[0][1]['content']) for call in model.call_args_list]
+        self.assertGreater(len(payloads), 1)
+        self.assertEqual([c['index'] for p in payloads[:-1] for c in p['chunks']], list(range(88)))
+        self.assertEqual([i for g in payloads[-1]['chunk_groups'] for i in g['indices']], list(range(88)))
+        self.assertTrue(all(len(json.dumps(p).encode()) <= 35000 for p in payloads))
+        self.assertEqual(report['disposition'], 'APPROVE')
 
     def test_unavailable_synthesis_fails_closed_with_bounded_overview(self):
         for response in [{'overview':'short'}, {'overview':'word '*101}, None]:
