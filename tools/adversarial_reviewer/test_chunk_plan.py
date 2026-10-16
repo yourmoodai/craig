@@ -83,6 +83,19 @@ class ChunkPlanTests(unittest.TestCase):
         self.assertFalse(report['complete'])
         model.assert_not_called()
 
+    def test_new_verification_defects_are_reassessed_in_children(self):
+        diff = change('a.py') + change('b.py')
+        def assess(text, files, context, evidence, **kwargs):
+            if len(files) > 1:
+                return 'COMMENT', [], 'review incomplete: verification introduced a new finding; subdivision required.'
+            return 'REQUEST_CHANGES', [{'file': files[0]+':1'}], 'verified concrete failure'
+        with patch('adversarial_review.run_model_reviewer', side_effect=assess) as model:
+            report = review_diff(diff, ['a.py', 'b.py'], strategy='baseline')
+        self.assertTrue(report['complete'])
+        self.assertEqual(model.call_count, 3)
+        self.assertEqual(len(report['findings']), 2)
+        self.assertEqual(len(report['subdivisions']), 1)
+
     def test_full_plan_must_fit_even_after_fixture_promotion(self):
         from chunk_plan import bounded_strategy
         manifests = {'baseline': {'chunks': [None]*67}, 'adaptive': {'chunks': [None]*167}}

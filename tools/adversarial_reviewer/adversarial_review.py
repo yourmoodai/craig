@@ -330,7 +330,7 @@ def run_model_reviewer(
     if candidate is not None and any(
         item["location"] not in {finding["location"] for finding in candidate} for item in evidence
     ):
-        return "COMMENT", [], "review incomplete: verification introduced a new finding."
+        return "COMMENT", [], "review incomplete: verification introduced a new finding; subdivision required."
 
     findings = []
     for item in evidence:

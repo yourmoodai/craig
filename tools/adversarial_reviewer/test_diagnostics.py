@@ -14,6 +14,20 @@ from qualify import fixture
 
 
 class DiagnosticTests(unittest.TestCase):
+    def test_new_verification_finding_requires_fresh_assessment(self):
+        finding = {'location': 1, 'invariant': 'sanitization must fail closed',
+                   'scenario': 'a sanitizer error returns the raw input',
+                   'correction': 'propagate the sanitizer exception'}
+        response = {'rationale': 'Two distinct changes violate the invariant.',
+                    'abstention': '', 'findings': [finding, {**finding, 'location': 2}]}
+        anchors = [{'file': 'submit.py', 'line': n, 'evidence': 'return raw'} for n in (1, 2)]
+        with patch('adversarial_review.complete', return_value=response):
+            disposition, findings, summary = run_model_reviewer(
+                'synthetic diff', ['submit.py'], '', anchors, candidate=[finding])
+        self.assertEqual(disposition, 'COMMENT')
+        self.assertEqual(findings, [])
+        self.assertIn('subdivision required', summary)
+
     def test_overfull_findings_request_subdivision_and_preserve_shape(self):
         diff, filename = fixture(5, CASES[5])
         response = {'rationale': 'The changed divisor raises an exception.', 'abstention': '',
