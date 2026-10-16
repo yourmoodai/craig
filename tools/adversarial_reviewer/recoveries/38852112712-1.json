@@ -1,0 +1,227 @@
+{
+  "run": 38852112712,
+  "attempt": 1,
+  "reservation_artifact_id": 12025189225,
+  "account": "463509296941",
+  "region": "us-east-1",
+  "model": "deepseek.v3.2",
+  "start": "2026-10-16T04:43:00Z",
+  "end": "2026-10-16T04:59:00Z",
+  "reason": "runner cancelled before ledger upload; account-wide model usage plus one full-context pending call retained",
+  "metrics": {
+    "input": {
+      "Label": "InputTokenCount",
+      "Datapoints": [
+        {
+          "Timestamp": "2026-10-16T04:45:00+00:00",
+          "SampleCount": 18.0,
+          "Sum": 20768.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:54:00+00:00",
+          "SampleCount": 2.0,
+          "Sum": 13541.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:50:00+00:00",
+          "SampleCount": 9.0,
+          "Sum": 51893.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:46:00+00:00",
+          "SampleCount": 10.0,
+          "Sum": 14091.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:51:00+00:00",
+          "SampleCount": 11.0,
+          "Sum": 71689.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:47:00+00:00",
+          "SampleCount": 9.0,
+          "Sum": 32791.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:52:00+00:00",
+          "SampleCount": 15.0,
+          "Sum": 98993.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:48:00+00:00",
+          "SampleCount": 15.0,
+          "Sum": 136810.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:44:00+00:00",
+          "SampleCount": 2.0,
+          "Sum": 2214.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:53:00+00:00",
+          "SampleCount": 8.0,
+          "Sum": 55489.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:49:00+00:00",
+          "SampleCount": 14.0,
+          "Sum": 110609.0,
+          "Unit": "Count"
+        }
+      ]
+    },
+    "output": {
+      "Label": "OutputTokenCount",
+      "Datapoints": [
+        {
+          "Timestamp": "2026-10-16T04:45:00+00:00",
+          "SampleCount": 18.0,
+          "Sum": 2272.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:54:00+00:00",
+          "SampleCount": 2.0,
+          "Sum": 631.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:50:00+00:00",
+          "SampleCount": 9.0,
+          "Sum": 1553.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:46:00+00:00",
+          "SampleCount": 10.0,
+          "Sum": 2184.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:51:00+00:00",
+          "SampleCount": 11.0,
+          "Sum": 1937.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:47:00+00:00",
+          "SampleCount": 9.0,
+          "Sum": 1840.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:52:00+00:00",
+          "SampleCount": 15.0,
+          "Sum": 2053.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:48:00+00:00",
+          "SampleCount": 15.0,
+          "Sum": 1537.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:44:00+00:00",
+          "SampleCount": 2.0,
+          "Sum": 335.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:53:00+00:00",
+          "SampleCount": 8.0,
+          "Sum": 989.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:49:00+00:00",
+          "SampleCount": 14.0,
+          "Sum": 1679.0,
+          "Unit": "Count"
+        }
+      ]
+    },
+    "invocations": {
+      "Label": "Invocations",
+      "Datapoints": [
+        {
+          "Timestamp": "2026-10-16T04:45:00+00:00",
+          "SampleCount": 18.0,
+          "Sum": 18.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:54:00+00:00",
+          "SampleCount": 2.0,
+          "Sum": 2.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:50:00+00:00",
+          "SampleCount": 9.0,
+          "Sum": 9.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:46:00+00:00",
+          "SampleCount": 10.0,
+          "Sum": 10.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:51:00+00:00",
+          "SampleCount": 11.0,
+          "Sum": 11.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:47:00+00:00",
+          "SampleCount": 9.0,
+          "Sum": 9.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:52:00+00:00",
+          "SampleCount": 15.0,
+          "Sum": 15.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:48:00+00:00",
+          "SampleCount": 15.0,
+          "Sum": 15.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:44:00+00:00",
+          "SampleCount": 2.0,
+          "Sum": 2.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:53:00+00:00",
+          "SampleCount": 8.0,
+          "Sum": 8.0,
+          "Unit": "Count"
+        },
+        {
+          "Timestamp": "2026-10-16T04:49:00+00:00",
+          "SampleCount": 14.0,
+          "Sum": 14.0,
+          "Unit": "Count"
+        }
+      ]
+    }
+  },
+  "nanodollars": 520676980
+}

@@ -56,6 +56,8 @@ class DiagnosticTests(unittest.TestCase):
             previous = Path.cwd()
             self.addCleanup(os.chdir, previous)
             os.chdir(directory)
+            Path("review-result").mkdir()
+            Path("review-result/recoveries.json").write_text("[]")
             def dry_run(argv, **kwargs):
                 Path(argv[-1]).write_text(json.dumps({
                     'files': 162, 'total_lines': 26939, 'total_chunks': 100,

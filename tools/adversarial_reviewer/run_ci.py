@@ -37,6 +37,8 @@ try:
                 source.write(z.read('ledger.db'))
                 source.flush()
                 ledger.merge(source.name)
+    for recovery in json.loads(Path('review-result/recoveries.json').read_text()):
+        ledger.record_recovery(f"{recovery['run']}-{recovery['attempt']}", recovery['nanodollars'])
     ledger.record_preflight()
     ledger.record_external_reservation(int(os.environ.get('BEDROCK_EXTERNAL_PROBE_NANODOLLARS') or '0'))
     # Dry runs estimate packing locally for the exact head.

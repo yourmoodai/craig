@@ -35,6 +35,18 @@ class Ledger:
         finally:
             db.close()
 
+    def record_recovery(self, identity, amount):
+        """Retain conservative recovery charges once, including uncertain usage."""
+        if not isinstance(identity, str) or not identity or type(amount) is not int or not 0 < amount <= LIMIT:
+            raise BudgetError('invalid recovery charge')
+        with self.connect() as db:
+            key = 'recovery-' + identity
+            row = db.execute('SELECT reserved FROM calls WHERE id=?', (key,)).fetchone()
+            if row is not None and row[0] != amount:
+                raise BudgetError('conflicting recovery charge')
+            db.execute("INSERT OR IGNORE INTO calls VALUES (?, 'qualification', ?, ?, NULL, NULL)",
+                       (key, identity, amount))
+
     def record_preflight(self):
         """Retain the $0.03 reserved for account probes before CI owned the pilot."""
         with self.connect() as db:

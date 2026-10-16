@@ -19,15 +19,29 @@ module.exports = async function restore({github,context}) {
       }
     }
   }
+  const recoveries = [];
+  const unresolved = new Set();
   for (const reserved of reservations) {
     const settled = finals.find(a=>a.name===reserved.name.replace('-reserved-','-settled-'));
-    if (reserved.expired || !settled || settled.expired) throw Error(`pilot run ${reserved.workflow_run.id} reservation ${reserved.name} is unresolved or expired; remaining budget is unavailable`);
+    if (reserved.expired || !settled || settled.expired) {
+      const key = reserved.name.slice((pilot+'-reserved-').length);
+      if (!/^[0-9]+-[0-9]+$/.test(key)) throw Error('invalid reservation identity');
+      const path = require('node:path').join(__dirname,'recoveries',key+'.json');
+      if (!fs.existsSync(path)) throw Error(`pilot run ${reserved.workflow_run.id} reservation ${reserved.name} is unresolved or expired; remaining budget is unavailable`);
+      const recovery = JSON.parse(fs.readFileSync(path,'utf8'));
+      if (recovery.reservation_artifact_id !== reserved.id || recovery.run !== reserved.workflow_run.id ||
+          `${recovery.run}-${recovery.attempt}` !== key || !Number.isSafeInteger(recovery.nanodollars) || recovery.nanodollars <= 0) throw Error('invalid recovery evidence');
+      recoveries.push(recovery);
+      unresolved.add(reserved.id);
+    }
   }
   fs.mkdirSync('review-result',{recursive:true});
   fs.mkdirSync('review-result/previous-ledgers',{recursive:true});
+  fs.writeFileSync('review-result/recoveries.json',JSON.stringify(recoveries));
   // Reconcile every branch of history; artifact IDs do not establish chronology.
   for (const reserved of reservations) {
     const settled = finals.find(a=>a.name===reserved.name.replace('-reserved-','-settled-'));
+    if (unresolved.has(reserved.id)) continue;
     const archive = await github.rest.actions.downloadArtifact({...context.repo,artifact_id:settled.id,archive_format:'zip'});
     fs.writeFileSync(`review-result/previous-ledgers/${settled.id}.zip`,Buffer.from(archive.data));
   }

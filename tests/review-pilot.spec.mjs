@@ -29,6 +29,10 @@ test('pilot restores reconciliation, rejects uncertain or missing history',async
     await restore(fixture({artifacts:[reserved,settled,olderIdReservation,olderIdSettled],
       runs:[{id:4,event:'push',head_branch:'develop'},{id:6,event:'push',head_branch:'develop'}]}));
     assert.equal(fs.readFileSync('review-result/previous-ledgers/2.zip','utf8'),'ledger archive');
+    const recovered = {...reserved,id:12025189225,name:prefix+'reserved-38852112712-1',workflow_run:{id:38852112712}};
+    await restore(fixture({artifacts:[recovered],runs:[{id:38852112712,event:'push',head_branch:'develop'}]}));
+    assert.equal(JSON.parse(fs.readFileSync('review-result/recoveries.json'))[0].nanodollars,520676980);
+    await assert.rejects(restore(fixture({artifacts:[{...recovered,id:1}],runs:[{id:38852112712,event:'push',head_branch:'develop'}]})),/invalid recovery/);
     await assert.rejects(restore(fixture({artifacts:[reserved]})),/unresolved/);
     await assert.rejects(restore(fixture({artifacts:[reserved,{...settled,expired:true}]})),/expired/);
     await assert.rejects(restore(fixture({jobs:[{run_attempt:1,steps:[{name:'persist pilot reservation',conclusion:'success'}]}]})),/missing/);

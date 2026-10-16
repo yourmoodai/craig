@@ -95,3 +95,15 @@ class BudgetTests(unittest.TestCase):
         with self.assertRaisesRegex(BudgetError,'conflicting'):
             self.ledger.merge(other.path)
         self.assertEqual(self.ledger.summary(),before)
+
+    def test_recovery_preserves_prior_spending_and_is_idempotent(self):
+        self.ledger.record_preflight()
+        self.ledger.record_recovery('cancelled-1', 520676980)
+        before = self.ledger.summary()
+        self.ledger.record_recovery('cancelled-1', 520676980)
+        self.assertEqual(self.ledger.summary(), before)
+        self.assertAlmostEqual(before['committed_usd'], .550676980)
+        with self.assertRaises(BudgetError):
+            self.ledger.record_recovery('cancelled-1', 1)
+        with self.assertRaises(BudgetError):
+            self.ledger.record_recovery('other', 0)
