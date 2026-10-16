@@ -21,7 +21,7 @@ module.exports = async function restore({github,context}) {
   }
   for (const reserved of reservations) {
     const settled = finals.find(a=>a.name===reserved.name.replace('-reserved-','-settled-'));
-    if (reserved.expired || !settled || settled.expired) throw Error('pilot has an unresolved or expired reservation; remaining budget is unavailable');
+    if (reserved.expired || !settled || settled.expired) throw Error(`pilot run ${reserved.workflow_run.id} reservation ${reserved.name} is unresolved or expired; remaining budget is unavailable`);
   }
   fs.mkdirSync('review-result',{recursive:true});
   fs.mkdirSync('review-result/previous-ledgers',{recursive:true});

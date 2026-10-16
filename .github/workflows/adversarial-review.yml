@@ -176,14 +176,17 @@ jobs:
           HEAD_SHA: ${{ needs.scope.outputs.head }}
           REVIEW_TEST_EVIDENCE: ${{ runner.temp }}/review-tests.json
         run: python3 tools/adversarial_reviewer/run_ci.py
+      - name: snapshot budget after completion or cancellation
+        if: always() && vars.BEDROCK_REVIEW_ENABLED == 'true' && hashFiles('review-result/ledger.db') != ''
+        run: python3 tools/adversarial_reviewer/settle.py review-result
       - name: reconcile pilot reservation
-        if: always() && vars.BEDROCK_REVIEW_ENABLED == 'true' && hashFiles('review-result/settled.json') != ''
+        if: always() && vars.BEDROCK_REVIEW_ENABLED == 'true' && hashFiles('review-result/recovery/settled.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: haiku45-pilot-20261015-settled-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            review-result/ledger.db
-            review-result/settled.json
+            review-result/recovery/ledger.db
+            review-result/recovery/settled.json
           retention-days: 90
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
