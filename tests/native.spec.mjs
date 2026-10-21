@@ -27,6 +27,11 @@ test('ffi supports configurable marker', () => {
   assert.equal(applyReplacements('idiot',[{start:0,end:5,score:1}],{marker:'la la'}).text, 'la la');
   assert.equal(applyReplacements('idiot',[{start:0,end:5,score:0.2}]).text, 'ya ya ya');
 });
+test('ffi supports omission and rejects ambiguous options', () => {
+  assert.equal(applyReplacements('Keep idiot here',[{start:5,end:10,score:1}],{strategy:'omit'}).text,'Keep  here');
+  assert.throws(() => applyReplacements('idiot',[{start:0,end:5,score:1}],{strategy:'omit',marker:'x'}), /invalid_options/);
+  assert.throws(() => applyReplacements('idiot',[{start:0,end:5,score:1}],{strategy:'unknown'}), /invalid_options/);
+});
 test('ffi keeps original UTF-16 offsets across multiple Unicode gaps', () => {
   const text='🙂 idiot! café 🤦 stupid!';
   const spans=[{start:text.indexOf('stupid'),end:text.indexOf('stupid')+6,score:1},{start:text.indexOf('idiot'),end:text.indexOf('idiot')+5,score:1}];

@@ -1,6 +1,14 @@
 {
   "version": "2.0.0",
   "tasks": [
+    {"label":"fetch benchmark corpora","type":"process","command":"npm","args":["run","corpus:fetch"],"problemMatcher":[]},
+    {"label":"build benchmarks release","type":"process","command":"npm","args":["run","bench:build"],"problemMatcher":["$rustc"]},
+    {"label":"build benchmarks debug","type":"process","command":"npm","args":["run","bench:build:debug"],"problemMatcher":["$rustc"]},
+    {"label":"test benchmark tooling","type":"process","command":"npm","args":["run","bench:test"],"problemMatcher":[]},
+    {"label":"run benchmark suite","type":"process","command":"npm","args":["run","bench:all","--","--output","${input:battle_output}"],"problemMatcher":[]},
+    {"label":"profile benchmark memory","type":"process","command":"npm","args":["run","bench:memory","--","--output","${input:battle_output}"],"problemMatcher":[]},
+    {"label":"profile benchmark stages","type":"process","command":"npm","args":["run","bench:profile","--","--output","${input:battle_output}"],"problemMatcher":[]},
+    {"label":"triage benchmark failures","type":"process","command":"npm","args":["run","bench:triage","--","--quality","${input:quality_report}","--performance","${input:performance_report}","--output","${input:battle_output}"],"problemMatcher":[]},
     {
       "label": "build evaluation profiling",
       "type": "shell",
@@ -248,6 +256,9 @@
     }
   ],
   "inputs": [
+    {"id":"quality_report","type":"promptString","description":"Quality report to review","default":".cache/battle-2026-10-20/quality.json"},
+    {"id":"performance_report","type":"promptString","description":"Performance report to classify","default":".cache/battle-2026-10-20/performance.json"},
+    {"id":"battle_output","type":"promptString","description":"New benchmark directory (suite) or JSON file (memory)","default":".cache/battle-new"},
     {
       "id": "inference_report",
       "type": "promptString",

@@ -33,12 +33,25 @@ test('only replacement text reaches downstream', async ($, on) => {
 
 test('process failure retains draft without forwarding', async ($, on) => {
   let forwarded = false;
+  let restored = '';
+  on('prompt.read', () => ({value:{text:'',cursor:0}}));
+  on('prompt.fill', ($, e) => { restored=e.text; return {isFilled:true}; });
   on('process.run', () => { throw Error('synthetic private failure'); });
   on('prompt.submit', ($, e) => { forwarded = true; return { text: e.text }; });
   const result = await $.prompt.submit(prompt);
   expect(result).toHaveProperty('drop');
   expect(JSON.stringify(result)).not.toContain(original);
   expect(forwarded).toBe(false);
+  expect(restored).toBe(original);
+});
+
+test('failure does not overwrite a newer draft in the prompt box', async ($, on) => {
+  let restored = false;
+  on('prompt.read', () => ({value:{text:'new draft',cursor:9}}));
+  on('prompt.fill', () => { restored=true; return {isFilled:true}; });
+  on('process.run', () => ({value:{exitCode:1,stdout:'',stderr:''}}));
+  expect(await $.prompt.submit(prompt)).toHaveProperty('drop');
+  expect(restored).toBe(false);
 });
 
 test('malformed responses never forward', async ($, on) => {
@@ -92,6 +105,8 @@ test('inspection command adds no transcript text or model context', async ($, on
 
 test('ending the session cancels an in-flight replacement', async ($, on) => {
   let forwarded = false;
+  let restored = false;
+  on('prompt.fill', () => { restored=true; return {isFilled:true}; });
   on('session.end', ($, e) => ({sessionId:e.sessionId}));
   on('process.run', async () => {
     await $.session.end({reason:'clear',sessionId:'synthetic-session',resume:{id:'synthetic-session'}});
@@ -100,6 +115,7 @@ test('ending the session cancels an in-flight replacement', async ($, on) => {
   on('prompt.submit', ($, e) => { forwarded = true; return {text:e.text}; });
   expect(await $.prompt.submit(prompt)).toHaveProperty('drop');
   expect(forwarded).toBe(false);
+  expect(restored).toBe(false);
 });
 
 test('disabled personal review neither scans history nor writes metrics', async ($, on) => {

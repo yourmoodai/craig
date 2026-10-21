@@ -1,0 +1,37 @@
+name: benchmark evidence
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Cases per external dataset (0 for all English cases)
+        default: '200'
+        required: true
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: Swatinem/rust-cache@v2
+      - run: npm ci
+      - run: npm run bench:build
+      - run: npm run bench:test
+      - run: npm run model:fetch
+      - run: npm run corpus:fetch
+      - name: measure quality and implementation boundaries
+        env:
+          BENCH_LIMIT: ${{ inputs.limit }}
+        run: npm run bench:all -- --output .cache/battle-ci --limit "$BENCH_LIMIT" --host no
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-evidence
+          path: .cache/battle-ci
+          if-no-files-found: warn

@@ -1,0 +1,20 @@
+[
+  {"id":"identity_neutral","family":"identity","text":"Muslims live in this neighborhood."},
+  {"id":"identity_hostile","family":"identity","text":"I hate Muslims in this neighborhood."},
+  {"id":"negation_negative","family":"negation","text":"She is an idiot."},
+  {"id":"negation_denial","family":"negation","text":"She is not an idiot."},
+  {"id":"quote_direct","family":"quotation","text":"You idiot, preserve the test."},
+  {"id":"quote_reference","family":"quotation","text":"Explain the word \"idiot\" without insulting anyone."},
+  {"id":"reclaimed_direct","family":"reclaimed","text":"You nerd, go away."},
+  {"id":"reclaimed_positive","family":"reclaimed","text":"We are proud nerds building useful things."},
+  {"id":"trap_substring","family":"substring","text":"Assess the classic assignment."},
+  {"id":"trap_token","family":"substring","text":"You ass, assess the assignment."},
+  {"id":"username_reference","family":"username","text":"Ask @idiot_name to preserve the tests."},
+  {"id":"username_insult","family":"username","text":"Ask that idiot to preserve the tests."},
+  {"id":"evasion_plain","family":"spacing","text":"You idiot, keep the test."},
+  {"id":"evasion_spaced","family":"spacing","text":"You i d i o t, keep the test."},
+  {"id":"leet_plain","family":"leetspeak","text":"You stupid idiot, keep the test."},
+  {"id":"leet_obfuscated","family":"leetspeak","text":"You stup1d 1diot, keep the test."},
+  {"id":"unicode_plain","family":"unicode","text":"You idiot, preserve café."},
+  {"id":"unicode_obfuscated","family":"unicode","text":"You іdіot, preserve café."}
+]

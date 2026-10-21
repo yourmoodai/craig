@@ -48,32 +48,46 @@ export function register(on: On) {
       save: (enabled: boolean) => $.store.set('personal_review_enabled', enabled),
       invalidate: () => { $.ui.invalidate('ui.render'); },
     };
+    // The host API calls input from the prompt box 'composer'.
     if (e.origin.kind !== 'composer' || e.text.trimStart().startsWith('/')) return next(e);
-    if (!runtime.ready) return { drop: runtime.status };
     const current_generation = generation;
     const submission = ++submitted;
+    const drop = async (reason: string) => {
+      // A refusal stops delivery but does not restore the draft to the prompt box.
+      // Never replace a newer draft or revive a cancelled submission.
+      if (!next.signal.aborted && generation === current_generation && submission === submitted) {
+        try {
+          const draft = await $.prompt.read();
+          if (!draft.text && !next.signal.aborted && generation === current_generation && submission === submitted) {
+            await $.prompt.fill({text:e.text,mode:'replace'});
+          }
+        } catch {}
+      }
+      return {drop:reason};
+    };
+    if (!runtime.ready) return drop(runtime.status);
     try {
-      if (new TextEncoder().encode(e.text).length > max_text_bytes) return { drop: 'input exceeds the local processing limit; edit and resubmit' };
+      if (new TextEncoder().encode(e.text).length > max_text_bytes) return drop('input exceeds the local processing limit; edit and resubmit');
       const result = await $.process.run([runtime.node, $.plugin.root + '/bridge/cli.mjs', 'rewrite'], {
         env: runtime.env, stdin: JSON.stringify(review.consent.live ? {version:2,text:e.text,assess:true} : { version: 1, text: e.text }), timeoutMs: 45000,
       });
-      if (next.signal.aborted || generation !== current_generation) return { drop: 'submission cancelled; resubmit to retry' };
-      if (result.exitCode !== 0) return { drop: 'local replacement failed; check craig doctor and resubmit' };
+      if (next.signal.aborted || generation !== current_generation) return drop('submission cancelled; resubmit to retry');
+      if (result.exitCode !== 0) return drop('local replacement failed; check craig doctor and resubmit');
       const answer = read_result(JSON.parse(result.stdout));
       if(answer.assessment) await review.observe(host,e.text,answer.status==='error'?null:answer.text,answer.assessment);
-      if (next.signal.aborted || generation !== current_generation) return { drop: 'submission cancelled; resubmit to retry' };
-      if (answer.status === 'error') return { drop: 'local replacement failed; check craig doctor and resubmit' };
+      if (next.signal.aborted || generation !== current_generation) return drop('submission cancelled; resubmit to retry');
+      if (answer.status === 'error') return drop('local replacement failed; check craig doctor and resubmit');
       const output_limit = Math.min(max_output_bytes, new TextEncoder().encode(e.text).length * 80 * 4);
-      if (new TextEncoder().encode(answer.text).length > output_limit) return { drop: 'invalid local replacement; resubmit to retry' };
+      if (new TextEncoder().encode(answer.text).length > output_limit) return drop('invalid local replacement; resubmit to retry');
       if (submission === submitted) latest = { original: e.text, replacement: answer.text };
       $.ui.invalidate('ui.render');
       return next({ ...e, text: answer.text });
     } catch {
-      return { drop: 'local replacement failed; the draft was kept for retry' };
+      return drop('local replacement failed; check the draft and retry');
     }
   }).catch(async ($, e, next) => {
     if (next.called) return next(e);
-    return { drop: 'local replacement failed; the draft was kept for retry' };
+    return { drop: 'local replacement failed; check the draft and retry' };
   });
   on('ui.render', { component: 'Pane' }, async ($, e, next) => {
     const host = {

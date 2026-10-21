@@ -35,9 +35,10 @@ pub fn judge_input(
     original: &str,
     replacement: &Option<String>,
     context: &[String],
-    marker: &str,
+    strategy: &str,
+    marker: Option<&str>,
 ) -> serde_json::Value {
-    serde_json::json!({"original":original,"replacement":replacement,"context":context,"marker":marker,"policy_record":serde_json::from_str::<serde_json::Value>(POLICY_RECORD).expect("embedded policy record")})
+    serde_json::json!({"original":original,"replacement":replacement,"context":context,"replacement_strategy":strategy,"marker":marker,"policy_record":serde_json::from_str::<serde_json::Value>(POLICY_RECORD).expect("embedded policy record")})
 }
 
 #[cfg(feature = "judge")]
@@ -75,8 +76,13 @@ pub fn prepare(corpus: &std::path::Path) -> ReviewResult<PreparedPolicy> {
     if !threshold.is_finite() || threshold <= 0.0 || threshold > 1.0 {
         return Err("invalid_threshold".into());
     }
-    let marker = std::env::var("CRAIG_REPLACEMENT").unwrap_or_else(|_| "ya ya ya".into());
-    let strategy = craig::FixedMarker::new(marker.clone()).map_err(|_| "invalid_marker")?;
+    let strategy_name =
+        std::env::var("CRAIG_REPLACEMENT_STRATEGY").unwrap_or_else(|_| "fixed_phrase".into());
+    let strategy = craig::ReplacementMode::new(
+        Some(&strategy_name),
+        std::env::var("CRAIG_REPLACEMENT").ok(),
+    )
+    .map_err(|_| "invalid_options")?;
     let mut inputs = Vec::new();
     let mut exact = Vec::new();
     for row in &rows {
@@ -86,7 +92,13 @@ pub fn prepare(corpus: &std::path::Path) -> ReviewResult<PreparedPolicy> {
         for (prompt, expected) in row.prompts.iter().zip(&row.expected_replacements) {
             let (_, candidate) = assess(&mut model, prompt, threshold, &strategy)?;
             correct &= candidate == *expected;
-            sequence.push(judge_input(prompt, &candidate, &context, &marker));
+            sequence.push(judge_input(
+                prompt,
+                &candidate,
+                &context,
+                strategy.name(),
+                strategy.marker(),
+            ));
             if let Some(text) = candidate {
                 context.push(text);
                 if context.len() > 4 {
@@ -102,7 +114,7 @@ pub fn prepare(corpus: &std::path::Path) -> ReviewResult<PreparedPolicy> {
         "rubric_sha256":fingerprint(CONTEXTUAL_RUBRIC.as_bytes()),
         "model_sha256":craig::artifact_digest(&std::path::Path::new(&model_path).join("pytorch_model.bin")).map_err(|_| "model_unavailable")?,
         "head_sha256":std::fs::read(std::path::Path::new(&model_path).join("head.safetensors")).ok().map(|b|fingerprint(&b)),
-        "replacement_policy":policy,"threshold":threshold,"marker_sha256":fingerprint(marker.as_bytes()),
+        "replacement_policy":policy,"threshold":threshold,"replacement_strategy":strategy.name(),"replacement_config_sha256":fingerprint(format!("{}:{}",strategy.name(),strategy.marker().unwrap_or("")).as_bytes()),
         "prepared_inputs_sha256":fingerprint(serde_json::to_string(&inputs).map_err(|_| "invalid_policy_corpus")?.as_bytes())
     });
     Ok(PreparedPolicy {

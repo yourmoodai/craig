@@ -1,4 +1,4 @@
-"""Run the installed composer harness; unavailable host coverage blocks publication."""
+"""Run the installed prompt-box harness; unavailable host coverage blocks publication."""
 import os
 from pathlib import Path
 import platform

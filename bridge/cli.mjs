@@ -12,7 +12,10 @@ async function main() {
   if (!modelDir) throw Error('model_not_configured');
   const threshold = process.env.CRAIG_THRESHOLD === undefined ? undefined : Number(process.env.CRAIG_THRESHOLD);
   const policy = process.env.CRAIG_POLICY ?? 'offensive_spans';
-  const marker = process.env.CRAIG_REPLACEMENT ?? 'ya ya ya';
+  const replacementOptions = {
+    strategy: process.env.CRAIG_REPLACEMENT_STRATEGY ?? 'fixed_phrase',
+    ...(process.env.CRAIG_REPLACEMENT === undefined ? {} : {marker: process.env.CRAIG_REPLACEMENT}),
+  };
   let text; let assess = false;
   if (command === 'rewrite') {
     const chunks = []; let size = 0;
@@ -32,13 +35,14 @@ async function main() {
   const detector = await loadDetector({ modelDir, threshold, policy, detector: process.env.CRAIG_DETECTOR ?? 'bert' });
   if (command === 'doctor') { process.stdout.write(JSON.stringify({ version:1, status:'ready' }) + '\n'); return; }
   if (assess) {
-    const result = await detector.assess(text, {marker});
+    const result = await detector.assess(text, replacementOptions);
     const a = result.assessment;
+    const hasText = result.text !== null && result.text !== undefined;
     const assessment = {input_characters:a.inputCharacters, removed_characters:a.removedCharacters, replacement_count:a.replacementCount, removed_proportion:a.removedProportion, detector_confidence:a.detectorConfidence ?? null, residual_confidence:a.residualConfidence ?? null, protected_abstention:a.protectedAbstention};
-    process.stdout.write(JSON.stringify({version:2,status:result.text ? (a.replacementCount ? 'rewritten':'unchanged') : 'error', text:result.text, code:result.text ? undefined : 'protected_span_detected', assessment})+'\n');
+    process.stdout.write(JSON.stringify({version:2,status:hasText ? (a.replacementCount ? 'rewritten':'unchanged') : 'error', text:result.text, code:hasText ? undefined : 'protected_span_detected', assessment})+'\n');
     return;
   }
-  const result = await detector.rewrite(text, { marker });
+  const result = await detector.rewrite(text, replacementOptions);
   process.stdout.write(JSON.stringify({ version:1, status:result.replacementCount ? 'rewritten':'unchanged', text:result.text, replacement_count:result.replacementCount }) + '\n');
 }
 main().catch(error => {

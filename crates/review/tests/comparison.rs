@@ -30,7 +30,8 @@ fn prepared() -> PreparedPolicy {
             "synthetic private canary",
             &Some("replacement canary".into()),
             &[],
-            "ya ya ya",
+            "fixed_phrase",
+            Some("ya ya ya"),
         )]],
         exact: vec![false],
         provenance: json!({}),
@@ -115,7 +116,8 @@ fn judge_payload_excludes_labels_detector_and_competing_verdicts() {
             "marker",
             "original",
             "policy_record",
-            "replacement"
+            "replacement",
+            "replacement_strategy"
         ]
     );
     assert!(!input.to_string().contains("expected answer canary"));

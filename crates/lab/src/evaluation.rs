@@ -1,5 +1,7 @@
 use crate::{LabResult, corpus::Example, fail};
-use craig::{Detector, FixedMarker, ModelDetector, Policy, Span, apply_replacements};
+use craig::{
+    Detector, FixedMarker, ModelDetector, Policy, ReplacementStrategy, Span, apply_replacements,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -77,9 +79,15 @@ pub struct Outcome {
     #[serde(skip)]
     pub expected: Option<String>,
 }
-pub fn score(e: &Example, policy: Policy, spans: &[Span], threshold: f32) -> Outcome {
-    let expected = apply_replacements(&e.text, &e.spans(policy), 0.5, &FixedMarker::default());
-    let actual = apply_replacements(&e.text, spans, threshold, &FixedMarker::default());
+pub fn score(
+    e: &Example,
+    policy: Policy,
+    spans: &[Span],
+    threshold: f32,
+    strategy: &dyn ReplacementStrategy,
+) -> Outcome {
+    let expected = apply_replacements(&e.text, &e.spans(policy), 0.5, strategy);
+    let actual = apply_replacements(&e.text, spans, threshold, strategy);
     let status = |r: &craig::Result<craig::RewriteResult>| match r {
         Ok(r) => {
             if r.spans.is_empty() {
@@ -111,7 +119,12 @@ pub fn score(e: &Example, policy: Policy, spans: &[Span], threshold: f32) -> Out
                 break;
             }
             reconstructed.push_str(&e.text[cursor..span.start]);
-            reconstructed.push_str("ya ya ya");
+            if let Ok(replacement) = strategy.replacement(span) {
+                reconstructed.push_str(&replacement);
+            } else {
+                valid = false;
+                break;
+            }
             cursor = span.end;
         }
         if valid {
@@ -159,6 +172,7 @@ pub fn run(
     rows: &[&Example],
     policy: Policy,
     threshold: f32,
+    strategy: &dyn ReplacementStrategy,
 ) -> LabResult<Vec<Outcome>> {
     let mut outcomes = Vec::new();
     for row in rows {
@@ -166,7 +180,7 @@ pub fn run(
         let spans = model
             .detect(&row.text)
             .map_err(|_| "evaluation_inference_failed")?;
-        let mut outcome = score(row, policy, &spans, threshold);
+        let mut outcome = score(row, policy, &spans, threshold, strategy);
         outcome.milliseconds = started.elapsed().as_secs_f64() * 1000.0;
         outcomes.push(outcome);
     }
@@ -241,7 +255,7 @@ pub fn calibrate(
         let threshold = step as f32 * 0.05;
         let mut metrics = Metrics::default();
         for (row, spans) in rows.iter().zip(&cached) {
-            metrics.add(&score(row, policy, spans, threshold).metrics);
+            metrics.add(&score(row, policy, spans, threshold, &FixedMarker::default()).metrics);
         }
         if (metrics.f1(), metrics.precision()) > (best.0, best.1) {
             best = (metrics.f1(), metrics.precision(), threshold);
@@ -270,10 +284,48 @@ mod tests {
             license: "CC0-1.0".into(),
             reviewed: false,
         };
-        let result = score(&row, Policy::OffensiveSpans, &[], 0.5);
+        let result = score(
+            &row,
+            Policy::OffensiveSpans,
+            &[],
+            0.5,
+            &FixedMarker::default(),
+        );
         assert_eq!(result.metrics.false_negative, 1);
         assert_eq!(result.metrics.deterministic_failures, 0);
         assert_eq!(result.metrics.exact_outcomes, 0);
+    }
+    #[test]
+    fn omission_evaluation_keeps_targeted_abuse_separate_and_deterministic() {
+        let row = Example {
+            id: "x".into(),
+            family: "f".into(),
+            category: "directed_abuse".into(),
+            split: "test".into(),
+            text: "You idiot, keep the test.".into(),
+            labels: BTreeMap::from([
+                ("offensive_spans".into(), vec![[4, 9]]),
+                ("directed_abuse".into(), vec![[4, 9]]),
+            ]),
+            provenance: "synthetic_template".into(),
+            source: "fixture".into(),
+            license: "CC0-1.0".into(),
+            reviewed: false,
+        };
+        let result = score(
+            &row,
+            Policy::DirectedAbuse,
+            &[Span {
+                start: 4,
+                end: 9,
+                score: 1.0,
+            }],
+            0.5,
+            &craig::ReplacementMode::new(Some("omit"), None).unwrap(),
+        );
+        assert_eq!(result.output.as_deref(), Some("You , keep the test."));
+        assert_eq!(result.metrics.deterministic_failures, 0);
+        assert_eq!(result.metrics.exact_outcomes, 1);
     }
     #[test]
     fn uncertainty_remains_visible() {

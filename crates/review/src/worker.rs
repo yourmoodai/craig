@@ -8,7 +8,7 @@ use crate::{
         Consent, JudgeStatus, Metric, MetricsStore, ObservationSource, SqliteMetrics, fingerprint,
     },
 };
-use craig::{FixedMarker, Policy, RuntimeDetector};
+use craig::{Policy, RuntimeDetector};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
@@ -71,7 +71,7 @@ pub struct Worker {
     policy: Policy,
     detector_kind: String,
     threshold: Option<f32>,
-    marker: String,
+    replacement: craig::ReplacementMode,
     model_fingerprint: String,
     runtime_fingerprint: String,
 }
@@ -92,8 +92,13 @@ impl Worker {
         if threshold.is_some_and(|t| !t.is_finite() || t <= 0.0 || t > 1.0) {
             return Err("invalid_threshold".into());
         }
-        let marker = std::env::var("CRAIG_REPLACEMENT").unwrap_or_else(|_| "ya ya ya".into());
-        FixedMarker::new(marker.clone()).map_err(|_| "invalid_marker")?;
+        let replacement_strategy =
+            std::env::var("CRAIG_REPLACEMENT_STRATEGY").unwrap_or_else(|_| "fixed_phrase".into());
+        let replacement = craig::ReplacementMode::new(
+            Some(&replacement_strategy),
+            std::env::var("CRAIG_REPLACEMENT").ok(),
+        )
+        .map_err(|_| "invalid_options")?;
         let detector_kind = std::env::var("CRAIG_DETECTOR").unwrap_or_else(|_| "bert".into());
         if !["bert", "lexical"].contains(&detector_kind.as_str()) {
             return Err("invalid_options".into());
@@ -118,6 +123,7 @@ impl Worker {
             "CRAIG_DETECTOR",
             "CRAIG_POLICY",
             "CRAIG_THRESHOLD",
+            "CRAIG_REPLACEMENT_STRATEGY",
             "CRAIG_REPLACEMENT",
             "CRAIG_JUDGE_CONFIG",
         ]
@@ -142,7 +148,7 @@ impl Worker {
             policy,
             detector_kind,
             threshold,
-            marker,
+            replacement,
             model_fingerprint,
             runtime_fingerprint,
         }))
@@ -299,7 +305,14 @@ impl Worker {
             rubric_fingerprint: fingerprint(CONTEXTUAL_RUBRIC.as_bytes()),
             judge_fingerprint: None,
             policy_fingerprint: fingerprint(POLICY_RECORD.as_bytes()),
-            marker_fingerprint: fingerprint(self.marker.as_bytes()),
+            marker_fingerprint: fingerprint(
+                format!(
+                    "{}:{}",
+                    self.replacement.name(),
+                    self.replacement.marker().unwrap_or_default()
+                )
+                .as_bytes(),
+            ),
             assessment_failed: false,
             authorship_verified: observation.authorship_verified,
         };
@@ -400,7 +413,7 @@ impl Worker {
                 model,
                 &job.observation.original,
                 threshold,
-                &FixedMarker::new(self.marker.clone()).map_err(|e| e.to_string())?,
+                &self.replacement,
             )?;
             job.metric.assessment = Some(assessment);
             job.observation.replacement = replacement;
@@ -412,7 +425,7 @@ impl Worker {
             self.judge_config.as_ref().ok_or("judge_not_configured")?,
             job.cancel.clone(),
         )?;
-        let input = json!({"original":job.observation.original,"replacement":job.observation.replacement,"context":job.observation.context,"marker":self.marker,"replacement_policy":self.policy,"policy_record":serde_json::from_str::<Value>(POLICY_RECORD).map_err(|_|"invalid_policy")?});
+        let input = json!({"original":job.observation.original,"replacement":job.observation.replacement,"context":job.observation.context,"replacement_strategy":self.replacement.name(),"marker":self.replacement.marker(),"replacement_policy":self.policy,"policy_record":serde_json::from_str::<Value>(POLICY_RECORD).map_err(|_|"invalid_policy")?});
         job.metric.contextual = Some(judge.contextual(input)?);
         job.metric.judge_fingerprint = Some(fingerprint(judge.provenance.to_string().as_bytes()));
         job.metric.judge_status = JudgeStatus::Complete;

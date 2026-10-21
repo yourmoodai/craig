@@ -79,6 +79,7 @@ impl Default for ExecutionOptions {
 pub struct InferenceTimings {
     pub tokens: usize,
     pub windows: usize,
+    pub completed_windows: usize,
     pub tokenize_ms: f64,
     pub encoder_ms: f64,
     pub classifier_ms: f64,
@@ -265,9 +266,15 @@ impl ModelDetector {
     }
 
     pub fn detect_profiled(&mut self, text: &str) -> Result<(Vec<Span>, InferenceTimings)> {
+        let (spans, timings) = self.detect_profiled_outcome(text);
+        Ok((spans?, timings))
+    }
+
+    /// Retains numeric stage evidence on failure without returning partial spans.
+    pub fn detect_profiled_outcome(&mut self, text: &str) -> (Result<Vec<Span>>, InferenceTimings) {
         let mut timings = InferenceTimings::default();
-        let spans = self.detect_inner(text, Some(&mut timings))?;
-        Ok((spans, timings))
+        let spans = self.detect_inner(text, Some(&mut timings));
+        (spans, timings)
     }
     #[cfg(feature = "training")]
     pub fn training_windows(&self, text: &str) -> Result<Vec<TrainingWindow>> {
@@ -384,6 +391,7 @@ impl ModelDetector {
             }
             if let Some(t) = timings.as_deref_mut() {
                 t.offsets_ms += stage.elapsed().as_secs_f64() * 1000.0;
+                t.completed_windows += batch.len();
             }
         }
         if started.elapsed() > Duration::from_secs(30) {

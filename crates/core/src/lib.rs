@@ -69,6 +69,51 @@ pub trait ReplacementStrategy {
 }
 
 #[derive(Clone)]
+pub enum ReplacementMode {
+    FixedPhrase(FixedMarker),
+    Omit,
+}
+impl ReplacementMode {
+    pub fn new(strategy: Option<&str>, marker: Option<String>) -> Result<Self> {
+        match strategy.unwrap_or("fixed_phrase") {
+            "fixed_phrase" => Ok(Self::FixedPhrase(FixedMarker::new(
+                marker.unwrap_or_else(|| DEFAULT_MARKER.into()),
+            )?)),
+            "omit" if marker.is_none() => Ok(Self::Omit),
+            "omit" => Err(Error::InvalidOptions),
+            _ => Err(Error::InvalidOptions),
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::FixedPhrase(_) => "fixed_phrase",
+            Self::Omit => "omit",
+        }
+    }
+
+    pub fn marker(&self) -> Option<&str> {
+        match self {
+            Self::FixedPhrase(marker) => Some(&marker.0),
+            Self::Omit => None,
+        }
+    }
+}
+impl Default for ReplacementMode {
+    fn default() -> Self {
+        Self::FixedPhrase(FixedMarker::default())
+    }
+}
+impl ReplacementStrategy for ReplacementMode {
+    fn replacement(&self, span: &Span) -> Result<String> {
+        match self {
+            Self::FixedPhrase(marker) => marker.replacement(span),
+            Self::Omit => Ok(String::new()),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct FixedMarker(String);
 impl Default for FixedMarker {
     fn default() -> Self {
@@ -181,7 +226,9 @@ pub fn apply_replacements(
     let mut output_bytes = text.len();
     for span in &spans {
         let marker = strategy.replacement(span)?;
-        FixedMarker::new(&marker)?;
+        if !marker.is_empty() {
+            FixedMarker::new(&marker)?;
+        }
         output_bytes = output_bytes
             .checked_sub(span.end - span.start)
             .and_then(|n| n.checked_add(marker.len()))
