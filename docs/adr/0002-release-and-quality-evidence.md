@@ -28,6 +28,13 @@ flowchart LR
 
 - Releases are versioned, immutable bundles. Models are separately pinned and
   verified on setup; runtime inference has no network client.
+- The installed plugin pins an Ed25519 verification key and signed runtime
+  manifest. First activation downloads only matching platform artifacts and
+  verifies hashes before execution. Bundled Node supplies the bootstrap runtime;
+  no user compiler, GitHub CLI, or PATH Node is required.
+- Tag builds require the protected release signing key. Qualification builds
+  use ephemeral test keys and must not be published. Marketplace promotion
+  also requires the real published-download matrix to pass.
 - Exact replacement and protected-span behavior are deterministic checks.
   Reference-label agreement depends on the corpus. Judge agreement describes
   judges, not ground truth.

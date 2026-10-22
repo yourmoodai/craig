@@ -21,7 +21,7 @@ test('successful responses enforce the core nonblank text contract', () => {
 test('only replacement text reaches downstream', async ($, on) => {
   let forwarded = '';
   on('process.run', ($, e) => {
-    expect(e.init?.stdin).toBe(JSON.stringify({ version: 1, text: original }));
+    expect(e.init?.stdin).toBe(JSON.stringify({ version: 3, text: original, assess: false }));
     expect(JSON.stringify(e.argv)).not.toContain(original);
     return { value: { exitCode: 0, stdout: JSON.stringify({ version: 1, status: 'rewritten', text: replacement }), stderr: '' } };
   });
@@ -52,6 +52,51 @@ test('failure does not overwrite a newer draft in the prompt box', async ($, on)
   on('process.run', () => ({value:{exitCode:1,stdout:'',stderr:''}}));
   expect(await $.prompt.submit(prompt)).toHaveProperty('drop');
   expect(restored).toBe(false);
+});
+
+test('session cancellation while reading the draft prevents restoration', async ($, on) => {
+  let restored = false;
+  on('process.run', () => ({value:{exitCode:1,stdout:'',stderr:''}}));
+  on('session.end', ($, e) => ({sessionId:e.sessionId}));
+  on('prompt.read', async () => {
+    await $.session.end({reason:'clear',sessionId:'synthetic-session',resume:{id:'synthetic-session'}});
+    return {value:{text:'',cursor:0}};
+  });
+  on('prompt.fill', () => { restored=true; return {isFilled:true}; });
+  expect(await $.prompt.submit(prompt)).toHaveProperty('drop');
+  expect(restored).toBe(false);
+});
+
+test('an older failed submission cannot restore over a newer submission', async ($, on) => {
+  let restored = false;
+  let mark_started: () => void = () => {};
+  let release_first: () => void = () => {};
+  const started = new Promise<void>(resolve => { mark_started=resolve; });
+  const release = new Promise<void>(resolve => { release_first=resolve; });
+  on('process.run', async ($, e) => {
+    if (JSON.parse(e.init?.stdin??'{}').text === original) {
+      mark_started(); await release;
+      return {value:{exitCode:1,stdout:'',stderr:''}};
+    }
+    return {value:{exitCode:0,stdout:JSON.stringify({version:1,status:'unchanged',text:'new draft'}),stderr:''}};
+  });
+  on('prompt.fill', () => { restored=true; return {isFilled:true}; });
+  on('ui.invalidate', () => ({value:undefined}));
+  on('prompt.submit', ($, e) => ({text:e.text}));
+  const first = $.prompt.submit(prompt);
+  await started;
+  try { expect((await $.prompt.submit({...prompt,text:'new draft'})).text).toBe('new draft'); }
+  finally { release_first(); }
+  expect(await first).toHaveProperty('drop');
+  expect(restored).toBe(false);
+});
+
+test('draft inspection failure remains closed without disclosing the prompt', async ($, on) => {
+  on('process.run', () => ({value:{exitCode:1,stdout:'',stderr:''}}));
+  on('prompt.read', () => { throw Error(original); });
+  const result=await $.prompt.submit(prompt);
+  expect(result).toHaveProperty('drop');
+  expect(JSON.stringify(result)).not.toContain(original);
 });
 
 test('malformed responses never forward', async ($, on) => {
@@ -124,7 +169,7 @@ test('disabled personal review neither scans history nor writes metrics', async 
   on('command.register',()=>({value:{command:'craig'}}));
   on('session.start',($,e)=>({cwd:e.cwd}));
   let calls=0;
-  on('process.run',($,e)=>{calls++;expect(e.argv.at(-1)).toBe('rewrite');expect(JSON.parse(e.init?.stdin??'{}').version).toBe(1);return {value:{exitCode:0,stdout:JSON.stringify({version:1,status:'rewritten',text:replacement}),stderr:''}};});
+  on('process.run',($,e)=>{calls++;expect(e.argv.at(-1)).toBe('rewrite');expect(JSON.parse(e.init?.stdin??'{}').version).toBe(3);return {value:{exitCode:0,stdout:JSON.stringify({version:1,status:'rewritten',text:replacement}),stderr:''}};});
   on('ui.invalidate',()=>({value:undefined}));on('prompt.submit',($,e)=>({text:e.text}));
   await $.session.start({cwd:'/synthetic',surface:'terminal',isInteractive:true});
   await $.prompt.submit(prompt);expect(calls).toBe(1);
@@ -138,7 +183,7 @@ test('metrics failure never restores an original submission', async ($,on)=>{
     const request=JSON.parse(e.init?.stdin??'{}');
     if(request.command==='status')return {value:{exitCode:0,stdout:JSON.stringify({version:1,status:'ok',value:{consent:{live:true,history:false,generation:1}}}),stderr:''}};
     if(request.command==='observe')throw Error('synthetic metrics failure');
-    expect(request.version).toBe(2);expect(request.assess).toBe(true);
+    expect(request.version).toBe(3);expect(request.assess).toBe(true);
     return {value:{exitCode:0,stdout:JSON.stringify({version:2,status:'rewritten',text:replacement,assessment}),stderr:''}};
   });
   on('ui.invalidate',()=>({value:undefined}));on('prompt.submit',($,e)=>({text:e.text}));
@@ -186,9 +231,19 @@ test('packaged runtime becomes ready only after prepare and doctor', async () =>
   const runtime = new Runtime(true);
   await runtime.start({plugin:{root:'/synthetic/plugin'},process:{run:async (args,options) => {
     if (args[1]==='-p') return {exitCode:0,stdout:'darwin-arm64',stderr:''};
+    if (args[1]?.endsWith('/bridge/bootstrap.mjs')) return {exitCode:0,stdout:JSON.stringify({status:'ready',runtime_dir:'/synthetic/runtime'}),stderr:''};
     if (args[1]==='prepare') return {exitCode:0,stdout:JSON.stringify({status:'ready',model_dir:'/synthetic/cache'}),stderr:''};
     expect(options?.env?.CRAIG_MODEL_DIR).toBe('/synthetic/cache');
     return {exitCode:0,stdout:JSON.stringify({status:'ready'}),stderr:''};
   }}});
   expect(runtime.ready).toBe(true);
+});
+
+test('trace failure warns without blocking the filtered submission', async ($,on) => {
+  let forwarded='';
+  on('process.run', () => ({value:{exitCode:0,stdout:JSON.stringify({version:2,status:'rewritten',text:replacement,trace_warning:'trace_not_recorded'}),stderr:''}}));
+  on('ui.invalidate',()=>({value:undefined}));
+  on('prompt.submit',($,e)=>{forwarded=e.text;return {text:e.text};});
+  await $.prompt.submit(prompt);
+  expect(forwarded).toBe(replacement);
 });

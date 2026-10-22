@@ -9,6 +9,7 @@ export function register(on: On) {
   let latest: { original: string; replacement: string } | null = null;
   let generation = 0;
   let submitted = 0;
+  let trace_warning = '';
   on('session.start', async ($, e, next) => {
     const host = {
       run: (request: unknown) => $.process.run([runtime.node, $.plugin.root + '/bridge/review.mjs'], {env: runtime.env, stdin: JSON.stringify(request), timeoutMs: (request as {command?: string}).command === 'scan' ? 600000 : 15000}),
@@ -52,7 +53,25 @@ export function register(on: On) {
     if (e.origin.kind !== 'composer' || e.text.trimStart().startsWith('/')) return next(e);
     const current_generation = generation;
     const submission = ++submitted;
+    let trace_id: string | undefined;
+    let processing_started = false;
+    const disposition = async (value: string) => {
+      if (!trace_id) return;
+      try {
+        const saved = await $.process.run([runtime.node, $.plugin.root + '/bridge/cli.mjs', 'traces', 'disposition', trace_id, value], {env:runtime.env,timeoutMs:2000});
+        if (saved.exitCode !== 0) trace_warning = 'recording gap: submission outcome was not saved';
+      } catch { trace_warning = 'recording gap: submission outcome was not saved'; }
+      if(trace_warning)$.ui.invalidate('ui.render');
+    };
     const drop = async (reason: string) => {
+      if (!trace_id && runtime.ready && processing_started) {
+        try {
+          const state=next.signal.aborted || generation !== current_generation ? 'cancelled':'blocked';
+          const saved=await $.process.run([runtime.node,$.plugin.root+'/bridge/cli.mjs','traces','failure','adapter_failed',state],{env:runtime.env,timeoutMs:2000});
+          if(saved.exitCode!==0)trace_warning='recording gap: failed submission was not saved';
+        } catch {trace_warning='recording gap: failed submission was not saved';}
+      }
+      await disposition(next.signal.aborted || generation !== current_generation ? 'cancelled' : 'blocked');
       // A refusal stops delivery but does not restore the draft to the prompt box.
       // Never replace a newer draft or revive a cancelled submission.
       if (!next.signal.aborted && generation === current_generation && submission === submitted) {
@@ -68,12 +87,15 @@ export function register(on: On) {
     if (!runtime.ready) return drop(runtime.status);
     try {
       if (new TextEncoder().encode(e.text).length > max_text_bytes) return drop('input exceeds the local processing limit; edit and resubmit');
+      processing_started = true;
       const result = await $.process.run([runtime.node, $.plugin.root + '/bridge/cli.mjs', 'rewrite'], {
-        env: runtime.env, stdin: JSON.stringify(review.consent.live ? {version:2,text:e.text,assess:true} : { version: 1, text: e.text }), timeoutMs: 45000,
+        env: runtime.env, stdin: JSON.stringify({version:3,text:e.text,assess:review.consent.live}), timeoutMs: 45000,
       });
-      if (next.signal.aborted || generation !== current_generation) return drop('submission cancelled; resubmit to retry');
       if (result.exitCode !== 0) return drop('local replacement failed; check craig doctor and resubmit');
       const answer = read_result(JSON.parse(result.stdout));
+      trace_id = answer.trace_id;
+      trace_warning = answer.trace_warning ? 'recording gap: this replacement was not saved' : '';
+      if (next.signal.aborted || generation !== current_generation) return drop('submission cancelled; resubmit to retry');
       if(answer.assessment) await review.observe(host,e.text,answer.status==='error'?null:answer.text,answer.assessment);
       if (next.signal.aborted || generation !== current_generation) return drop('submission cancelled; resubmit to retry');
       if (answer.status === 'error') return drop('local replacement failed; check craig doctor and resubmit');
@@ -81,7 +103,11 @@ export function register(on: On) {
       if (new TextEncoder().encode(answer.text).length > output_limit) return drop('invalid local replacement; resubmit to retry');
       if (submission === submitted) latest = { original: e.text, replacement: answer.text };
       $.ui.invalidate('ui.render');
-      return next({ ...e, text: answer.text });
+      try {
+        const forwarded = await next({ ...e, text: answer.text });
+        await disposition('forwarded');
+        return forwarded;
+      } catch (error) { await disposition('forwarding_unknown'); throw error; }
     } catch {
       return drop('local replacement failed; check the draft and retry');
     }
@@ -126,6 +152,7 @@ export function register(on: On) {
       <Button key="personal-metrics" hotkey="m" label="personal metrics" onPress={async()=>{review.view='metrics';review.now=await $.clock.now();$.ui.invalidate('ui.render');}} />
       <Button key="policy-evidence" label="policy evidence" onPress={()=>{review.view='policy';$.ui.invalidate('ui.render');}} />
       <Text>{latest ? '- ' + latest.original : 'no replacement in this session'}</Text>
+      <Text>{trace_warning}</Text>
       <Text>{latest ? '+ ' + latest.replacement : ''}</Text>
     </Box>;
   });

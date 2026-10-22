@@ -1,12 +1,26 @@
 #!/usr/bin/env node
 import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const max_bytes = 65_536; // 64 KiB
 const allowed_errors = new Set(['invalid_input','invalid_span','invalid_options','protected_span_detected','model_unavailable','model_incompatible','inference_failed','processing_timeout','busy','invalid_request','invalid_command','model_not_configured','policy_unavailable']);
 
 async function main() {
   const command = process.argv[2];
-  if (!command || command === '--help') { process.stdout.write('craig rewrite | doctor\n'); return; }
+  if (!command || command === '--help') { process.stdout.write('craig rewrite | doctor | inspect | traces status|enable|disable|export|delete\n'); return; }
+  const root=fileURLToPath(new URL('..',import.meta.url));
+  if (['inspect','traces'].includes(command)) {
+    if (existsSync(join(root,'release.json')) && !process.env.CRAIG_RUNTIME_DIR) {
+      const {prepare_runtime}=await import('./bootstrap.mjs');
+      process.env.CRAIG_RUNTIME_DIR=(await prepare_runtime()).runtime_dir;
+    }
+    const binary=join(process.env.CRAIG_RUNTIME_DIR || join(root,'target/release'),'craig-review'+(process.platform==='win32'?'.exe':''));
+    const child=spawnSync(binary,process.argv.slice(2),{stdio:'inherit'});
+    process.exitCode=child.status ?? 1; return;
+  }
   if (!['rewrite', 'doctor'].includes(command) || process.argv.length !== 3) throw Error('invalid_command');
   const modelDir = process.env.CRAIG_MODEL_DIR;
   if (!modelDir) throw Error('model_not_configured');
@@ -16,7 +30,7 @@ async function main() {
     strategy: process.env.CRAIG_REPLACEMENT_STRATEGY ?? 'fixed_phrase',
     ...(process.env.CRAIG_REPLACEMENT === undefined ? {} : {marker: process.env.CRAIG_REPLACEMENT}),
   };
-  let text; let assess = false;
+  let text; let assess = false; let trace = false;
   if (command === 'rewrite') {
     const chunks = []; let size = 0;
     for await (const chunk of process.stdin) {
@@ -26,14 +40,16 @@ async function main() {
     }
     let request;
     try { request = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw Error('invalid_request'); }
-    if (!request || ![1,2].includes(request.version) || typeof request.text !== 'string' || Object.keys(request).some(key => !['version','text','assess'].includes(key))) throw Error('invalid_request');
+    if (!request || ![1,2,3].includes(request.version) || typeof request.text !== 'string' || Object.keys(request).some(key => !['version','text','assess'].includes(key))) throw Error('invalid_request');
     if (request.version === 1 && request.assess !== undefined || request.assess !== undefined && typeof request.assess !== 'boolean') throw Error('invalid_request');
     text = request.text;
-    assess = request.version === 2 && request.assess === true;
+    assess = request.version >= 2 && request.assess === true;
+    trace = request.version === 3;
   }
-  const { loadDetector } = require('../native/index.cjs');
+  const { loadDetector } = process.env.CRAIG_RUNTIME_DIR ? require(join(process.env.CRAIG_RUNTIME_DIR,'craig.node')) : require('../native/index.cjs');
   const detector = await loadDetector({ modelDir, threshold, policy, detector: process.env.CRAIG_DETECTOR ?? 'bert' });
   if (command === 'doctor') { process.stdout.write(JSON.stringify({ version:1, status:'ready' }) + '\n'); return; }
+  if (trace) { process.stdout.write(await detector.rewriteTraced(text,replacementOptions,assess)+'\n'); return; }
   if (assess) {
     const result = await detector.assess(text, replacementOptions);
     const a = result.assessment;

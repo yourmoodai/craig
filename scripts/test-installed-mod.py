@@ -68,6 +68,31 @@ if strategy not in ("fixed_phrase", "omit"):
 marker = "" if strategy == "omit" else os.environ.get("CRAIG_REPLACEMENT", "ya ya ya")
 replacement = f"You {marker}, do not delete the test."
 received = []
+host_started = time.monotonic()
+
+
+def host_event(event, **fields):
+    print(json.dumps({'protocol': 1, 'event': event, 'scenario': scenario,
+                      'strategy': strategy, 'elapsed_ms': (time.monotonic()-host_started)*1000,
+                      **fields}), flush=True)
+
+
+def draft_visible(output, text):
+    visible = re.sub(rb'\x1b\[[0-?]*[ -/]*[@-~]', b'', output).decode('utf-8', errors='replace')
+    # The renderer can position words with cursor moves instead of literal spaces.
+    return '❯' in visible and ''.join(visible.rsplit('❯', 1)[-1].split()).startswith(''.join(text.split()))
+
+
+def provider_has_text(body, text):
+    for message in body.get('messages', []):
+        if message.get('role') != 'user':
+            continue
+        content = message.get('content')
+        if content == text or isinstance(content, list) and any(
+                isinstance(block, dict) and block.get('type') == 'text' and block.get('text') == text
+                for block in content):
+            return True
+    return False
 
 
 class Provider(http.server.BaseHTTPRequestHandler):
@@ -155,7 +180,7 @@ def main():
         output = b""
         try:
             stage='ready'
-            print('installed stage: ready',flush=True)
+            host_event('ready')
             deadline=time.monotonic()+45
             submitted_at=None
             while time.monotonic()<deadline:
@@ -165,6 +190,12 @@ def main():
                 if any(marker in output for marker in [b'oauth/authorize',b'Paste code',b'Login successful']):
                     raise RuntimeError(f'{stage}: unexpected_authentication')
                 visible=re.sub(rb'\x1b\[[0-?]*[ -/]*[@-~]',b'',output)
+                if stage in ('failure_submission', 'recovery_ready') and received:
+                    raise RuntimeError(f'{stage}: provider_request_observed')
+                if stage in ('submission', 'recovery_submission') and any(
+                        source in json.dumps(body) for body in received
+                        for source in (original, 'You idiot, do not delete the test.')):
+                    raise RuntimeError(f'{stage}: original_reached_provider')
                 if stage=='ready' and b'trust' in visible and b'No,' in visible:
                     # The pinned host redraws its initial selection during startup.
                     # Drain that output before navigating the synthetic workspace dialog.
@@ -172,20 +203,20 @@ def main():
                     stage='trust_ready';output=b'';deadline=time.monotonic()+10
                 elif stage=='trust_ready' and time.monotonic()>=trust_ready_at:
                     terminal.write(b'\x1b[B')
-                    print('installed stage: trust_selection',flush=True)
+                    host_event('trust_selection')
                     stage='trust_selection';output=b'';deadline=time.monotonic()+10
                 elif stage=='trust_selection' and re.search('❯\\s*Yes,\\s*I\\s*trust\\s*this\\s*folder'.encode(),visible):
                     # Wait for the selection redraw before sending Enter; a combined
                     # arrow/Enter write can be consumed as one terminal input event.
                     terminal.write(b'\r')
-                    print('installed stage: trusted',flush=True)
+                    host_event('trusted')
                     stage='trusted';output=b'';deadline=time.monotonic()+45
                 elif stage in ('ready','trusted') and '❯'.encode() in visible and b'No,' not in visible:
                     terminal.write(b'/craig')
                     stage='command';output=b'';deadline=time.monotonic()+10
                 elif stage=='command' and b'/craig' in visible:
                     terminal.write(b'\r')
-                    print('installed stage: pane',flush=True)
+                    host_event('pane')
                     stage='pane';output=b'';deadline=time.monotonic()+30
                 elif stage=='pane' and b'personal metrics' in visible:
                     if scenario != 'success':
@@ -193,14 +224,14 @@ def main():
                         time.sleep(0.2)
                         terminal.write(original.encode()+b'\r')
                         stage='failure_submission';output=b'';deadline=time.monotonic()+60
-                        print('installed stage: failure_submission',flush=True)
+                        host_event('failure_submission')
                         continue
                     terminal.write(b'm')
-                    print('installed stage: metrics',flush=True)
+                    host_event('metrics')
                     stage='metrics';output=b'';deadline=time.monotonic()+30
                 elif stage=='metrics' and b'enable live metrics and sampled local judge' in visible:
                     terminal.write(b'l')
-                    print('installed stage: consent',flush=True)
+                    host_event('consent')
                     stage='consent';output=b'';deadline=time.monotonic()+30
                 elif stage=='consent' and b'disable live metrics' in visible:
                     state=bridge_request(['node',str(root/'bridge/review.mjs')],{'command':'status'},env,stage)
@@ -210,40 +241,47 @@ def main():
                     time.sleep(0.2)
                     terminal.write(original.encode()+b'\r')
                     submitted_at=time.monotonic()
-                    print('installed stage: submission',flush=True)
+                    host_event('submission')
                     stage='submission';output=b'';deadline=time.monotonic()+60
-                elif stage=='submission' and any(replacement in json.dumps(body) for body in received):
+                elif stage=='submission' and any(provider_has_text(body, replacement) for body in received):
                     if any(original in json.dumps(body) for body in received):
                         raise RuntimeError('submission: original_reached_provider')
                     submission_ms=(time.monotonic()-submitted_at)*1000
-                    print('installed stage: metrics_recorded',flush=True)
+                    host_event('provider_received')
+                    host_event('metrics_recorded')
                     stage='metrics_recorded';deadline=time.monotonic()+15
                 elif stage=='failure_submission' and b'local replacement failed' in visible:
                     if received:
                         raise RuntimeError('failure_submission: provider_request_observed')
+                    host_event('failure_detected', no_request_on_failure=True)
                     # Recovery without retyping proves the host kept the failed draft.
                     if scenario in ('processing_timeout', 'worker_exit'):
                         shutil.copyfile(root / 'bridge/cli.mjs', plugin / 'bridge/cli.mjs')
                     elif scenario == 'missing_model':
                         (home / 'missing-model').symlink_to(Path(model).resolve(), target_is_directory=True)
                     stage='recovery_ready';output=b'';deadline=time.monotonic()+10
-                    recovery_ready_at=time.monotonic()+1
-                elif stage=='recovery_ready' and time.monotonic()>=recovery_ready_at:
+                    # A fresh redraw distinguishes the retained draft from its submitted echo.
+                    terminal.write(b'\x0c')
+                elif stage=='recovery_ready' and draft_visible(output, original):
+                    if received:
+                        raise RuntimeError('recovery_ready: provider_request_observed')
+                    host_event('draft_ready')
                     if scenario == 'protected':
                         terminal.write(b'\x01\x0b')
                         terminal.write(b'You idiot, do not delete the test.')
                     terminal.write(b'\r')
                     stage='recovery_submission';output=b'';deadline=time.monotonic()+60
                     submitted_at=time.monotonic()
-                    print('installed stage: recovery_submission',flush=True)
-                elif stage=='recovery_submission' and any(replacement in json.dumps(body) for body in received):
+                    host_event('recovery_submission')
+                elif stage=='recovery_submission' and any(provider_has_text(body, replacement) for body in received):
                     if any(original in json.dumps(body) for body in received):
                         raise RuntimeError('recovery_submission: original_reached_provider')
-                    print(json.dumps({'scenario':scenario,'strategy':strategy,'host_version':version.stdout.strip(),
+                    host_event('provider_received')
+                    host_event('completed', **{'host_version':version.stdout.strip(),
                         'host_sha256':binary_hash.hexdigest(),'no_request_on_failure':True,
                         'recovery':'edited_draft' if scenario=='protected' else 'retained_draft_retry',
                         'injection':'bridge_response' if scenario=='processing_timeout' else 'bridge_process_exit' if scenario=='worker_exit' else 'none',
-                        'submission_to_provider_ms':(time.monotonic()-submitted_at)*1000,'samples':1}))
+                        'submission_to_provider_ms':(time.monotonic()-submitted_at)*1000,'samples':1})
                     return
                 elif stage=='metrics_recorded':
                     metrics=bridge_request(['node',str(root/'bridge/review.mjs')],{'command':'status'},env,stage)
@@ -254,12 +292,20 @@ def main():
                     assert metrics['summary']['live']['removed_characters']==5
                     assert original.encode() not in (profile/'craig/metrics.sqlite3').read_bytes()
                     assert original not in json.dumps(metrics)
-                    print(json.dumps({'scenario':scenario,'detector':env['CRAIG_DETECTOR'],'strategy':strategy,'host_version':version.stdout.strip(),'host_sha256':binary_hash.hexdigest(),'submission_to_provider_ms':submission_ms,'samples':1}))
+                    host_event('completed', host_version=version.stdout.strip(),host_sha256=binary_hash.hexdigest(),submission_to_provider_ms=submission_ms,samples=1)
                     print('installed mod: UI opt-in, native assessment, text-free metrics and sanitized provider payload passed')
                     return
-            # Host startup can include account information; do not persist terminal output.
-            markers=[word for word in ['trust','Yes','No','API','key','Enter','continue','Welcome','Terms','theme','danger','bypass','Press','shortcuts','permissions','personal metrics','local filter ready','local inspection','no replacement','enable live','Allow','Deny','Do you want','Do you trust','always','once','permission','node','bridge','escape'] if word.encode() in visible]
-            raise RuntimeError(f'{stage}: installed_host_timeout; observed_ui_markers='+','.join(markers))
+            raise RuntimeError(f'{stage}: ' + ('draft_not_observed' if stage=='recovery_ready' else 'installed_host_timeout'))
+        except Exception as error:
+            reason = str(error).split(': ')[-1]
+            allowed = {'installed_host_timeout', 'installed_host_exited', 'unexpected_authentication',
+                       'provider_request_observed', 'original_reached_provider', 'draft_not_observed',
+                       'unexpected_consent', 'ui_worker_mismatch'}
+            phase = {'recovery_ready':'failure_detected', 'command':'trusted', 'trust_ready':'ready'}.get(stage, stage)
+            host_event('failed', phase=phase, reason=reason if reason in allowed else 'host_execution_failed',
+                       draft_text_visible=original.encode() in visible, prompt_marker_visible='❯'.encode() in visible,
+                       draft_words_visible=all(word.encode() in visible for word in original.split()))
+            raise RuntimeError('installed_host_failed') from None
         finally:
             failed=sys.exc_info()[0] is not None
             terminal.close()

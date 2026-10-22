@@ -49,7 +49,8 @@ flowchart LR
 - Detection, source offsets, protection checks, and replacement belong in Rust.
   JavaScript and agent adapters transport requests and results.
 - Runtime inference stays local and offline. Downloads require explicit setup.
-  Never log or persist original prompts, or use private history as training data.
+  Never log original prompts or use private history as training data. Only
+  separately consented local traces may persist text; see ADR 4.
 - Preserve unmatched text exactly. Protected or failed replacements return
   control to the user; never submit the original as a fallback.
 - Keep input coverage intact when measuring speed. Report resident rewriting,
@@ -153,6 +154,14 @@ all targets, exercises the archive, and gates tag publication on installed-host
 tests. The generated release marketplace points at a checksummed ZIP; never
 point it at an unqualified candidate. Source archives are not installable
 release bundles.
+
+The protected `release` environment must provide `CRAIG_RELEASE_SIGNING_KEY`
+as an Ed25519 private PEM. Provision it outside the repository; do not generate
+or publish a production identity as part of a development test. Non-tag builds
+use an ephemeral qualification key. The plugin carries its public key and
+signed manifest; rotating the key requires a new trusted plugin version.
+Keep marketplace promotion manual until `published-download` passes on all
+three platforms. See [local inspection](docs/inspection.md) for trace tooling.
 
 The `adversarial verdict` CI job and its review limits are documented in the
 [reviewer guide](tools/adversarial_reviewer/README.md). Existing required human

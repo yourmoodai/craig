@@ -63,7 +63,7 @@ def assemble(parts, destination):
             (destination/'runtime'/target/(name+suffix)).chmod(0o755)
     for name in ['hooks','bridge','src','models','.claude-plugin']:
         shutil.copytree(ROOT/name,destination/name,ignore=shutil.ignore_patterns('__pycache__'))
-    for name in ['LICENSE','NOTICE','README.md','package.json','package-lock.json']:
+    for name in ['LICENSE','NOTICE','THIRD-PARTY-NOTICES.md','README.md','package.json','package-lock.json']:
         shutil.copy2(ROOT/name,destination/name)
     (destination/'docs/assets').mkdir(parents=True)
     shutil.copy2(ROOT/'docs/assets/craig.png',destination/'docs/assets')
@@ -77,6 +77,23 @@ def assemble(parts, destination):
     (destination/'hooks/distribution.ts').write_text('export const packaged: boolean = true;\n')
     files={str(p.relative_to(destination)).replace('\\','/'):digest(p) for p in sorted(destination.rglob('*')) if p.is_file()}
     manifest={'version':version,'node':NODE,'targets':list(TARGETS),'files':files,'model':json.loads((ROOT/'models/catalog.json').read_text())['models'][0]}
+    runtime={'schema':1,'protocol':1,'version':version,'model':manifest['model'],'targets':{}}
+    for target, (_, _, addon) in TARGETS.items():
+        suffix='.exe' if target.startswith('win32') else ''
+        entries=[]
+        for source, name in [(destination/'runtime'/target/('craig'+suffix),'craig'+suffix),
+                             (destination/'runtime'/target/('craig-review'+suffix),'craig-review'+suffix),
+                             (destination/'native'/f'craig.{addon}.node','craig.node')]:
+            asset=f'runtime-{version}-{target}-{name}'
+            entries.append({'name':name,'asset':asset,'bytes':source.stat().st_size,'sha256':digest(source)})
+            shutil.copy2(source,destination.parent/asset)
+            source.unlink()
+        runtime['targets'][target]=entries
+    (destination/'runtime-manifest.json').write_text(json.dumps(runtime,sort_keys=True,separators=(',',':'))+'\n')
+    subprocess.run(['node',str(ROOT/'scripts/release/sign.mjs'),str(destination/'runtime-manifest.json'),str(destination/'runtime-manifest.sig'),str(destination/'release-public.pem')],check=True)
+    for name in ['runtime-manifest.json','runtime-manifest.sig','release-public.pem']:
+        shutil.copy2(destination/name,destination.parent/name)
+    manifest['files']={str(p.relative_to(destination)).replace('\\','/'):digest(p) for p in sorted(destination.rglob('*')) if p.is_file()}
     (destination/'release.json').write_text(json.dumps(manifest,indent=2)+'\n')
     output=destination.parent/f'craig-{version}.zip'
     with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:

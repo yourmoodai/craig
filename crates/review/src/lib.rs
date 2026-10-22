@@ -1,9 +1,12 @@
 pub mod assessment;
 pub mod history;
+#[cfg(feature = "inspector")]
+pub mod inspector;
 #[cfg(feature = "judge")]
 pub mod judge;
 pub mod policy;
 pub mod store;
+pub mod traces;
 pub mod transport;
 #[cfg(feature = "judge")]
 pub mod worker;

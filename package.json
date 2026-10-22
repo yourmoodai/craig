@@ -40,9 +40,17 @@
     "bench:all": "node scripts/bench/run.mjs all",
     "bench:build": "npm run build && cargo build --release -p craig --example inference",
     "bench:build:debug": "npm run build:debug && cargo build -p craig-cli && cargo build -p craig --example inference",
-    "bench:test": "node --test tests/battle.spec.mjs tests/triage.spec.mjs",
+    "bench:test": "node --test tests/battle.spec.mjs tests/triage.spec.mjs tests/host-evidence.spec.mjs && python3 -m unittest discover -s scripts/release -p test_installed_terminal.py",
     "bench:memory": "node scripts/bench/run.mjs performance --samples 1 --warmup 0 --runs 1",
-    "build": "napi build --manifest-path crates/node/Cargo.toml --package craig-node --platform --output-dir native --js index.cjs --dts index.d.ts --release && cargo build --release -p craig-cli -p craig-review --features craig-review/judge",
+    "build": "napi build --manifest-path crates/node/Cargo.toml --package craig-node --platform --output-dir native --js index.cjs --dts index.d.ts --release && cargo build --release -p craig-cli -p craig-review --features craig-review/judge,craig-review/inspector",
+    "inspect": "node bridge/cli.mjs inspect",
+    "inspect:debug": "cargo run -p craig-review --features judge,inspector -- inspect",
+    "inspect:build:debug": "cargo build -p craig-review --features judge,inspector",
+    "inspect:build:release": "cargo build --release -p craig-review --features judge,inspector",
+    "inspect:test": "cargo clippy -p craig-review --features judge,inspector --all-targets -- -D warnings && cargo test -p craig-review --features judge,inspector --test traces && node --test tests/bootstrap.spec.mjs",
+    "inspect:e2e": "node scripts/test-inspector.mjs",
+    "inspect:profile": "node scripts/profile-inspector.mjs",
+    "test:bootstrap": "node --test tests/bootstrap.spec.mjs && node scripts/test-bootstrap-runtime.mjs",
     "build:debug": "napi build --manifest-path crates/node/Cargo.toml --package craig-node --platform --output-dir native --js index.cjs --dts index.d.ts",
     "types:fetch": "node scripts/fetch-types.mjs",
     "check": "npm run types:fetch && tsc -p tsconfig.json && tsc -p tsconfig.plugin.json",
@@ -120,6 +128,7 @@
     "models"
   ],
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@napi-rs/cli": "^3.10.8",
     "@types/node": "^26.6.5",
     "typescript": "^7.0.2"

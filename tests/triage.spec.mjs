@@ -95,6 +95,26 @@ test('historical failures are hypotheses until replay provides a cause',()=>{
   assert.equal(performanceFailures({rows:[r]},{rows:[{...r,cause:'processing_timeout'}]})[0].classification,'runtime_deadline');
 });
 
+test('repeated replays retain intermittent failures instead of replacing them with success',()=>{
+  const r={id:'token_dense',run:1,boundary:'native',strategy:'omit',status:'failed',cause:'processing_timeout'};
+  const result=performanceFailures({rows:[r]},[{rows:[r]},{rows:[{...r,status:'completed',cause:null}]}])[0];
+  assert.equal(result.classification,'intermittent_completion');
+  assert.equal(result.attempts.length,2);
+  assert.equal(result.observed_cause,'processing_timeout');
+});
+
+test('review priorities identify identity, context, evasion, and abstention without approving labels',()=>{
+  const rows=['contextual','ident_neutral_nh','evasion','clean'].map((category,i)=>({...row(String(i)),category,upstream_label:category==='evasion'}));
+  const inventory=qualityInventory(rows,{rows:rows.map(r=>({id:r.id,dataset:r.dataset,category:r.category,expected:r.upstream_label,
+    predicted:r.category==='clean'?null:!r.upstream_label,detection_status:r.category==='clean'?'protected_span_detected':'completed'}))});
+  assert.deepEqual(inventory.map(r=>r.review_focus),['identity_false_positive','context_false_positive','evasion_false_negative','abstention']);
+  assert.ok(inventory.every(r=>r.policies.directed_abuse.review_status==='unresolved'));
+  const cleanEvasion={...row('clean-evasion'),category:'evasion'};
+  assert.equal(qualityInventory([cleanEvasion],{rows:[{id:cleanEvasion.id,dataset:cleanEvasion.dataset,category:'evasion',expected:false,predicted:true}]})[0].review_focus,'other');
+  assert.throws(()=>reserveGroups(rows,['absent']),/identity/);
+  assert.throws(()=>qualityInventory(rows,{rows:[{id:'0',dataset:rows[0].dataset,category:rows[0].category,expected:false}]}),/identity/);
+});
+
 test('native runner separates measurement and profiling and retains failed stage evidence', {skip:!process.env.CRAIG_MODEL_DIR}, async()=>{
   const request={model:process.env.CRAIG_MODEL_DIR,backend:'cpu',batch:1,samples:1,warmup:0,fixtures:[{id:'one',text:'Please keep the test.'}]};
   for(const phase of ['measure','profile']) {

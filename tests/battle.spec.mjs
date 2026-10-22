@@ -132,8 +132,11 @@ test('report command publishes failed coverage honestly and never overwrites evi
   for(const stage of [q,e,p]) await writeFile(join(directory,`${stage.kind}.json`),JSON.stringify(stage));
   const snapshot=await report(directory);
   assert.equal(snapshot.performance.failed,1);assert.equal(snapshot.e2e.correctness.passed,0);
+  assert.equal(snapshot.performance.load_average_start,null);
   const markdown=await readFile(join(directory,'report.md'),'utf8');
   assert.match(markdown,/0\/1 checks passed/);assert.match(markdown,/not requested/);assert.match(markdown,/did not pass/);
+  assert.match(markdown,/Failure classifications: 1 `unresolved`/);
+  assert.match(markdown,/contention was not recorded/);
   const saved=await readFile(join(directory,'snapshot.json'),'utf8');
   await assert.rejects(report(directory),{code:'EEXIST'});
   assert.equal(await readFile(join(directory,'snapshot.json'),'utf8'),saved);

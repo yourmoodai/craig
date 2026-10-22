@@ -86,6 +86,7 @@ pub struct InferenceTimings {
     pub offsets_ms: f64,
 }
 pub struct ModelDetector {
+    fingerprint: String,
     device: Device,
     window_batch: usize,
     tokenizer: Tokenizer,
@@ -218,7 +219,15 @@ impl ModelDetector {
             }
             (Some(encoder), Some(classifier), None)
         };
+        let artifacts: Vec<_> = crate::model_catalog::delivery_detector()
+            .artifacts
+            .iter()
+            .map(|a| (&a.file, &a.sha256))
+            .collect();
+        let provenance = serde_json::json!({"artifacts":artifacts,"head":manifest,"backend":execution.backend,"fp16":execution.fp16,"window_batch":execution.window_batch});
+        let fingerprint = format!("{:x}", Sha256::digest(provenance.to_string().as_bytes()));
         Ok(Self {
+            fingerprint,
             device,
             window_batch: execution.window_batch,
             tokenizer,
@@ -232,6 +241,9 @@ impl ModelDetector {
     }
     pub fn threshold(&self) -> f32 {
         self.threshold
+    }
+    pub fn fingerprint(&self) -> &str {
+        &self.fingerprint
     }
 
     fn encode_windows(&self, windows: &[&[u32]]) -> Result<Tensor> {

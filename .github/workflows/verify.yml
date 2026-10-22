@@ -66,6 +66,12 @@ jobs:
       - run: python3 -m unittest discover -s scripts/release
       - run: npm run model:fetch
       - run: npm run eval:local
+      - run: npm run inspect:test
+      - run: npx playwright install --with-deps chromium
+      - name: standalone local inspector browser checks
+        env:
+          CRAIG_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
+        run: npm run inspect:e2e
       - name: native assessment and synthetic SDK history
         env:
           CRAIG_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base

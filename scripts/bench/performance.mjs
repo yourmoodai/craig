@@ -12,6 +12,7 @@ const outcomes = [...successes,'invalid_input','invalid_options','invalid_span',
   'inference_failed','processing_timeout','busy','policy_unavailable','benchmark_execution_failed'];
 const finite = n => Number.isFinite(n) && n >= 0;
 const emit = value => process.stdout.write(JSON.stringify(value)+'\n');
+export const environmentSample = () => ({recorded_at:new Date().toISOString(),logical_cpus:os.cpus().length,load_average:os.loadavg()});
 
 export async function ffiWorker(request) {
   const binding = createRequire(import.meta.url)('../../native/index.cjs');
@@ -133,19 +134,20 @@ export async function performanceScreen(config) {
     runner_sha256:digest(await readFile(runner)),stage:'screen',qualification:'not_qualified',
     config:{samples:config.samples,warmup:config.warmup,runs:config.runs,timeout_ms:config['timeout-ms']},
     retry_sha256:retry?digest(await readFile(config.retry)):null,filtered:!!retry,
-    load_average_start:os.loadavg(),expected_measurements:tasks.length,status:'running',rows:[]};
+    load_average_start:os.loadavg(),environment_start:environmentSample(),expected_measurements:tasks.length,status:'running',rows:[]};
   await mkdir(dirname(config.output),{recursive:true});
   await save(`${config.output}.identity.json`,{...report,rows:undefined});
   for(const {definition,...task} of tasks) {
+    const environment_start = environmentSample();
     const fixture={id:definition.id,text:fixtureText(definition)};
     process.stderr.write(`performance ${task.run}/${config.runs} ${task.strategy} ${task.boundary} ${fixture.id}\n`);
     const request={model:resolve(config.model),replacement_strategy:task.strategy,phase:'measure',stream:true,
       order:'fixture',detector:'bert',backend:'cpu',fp16:false,compute_units:'all',batch:1,samples:config.samples,warmup:config.warmup,fixtures:[fixture]};
     const stream=measurementStream(fixture,config.samples,config.warmup,event=>
-      appendFileSync(`${config.output}.samples.jsonl`,JSON.stringify({...task,...event})+'\n',{mode:0o600}));
+      appendFileSync(`${config.output}.samples.jsonl`,JSON.stringify({...task,...event,environment:environmentSample()})+'\n',{mode:0o600}));
     const result=await child(task.boundary==='native'?runner:process.execPath,task.boundary==='native'?[]:['scripts/bench/run.mjs','ffi-worker'],
       {input:JSON.stringify(request),timeout:config['timeout-ms'],onLine:stream.line});
-    const row={...task,bytes:Buffer.byteLength(fixture.text),process_ms:result.milliseconds,...finishMeasurement(result,stream,fixture,config.samples,task.strategy)};
+    const row={...task,environment_start,environment_end:environmentSample(),bytes:Buffer.byteLength(fixture.text),process_ms:result.milliseconds,...finishMeasurement(result,stream,fixture,config.samples,task.strategy)};
     report.rows.push(row);
     await appendFile(`${config.output}.progress.jsonl`,JSON.stringify(row)+'\n',{mode:0o600});
   }
@@ -154,6 +156,7 @@ export async function performanceScreen(config) {
     report.fixture_sha256===digest(await readFile('tests/fixtures/performance.json'));
   report.status=report.identity_stable && report.rows.every(r=>r.status==='completed')?'completed':'failed';
   report.load_average_end=os.loadavg();
+  report.environment_end=environmentSample();
   report.maximum_observed_ms=Math.max(0,...report.rows.filter(r=>r.summary).map(r=>r.summary.max_ms));
   report.under_500_ms=!report.filtered && report.status==='completed' && report.maximum_observed_ms<500;
   report.distributions={};
@@ -165,14 +168,15 @@ export async function performanceScreen(config) {
 export async function profileScreen(config) {
   const runner=`target/${config.profile}/examples/inference${process.platform==='win32'?'.exe':''}`;
   const report={version:1,kind:'profiling',identity:await identity(config),runner_sha256:digest(await readFile(runner)),
-    fixture_sha256:digest(await readFile('tests/fixtures/performance.json')),status:'running',rows:[]};
+    fixture_sha256:digest(await readFile('tests/fixtures/performance.json')),environment_start:environmentSample(),status:'running',rows:[]};
   await mkdir(dirname(config.output),{recursive:true});
   for(const definition of await json('tests/fixtures/performance.json')) {
+    const environment_start = environmentSample();
     const fixture={id:definition.id,text:fixtureText(definition)};
     process.stderr.write(`profile ${fixture.id}\n`);
     const result=await child(runner,[],{timeout:config['timeout-ms'],input:JSON.stringify({model:resolve(config.model),phase:'profile',
       backend:'cpu',batch:1,samples:1,warmup:0,fixtures:[fixture]})});
-    const row={id:fixture.id,bytes:Buffer.byteLength(fixture.text),status:'failed',failure_phase:'profile',process_ms:result.milliseconds};
+    const row={id:fixture.id,environment_start,environment_end:environmentSample(),bytes:Buffer.byteLength(fixture.text),status:'failed',failure_phase:'profile',process_ms:result.milliseconds};
     try {
       if(result.error||result.status!==0) throw Error(result.error??'process_exit');
       const evidence=JSON.parse(result.stdout), measured=evidence.results?.[0];
@@ -192,6 +196,7 @@ export async function profileScreen(config) {
   report.identity_stable=sameIdentity(report.identity,report.identity_end) && report.runner_sha256===digest(await readFile(runner)) &&
     report.fixture_sha256===digest(await readFile('tests/fixtures/performance.json'));
   report.status=report.identity_stable && report.rows.every(r=>r.status==='completed')?'completed':'failed';
+  report.environment_end=environmentSample();
   await save(config.output,report);
   return report;
 }

@@ -1,14 +1,17 @@
 import {createRequire} from 'node:module';
 import {readFile} from 'node:fs/promises';
+import {appendFileSync} from 'node:fs';
 import {json, save, digest} from './corpus.mjs';
 import {child, environment, identity, sameIdentity, strategies, strategyName, errorCode} from './common.mjs';
 import {preservation} from './quality.mjs';
+import {hostStream} from './host.mjs';
 
 export async function e2e(config) {
   const binding = createRequire(import.meta.url)('../../native/index.cjs');
   const fixtures = await json('tests/fixtures/battle.json');
   const report = {version:1,kind:'e2e',identity:await identity(config),fixture_sha256:digest(await readFile('tests/fixtures/battle.json')),
     status:'running',correctness:[],adapters:[],host:[],diagnostics:[],errors:[]};
+  await save(`${config.output}.identity.json`,{version:1,kind:'e2e',identity:report.identity});
   for (const replacement of strategies) {
     const marker = replacement.strategy==='omit'?'':replacement.marker??'ya ya ya';
     for (const fixture of fixtures) {
@@ -49,14 +52,13 @@ export async function e2e(config) {
     if (config.host==='yes') {
       for(const scenario of ['success','protected','missing_model','processing_timeout','worker_exit']) {
       process.stderr.write(`installed host ${strategyName(replacement)} ${scenario}\n`);
-      const result = await child('python3',['scripts/test-installed-mod.py'],{env:{...environment(config.model,replacement),CRAIG_HOST_SCENARIO:scenario},timeout:Math.max(config['timeout-ms'],180000)});
-      const line = result.stdout.split('\n').find(l=>l.startsWith('{') && l.includes('submission_to_provider_ms'));
-      let evidence; try { evidence=JSON.parse(line); } catch {}
-      const stages = result.stdout.split('\n').filter(l=>/^installed stage: [a-z_]+$/.test(l));
-      const reason = ['host_wrapper_requires_native_binary','host_prerequisite_missing','host_version_unsupported'].find(code=>result.stdout.includes(`"error": "${code}"`));
-      report.host.push({scenario,strategy:strategyName(replacement),status:result.status===0 && evidence?.scenario===scenario?'passed':result.error??'host_failed',
-        evidence:evidence??null,reason:reason??null,
-        last_stage:stages.at(-1)?.replace('installed stage: ','')??null,process_ms:result.milliseconds});
+      const stream = hostStream(scenario,replacement.strategy,event => appendFileSync(`${config.output}.host-events.jsonl`,
+        JSON.stringify({...event,strategy_variant:strategyName(replacement)})+'\n',{mode:0o600}));
+      const result = await child('python3',['scripts/test-installed-mod.py'],{env:{...environment(config.model,replacement),CRAIG_HOST_SCENARIO:scenario},
+        timeout:Math.max(config['timeout-ms'],180000),onLine:stream.line});
+      const row = {scenario,strategy:strategyName(replacement),...stream.finish(result)};
+      report.host.push(row);
+      await save(`${config.output}.host-${strategyName(replacement)}-${scenario}.json`,row);
       }
     } else report.host.push({strategy:strategyName(replacement),status:'not_requested'});
   }

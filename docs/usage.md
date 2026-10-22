@@ -89,8 +89,10 @@ arguments.
 
 ## Limits
 
-Craig does not log or persist prompts, send them to a remote detector, or use an
-original-text fallback. The current host can still bypass its adapter, and Craig
+Craig does not log prompts, send them to a remote detector, or use an
+original-text fallback. Prompt persistence is off unless separately enabled
+for [local inspection](inspection.md); personal-review metrics consent does
+not enable full traces. The current host can still bypass its adapter, and Craig
 cannot prove that Claude Code, another plugin, crash reporting, terminal
 capture, or voice dictation has not exposed text. It may miss unwanted language
 or select harmless language. Protected code, quotations, paths, URLs, and

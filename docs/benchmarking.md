@@ -51,6 +51,12 @@ normal development installation; use `--host no` for a wholly debug adapter run.
 Peak RSS is recorded for each native and Node process; it excludes unrelated
 processes and is not an allocation profile.
 
+Performance reports and sample checkpoints record logical CPU count and
+1-, 5-, and 15-minute load averages. Load provides context, not proof that
+contention caused a timeout. Background applications are not stopped by the
+harness. Run profiling separately from latency measurement, keep failed
+attempts, and do not combine short-input processing with model-load time.
+
 ## Licensed corpora and annotations
 
 The [source manifest](../benchmarks/sources.json) pins revisions and SHA-256
@@ -141,6 +147,13 @@ cannot pass the full-input latency screen. Triage emits three content-free files
 - `partitions.json`: diagnostic and reserved evaluation IDs, keeping connected
   exact-text duplicates and upstream families in the same partition.
 
+Repeat `--retry FILE` on `bench:triage` to retain multiple sequential replays
+of the same original performance report. Every replay must bind that report's
+hash. Mixed failures and successes are classified as `intermittent_completion`,
+not repaired failures. `review_focus` orders priority cases by identity false
+positives, contextual false positives, evasion misses, and abstentions, without
+changing their unresolved review status.
+
 Reviewers consult the licensed local corpus, specify intended spans in UTF-16
 units, and record their identity, date, policy version, and classification.
 Classifications are `policy_mismatch`, `detection_false_positive`,
@@ -178,6 +191,20 @@ payloads. Host checks also cover real protected-span and unavailable-model
 errors, plus timeout responses and worker exits injected into a temporary
 plugin copy. Recovery retries the retained draft after repair; protected text
 requires editing first. No failure switch is added to the shipped runtime.
+
+Installed-host evidence uses a versioned, content-free event stream. Each
+scenario has its own checkpoint beside the E2E output, and validated events
+are appended as they arrive. A failed process retains its last observed phase
+and any verified absence of provider requests; missing completion evidence
+never becomes a pass. Historical reports without these fields remain readable.
+
+After a refusal, the harness requests a terminal redraw and waits up to ten
+seconds to observe the retained synthetic draft at the prompt box before
+pressing Enter. Rendering whitespace is normalized only for this readiness
+check; the provider payload must still contain the exact expected replacement.
+Terminal output stays in memory. A readiness timeout is `draft_not_observed`,
+not proof of draft loss. Recovery stalls and non-reproduced failures remain
+visible until their cause is established.
 Injected timeout responses test adapter handling, not the model deadline or
 the host's hard process watchdog. Provider traffic is observed through recovery.
 The adapter restores the draft only into an empty prompt box for the latest,

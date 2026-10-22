@@ -1,6 +1,11 @@
 {
   "version": "2.0.0",
   "tasks": [
+    {"label":"inspect replacements release","type":"process","command":"npm","args":["run","inspect"],"problemMatcher":[]},
+    {"label":"inspect replacements debug","type":"process","command":"npm","args":["run","inspect:debug"],"problemMatcher":["$rustc"]},
+    {"label":"test private inspector","type":"process","command":"npm","args":["run","inspect:test"],"problemMatcher":[]},
+    {"label":"inspector browser e2e","type":"process","command":"npm","args":["run","inspect:e2e"],"problemMatcher":[]},
+    {"label":"profile inspector latency and memory","type":"process","command":"npm","args":["run","inspect:profile"],"problemMatcher":[]},
     {"label":"fetch benchmark corpora","type":"process","command":"npm","args":["run","corpus:fetch"],"problemMatcher":[]},
     {"label":"build benchmarks release","type":"process","command":"npm","args":["run","bench:build"],"problemMatcher":["$rustc"]},
     {"label":"build benchmarks debug","type":"process","command":"npm","args":["run","bench:build:debug"],"problemMatcher":["$rustc"]},

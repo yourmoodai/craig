@@ -1,0 +1,12 @@
+import { createPrivateKey, createPublicKey, generateKeyPairSync, sign } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+const [manifest, signature, public_file] = process.argv.slice(2);
+if (!manifest || !signature || !public_file) throw Error('invalid_arguments');
+const production = process.env.GITHUB_REF?.startsWith('refs/tags/');
+const configured = process.env.CRAIG_RELEASE_SIGNING_KEY;
+if (production && !configured) throw Error('release_signing_key_required');
+const key = configured ? createPrivateKey(configured) : generateKeyPairSync('ed25519').privateKey;
+if (key.asymmetricKeyType !== 'ed25519') throw Error('invalid_signing_key');
+writeFileSync(signature, sign(null, readFileSync(manifest), key));
+writeFileSync(public_file, createPublicKey(key).export({type:'spki',format:'pem'}));
+if (!configured) process.stderr.write('qualification signing key only; not publishable\n');

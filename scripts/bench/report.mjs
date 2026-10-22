@@ -36,6 +36,8 @@ export function render(snapshot) {
     lines.push(`| ${track==='profanity'?'Scunthorpe flag':'HateCheck hate-label'} agreement | ${percent(m.accuracy)} on ${m.scored}/${m.examples} sampled cases; F1 ${m.f1===null?'unavailable':m.f1.toFixed(3)}; ${m.abstentions??0} abstentions |`);
   }
   for (const [strategy,r] of Object.entries(q.replacement)) lines.push(`| Unmatched text: \`${strategy}\` | ${r.preservation_passed}/${r.successful} successful outputs preserved; ${r.abstentions} abstentions |`);
+  const hostFailures = e.host.results.filter(r=>!['passed','not_requested'].includes(r.status));
+  if(hostFailures.length) lines.push('', 'Installed-host failures: '+hostFailures.map(r=>`\`${escape(r.scenario)}\` / \`${escape(r.strategy)}\`: ${escape(r.reason??'reason unavailable')} at ${escape(r.last_stage??'phase unavailable')}`).join('; ')+'.');
   lines.push('',`Measured ${escape(snapshot.date.slice(0,10))} UTC on ${escape(snapshot.machine.cpu)} (${escape(snapshot.machine.platform)}, ${escape(snapshot.machine.arch)}), CPU FP32, ${model}.`,
     'The external screen samples English cases by category and label; it is not a population accuracy estimate. HateCheck labels hate speech, which differs from Craig’s offensive-span policy.',
     q.reviewed_span_examples ? `Reviewed span scoring covers ${q.reviewed_span_examples} strategy-case observations; see the evidence for denominators.` : 'Reviewed external replacement spans are unavailable. These classification figures do not establish successful removal of targeted abuse.', '');
@@ -49,7 +51,14 @@ export function render(snapshot) {
   lines.push('',`Performance coverage: ${p.completed}/${p.expected} measurements completed successfully; ${p.failed} failed. Maxima above combine strategies only within the same fixture; failed timings are not success samples.`,
     `Recorded configuration: ${p.config.runs} run(s), ${p.config.samples} measured sample(s) and ${p.config.warmup} warmup(s) per fixture, strategy, and boundary; ${p.config.timeout_ms/1000} s worker deadline.`,
     `This is a screen, not latency qualification. The all-input maximum-below-500-ms screen ${p.under_500_ms?'passed':'did not pass'}. Cold load, process startup, per-fixture timing, and peak RSS are recorded separately in the evidence.`,
-    p.protocol===2?'Latency runs exclude stage profiling. Matched per-fixture strategy comparisons and explicit failure causes are retained in the snapshot.':'No tail-latency or strategy-speed claim is supported by this pilot.', '',
+    p.protocol===2?'Latency runs exclude stage profiling. Matched per-fixture strategy comparisons and explicit failure causes are retained in the snapshot.':'No tail-latency or strategy-speed claim is supported by this pilot.');
+  const failureCounts = {};
+  for(const row of p.rows.filter(r=>r.status!=='completed')) failureCounts[row.cause??'unresolved']=(failureCounts[row.cause??'unresolved']??0)+1;
+  if(p.failed) lines.push('Failure classifications: '+Object.entries(failureCounts).map(([cause,n])=>`${n} \`${escape(cause)}\``).join(', ')+'.');
+  const loads = p.rows.flatMap(r=>[r.environment_start?.load_average?.[0],r.environment_end?.load_average?.[0]]).filter(Number.isFinite);
+  const loadText = values => Array.isArray(values) && values.length===3 && values.every(Number.isFinite) ? values.map(n=>n.toFixed(2)).join(' / ') : 'unavailable';
+  lines.push(`Machine context: ${snapshot.machine.logical_cpus??'unavailable'} logical CPUs; start/end 1-, 5-, and 15-minute load averages ${loadText(p.load_average_start)} → ${loadText(p.load_average_end)}.`,
+    loads.length?`Per-measurement 1-minute load ranged from ${Math.min(...loads).toFixed(2)} to ${Math.max(...loads).toFixed(2)}. Background work was not controlled; load alone does not establish the cause of a timeout.`:'Per-measurement machine contention was not recorded; these timings are not a controlled baseline.', '',
     '[Evidence snapshot](benchmarks/results/latest.json) · [Reproduce the checks](docs/benchmarking.md)', '');
   return lines.join('\n');
 }
@@ -66,7 +75,9 @@ async function snapshotFromReports(directory) {
       adapters:{passed:e.adapters.filter(r=>r.passed).length,total:e.adapters.length},
       host:{passed:e.host.filter(r=>r.status==='passed').length,requested:e.host.filter(r=>r.status!=='not_requested').length,results:e.host},
       failures:[...e.correctness,...e.adapters].filter(r=>!r.passed),diagnostics:e.diagnostics??[]},
-    performance:{protocol:p.protocol??1,config:p.config,identity_stable:p.identity_stable??null,filtered:p.filtered??false,expected:p.expected_measurements,completed:p.rows.filter(r=>r.status==='completed').length,failed:p.rows.filter(r=>r.status!=='completed').length,
+    performance:{protocol:p.protocol??1,config:p.config,identity_stable:p.identity_stable??null,filtered:p.filtered??false,
+      load_average_start:p.load_average_start??null,load_average_end:p.load_average_end??null,environment_start:p.environment_start??null,environment_end:p.environment_end??null,
+      expected:p.expected_measurements,completed:p.rows.filter(r=>r.status==='completed').length,failed:p.rows.filter(r=>r.status!=='completed').length,
       under_500_ms:p.under_500_ms,distributions:p.distributions,matched_comparisons:p.matched_comparisons??[],rows:p.rows.map(({times_ms,...row})=>row)}};
   return snapshot;
 }

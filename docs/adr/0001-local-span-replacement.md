@@ -7,6 +7,8 @@ Date: 2026-10-12
 Accepted. Craig's local transformation core is the product boundary. The Claude
 Code mod is the current adapter; a transparent proxy is the planned next adapter.
 Release evidence belongs to [ADR 2](0002-release-and-quality-evidence.md).
+The blanket persistence prohibition below is superseded only for explicitly
+consented local inspection by [ADR 4](0004-consented-local-traces.md).
 
 ## Terms
 
