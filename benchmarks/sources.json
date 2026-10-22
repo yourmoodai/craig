@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "scunthorpe",
+      "repository": "unprofane/scunthorpe-test",
+      "revision": "c89e6429d84c22ee877263d8000f107ff4973b61",
+      "attribution": "The Scunthorpe Test, by Unprofane (unprofane.com); GeoNames (geonames.org) for GeoNames items; Civil Comments (Jigsaw) for Civil Comments items",
+      "files": [
+        {"path": "DATA-LICENSE.md", "sha256": "6b401c3fa6b4c92a0e35fddf3833beb26bd8aca2f7aeb01d76cbecf528597c3c"},
+        {"path": "data/scunthorpe-test-dev.jsonl", "sha256": "d76264183bc48eed73208cbc5b2a732d7fc1342a2be2db06ffbd6705ca2d91ff"}
+      ]
+    },
+    {
+      "id": "hatecheck",
+      "repository": "paul-rottger/hatecheck-data",
+      "revision": "3490854f969111a32c55c05f0d9788b471337fa9",
+      "attribution": "Paul Röttger, Bertie Vidgen, Dong Nguyen, Zeerak Waseem, Helen Margetts and Janet B. Pierrehumbert. HateCheck: Functional Tests for Hate Speech Detection Models (ACL 2021).",
+      "files": [
+        {"path": "LICENSE", "sha256": "9e5f1b3c610b9c2da5c313bf81d577a7d1acec686bdb0384edefa6df0f90cd94"},
+        {"path": "test_suite_cases.csv", "sha256": "ecf0dc1e93fccc90b6f880e632b19e635c0f0a68b3157915a9e20b6938f121cf"}
+      ]
+    }
+  ]
+}

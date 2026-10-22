@@ -83,7 +83,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.BEDROCK_REVIEW_ROLE_ARN }}
           aws-region: us-east-1
@@ -146,7 +146,7 @@ jobs:
           node-version: 24.22.0
       - name: assume bedrock review role
         if: vars.BEDROCK_REVIEW_ENABLED == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.BEDROCK_REVIEW_ROLE_ARN }}
           aws-region: us-east-1

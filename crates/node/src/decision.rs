@@ -39,7 +39,7 @@ pub struct ExperimentalRewrite {
     model: Arc<Mutex<DecisionDetector>>,
     text: String,
     threshold: f32,
-    marker: core::FixedMarker,
+    strategy: core::ReplacementMode,
     _permit: Permit,
 }
 #[napi]
@@ -48,7 +48,7 @@ impl Task for ExperimentalRewrite {
     type JsValue = RewriteResult;
     fn compute(&mut self) -> Result<Self::Output> {
         let mut model = self.model.try_lock().map_err(|_| err(core::Error::Busy))?;
-        core::rewrite(&mut *model, &self.text, self.threshold, &self.marker).map_err(err)
+        core::rewrite(&mut *model, &self.text, self.threshold, &self.strategy).map_err(err)
     }
     fn resolve(&mut self, _: Env, result: Self::Output) -> Result<Self::JsValue> {
         output(&self.text, result)
@@ -66,7 +66,7 @@ impl ExperimentalDetector {
             model: self.model.clone(),
             text: valid_text(text)?,
             threshold: self.threshold,
-            marker: marker(options)?,
+            strategy: replacement_mode(options)?,
             _permit: Permit::acquire(&self.busy)?,
         }))
     }

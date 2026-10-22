@@ -1,0 +1,31 @@
+name: verified detector cache
+description: Reuse pinned detector downloads without bypassing artifact checksums.
+outputs:
+  cache-hit:
+    description: Whether the exact download cache was restored.
+    value: ${{ steps.restore.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - name: restore detector downloads
+      id: restore
+      uses: actions/cache/restore@v4
+      with:
+        path: .cache/models/mudes-en-base
+        key: detector-v1-${{ runner.os }}-${{ hashFiles('models/catalog.json', 'scripts/fetch-model.mjs', 'scripts/model-catalog.mjs') }}
+    - name: verify or download detector
+      shell: bash
+      run: node scripts/fetch-model.mjs
+    # Save verified downloads before later tests can fail or be cancelled.
+    - name: save verified detector downloads
+      if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: .cache/models/mudes-en-base
+        key: ${{ steps.restore.outputs.cache-primary-key }}
+    - name: summarize detector cache
+      shell: bash
+      env:
+        CACHE_HIT: ${{ steps.restore.outputs.cache-hit }}
+      run: |
+        printf 'Detector download cache: exact hit `%s`; artifact checksums verified.\n' "${CACHE_HIT:-false}" >> "$GITHUB_STEP_SUMMARY"

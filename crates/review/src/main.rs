@@ -134,6 +134,10 @@ fn serve() -> ReviewResult<()> {
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
     let result = match args.as_slice() {
+        #[cfg(feature = "inspector")]
+        [command] if command == "inspect" => craig_review::inspector::serve(),
+        #[cfg(feature = "inspector")]
+        [command, rest @ ..] if command == "traces" => craig_review::inspector::command(rest),
         [command] if command == "serve" => serve(),
         [command, output] if command == "policy-fetch" => {
             craig_review::policy::fetch(std::path::Path::new(output))

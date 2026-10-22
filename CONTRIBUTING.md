@@ -34,12 +34,25 @@ without a response, one follow-up on the issue or PR is welcome.
 
 ## Design constraints
 
+Craig favors a narrow, inspectable boundary over a convenient fallback: prompt
+input is transformed locally, unchanged text remains exact, and a processing
+failure returns control to the user rather than submitting its original.
+
+```mermaid
+flowchart LR
+    I[Prompt input] --> A[Adapter]
+    A --> R[Rust detection and replacement]
+    R -->|sanitized result| A
+    R -->|abstention or error| U[Return control to user]
+```
+
 - Detection, source offsets, protection checks, and replacement belong in Rust.
   JavaScript and agent adapters transport requests and results.
 - Runtime inference stays local and offline. Downloads require explicit setup.
-  Never log or persist original prompts, or use private history as training data.
-- Preserve unmatched text exactly. Protected or failed replacements retain the
-  draft; never submit the original as a fallback.
+  Never log original prompts or use private history as training data. Only
+  separately consented local traces may persist text; see ADR 4.
+- Preserve unmatched text exactly. Protected or failed replacements return
+  control to the user; never submit the original as a fallback.
 - Keep input coverage intact when measuring speed. Report resident rewriting,
   process startup, host interaction, and optional judging separately.
 - Separate replacement correctness, reference-label agreement, and model
@@ -47,9 +60,24 @@ without a response, one follow-up on the issue or PR is welcome.
   policy alignment, not certification or provider approval.
 
 Discuss model changes, public interfaces, supported agents, dependencies,
-licensing, and release behavior in the accepted issue. The
-[architecture decision](docs/adr/0001-local-span-replacement.md) owns these
-boundaries. New implementation phases do not automatically need new ADRs.
+licensing, and release behavior in the accepted issue.
+[ADR 1](docs/adr/0001-local-span-replacement.md) owns the replacement boundary,
+[ADR 2](docs/adr/0002-release-and-quality-evidence.md) owns release and evidence
+gates, and [ADR 3](docs/adr/0003-future-egress-enforcement.md) owns the planned
+transparent-proxy adapter and separate unproven enforcement question. New
+implementation phases do not automatically need new ADRs.
+
+## Architecture records
+
+ADRs describe enduring boundaries, not implementation logs. Keep their language
+visual and audience-first; put commands, thresholds, and mechanical procedure
+in the relevant benchmark, release, or tool guide.
+
+`.github/CODEOWNERS` explicitly assigns `docs/adr/**` to the maintainer. A
+repository administrator must enable GitHub's **Require review from Code
+Owners** branch-protection rule for protected branches; the file requests a
+review but cannot enforce it by itself. ADR changes should not be merged through
+an ordinary-contributor bypass.
 
 ## Development
 
@@ -67,10 +95,10 @@ claude --plugin-dir "$PWD"
 npm run verify
 ```
 
-Model changes additionally require `npm run eval:local` and the reference-parity
-checks in [evaluation](docs/evaluation.md). That guide also covers debug and
-release builds, memory profiling, quality review, and the 500 ms qualification
-protocol. Shared CI hardware does not qualify latency. An installed-host test
+Model changes additionally require `npm run eval:local` and reference parity.
+[Evaluation](docs/evaluation.md) explains the claim boundary;
+[benchmarking](docs/benchmarking.md) owns the detailed quality and performance
+procedure. Shared CI hardware does not qualify latency. An installed-host test
 is separate from adapter unit tests; state explicitly when it cannot run.
 
 Add focused tests for changed behavior. Update documentation for changed
@@ -119,22 +147,24 @@ notices intact. Synthetic fixtures use `CC0-1.0` where declared.
 
 ## Release and review workflows
 
-The [architecture decision](docs/adr/0001-local-span-replacement.md#release-distribution-and-initialization)
-owns release packaging and activation. Run `python3 scripts/release/package.py stage`
+[ADR 2](docs/adr/0002-release-and-quality-evidence.md) owns release packaging,
+activation, and qualification. Run `python3 scripts/release/package.py stage`
 with a supported target and output directory after a release build. CI assembles
-all targets, exercises the archive, and gates tag publication on installed-host tests.
-The generated release marketplace points at a checksummed ZIP; never point it at
-an unqualified candidate. Source archives are not installable release bundles.
+all targets, exercises the archive, and gates tag publication on installed-host
+tests. The generated release marketplace points at a checksummed ZIP; never
+point it at an unqualified candidate. Source archives are not installable
+release bundles.
 
-Bedrock review waits for required tests, then updates one PR comment with a 50–100 word
-overview and an Approved or Request changes verdict. The `adversarial verdict`
-CI job passes only for qualified, complete, clean reviews with valid synthesis;
-findings or review failures fail the job. Code-owner PRs over 5,000 changed lines
-may instead receive an explicit size-policy approval after required tests pass,
-including a formal GitHub approval. See the reviewer guide for eligibility.
-Static documentation images are explicitly excluded from code-review coverage.
-See [reviewer verification](tools/adversarial_reviewer/README.md). Existing required
-human/PR approvals and stale-review dismissal remain in effect. Live review is
-disabled until OIDC setup and model qualification succeed; the reviewer guide
-documents activation. Authentication uses short-lived AWS credentials through
-GitHub OIDC; do not copy personal credentials into CI.
+The protected `release` environment must provide `CRAIG_RELEASE_SIGNING_KEY`
+as an Ed25519 private PEM. Provision it outside the repository; do not generate
+or publish a production identity as part of a development test. Non-tag builds
+use an ephemeral qualification key. The plugin carries its public key and
+signed manifest; rotating the key requires a new trusted plugin version.
+Keep marketplace promotion manual until `published-download` passes on all
+three platforms. See [local inspection](docs/inspection.md) for trace tooling.
+
+The `adversarial verdict` CI job and its review limits are documented in the
+[reviewer guide](tools/adversarial_reviewer/README.md). Existing required human
+reviews and stale-review dismissal remain in effect. Authentication uses
+short-lived AWS credentials through GitHub OIDC; do not copy credentials into
+CI.

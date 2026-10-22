@@ -1,9 +1,12 @@
 use craig::{
-    Detector, ExecutionOptions, FixedMarker, ModelDetector, Policy, apply_replacements, rewrite,
+    Detector, ExecutionOptions, ModelDetector, Policy, ReplacementMode, apply_replacements, rewrite,
 };
 use serde::Deserialize;
 use serde_json::json;
-use std::{io::Read, time::Instant};
+use std::{
+    io::{Read, Write},
+    time::Instant,
+};
 
 enum Instance {
     Bert(Box<ModelDetector>),
@@ -18,16 +21,19 @@ impl Detector for Instance {
     }
 }
 impl Instance {
-    fn profile(&mut self, text: &str) -> craig::Result<(Vec<craig::Span>, serde_json::Value)> {
+    fn profile(&mut self, text: &str) -> (craig::Result<Vec<craig::Span>>, serde_json::Value) {
         match self {
-            Self::Bert(d) => d.detect_profiled(text).map(|(s, t)| (s, json!(t))),
+            Self::Bert(d) => {
+                let (s, t) = d.detect_profiled_outcome(text);
+                (s, json!(t))
+            }
             Self::Decision(d) => {
                 let start = Instant::now();
-                let s = d.detect(text)?;
-                Ok((
+                let s = d.detect(text);
+                (
                     s,
                     json!({"detection_ms":start.elapsed().as_secs_f64()*1000.}),
-                ))
+                )
             }
         }
     }
@@ -42,6 +48,11 @@ struct Fixture {
 #[serde(deny_unknown_fields)]
 struct Request {
     model: String,
+    #[serde(default = "default_phase")]
+    phase: String,
+    #[serde(default)]
+    stream: bool,
+    replacement_strategy: Option<String>,
     #[serde(default)]
     order: Option<String>,
     #[serde(default = "default_detector")]
@@ -56,6 +67,13 @@ struct Request {
     samples: usize,
     warmup: usize,
     fixtures: Vec<Fixture>,
+}
+fn default_phase() -> String {
+    "both".into()
+}
+fn emit(value: serde_json::Value) {
+    println!("{value}");
+    let _ = std::io::stdout().flush();
 }
 fn default_detector() -> String {
     "bert".into()
@@ -94,6 +112,7 @@ pub fn run(allocations: Option<fn() -> (u64, u64)>) -> Result<(), Box<dyn std::e
     }
     let request: Request = serde_json::from_str(&bytes)?;
     if !["cpu", "metal", "core_ml"].contains(&request.backend.as_str())
+        || !["measure", "profile", "both"].contains(&request.phase.as_str())
         || request.samples == 0
         || request.samples > 100_000
         || request.warmup > 1000
@@ -126,7 +145,10 @@ pub fn run(allocations: Option<fn() -> (u64, u64)>) -> Result<(), Box<dyn std::e
         (Instance::Decision(d), threshold)
     };
     let load_ms = start.elapsed().as_secs_f64() * 1000.0;
-    let marker = FixedMarker::default();
+    if request.stream {
+        emit(json!({"event":"loaded","load_ms":load_ms}));
+    }
+    let marker = ReplacementMode::new(request.replacement_strategy.as_deref(), None)?;
     let mut results = Vec::new();
     for fixture in &request.fixtures {
         results.push(json!({"id":fixture.id,"bytes":fixture.text.len(),"times_ms":[],"outcomes":{},"errors":{}}));
@@ -138,6 +160,9 @@ pub fn run(allocations: Option<fn() -> (u64, u64)>) -> Result<(), Box<dyn std::e
         let result = rewrite(&mut detector, &fixture.text, threshold, &marker);
         let elapsed = start.elapsed().as_secs_f64() * 1000.;
         if !record {
+            if request.stream {
+                emit(json!({"event":"warmup","id":fixture.id}));
+            }
             return;
         }
         let key = match result {
@@ -157,45 +182,54 @@ pub fn run(allocations: Option<fn() -> (u64, u64)>) -> Result<(), Box<dyn std::e
         let count = row["outcomes"][&key].as_u64().unwrap_or(0);
         row["outcomes"][&key] = json!(count + 1);
         row["times_ms"].as_array_mut().unwrap().push(json!(elapsed));
+        if request.stream {
+            emit(
+                json!({"event":"sample","id":fixture.id,"index":row["times_ms"].as_array().unwrap().len()-1,"elapsed_ms":elapsed,"outcome":key}),
+            );
+        }
     };
-    match request.order.as_deref().unwrap_or("fixture") {
-        "fixture" => {
-            for i in 0..request.fixtures.len() {
-                for n in 0..request.warmup + request.samples {
-                    measure(i, n >= request.warmup);
-                }
-            }
-        }
-        "interleaved" => {
-            for n in 0..request.warmup + request.samples {
+    if request.phase != "profile" {
+        match request.order.as_deref().unwrap_or("fixture") {
+            "fixture" => {
                 for i in 0..request.fixtures.len() {
-                    measure(i, n >= request.warmup);
+                    for n in 0..request.warmup + request.samples {
+                        measure(i, n >= request.warmup);
+                    }
                 }
             }
-        }
-        _ => return Err("invalid_order".into()),
-    }
-    for (fixture, row) in request.fixtures.iter().zip(results.iter_mut()) {
-        let before = allocations.map(|f| f());
-        let profile = detector.profile(&fixture.text);
-        let after = allocations.map(|f| f());
-        let (stages, replacement_ms, error) = match profile {
-            Ok((spans, stages)) => {
-                let start = Instant::now();
-                let _ = apply_replacements(&fixture.text, &spans, threshold, &marker);
-                (stages, json!(start.elapsed().as_secs_f64() * 1000.), None)
+            "interleaved" => {
+                for n in 0..request.warmup + request.samples {
+                    for i in 0..request.fixtures.len() {
+                        measure(i, n >= request.warmup);
+                    }
+                }
             }
-            Err(e) => (json!(null), json!(null), Some(e.to_string())),
-        };
-        row["stages"] = stages;
-        row["replacement_only_ms"] = replacement_ms;
-        row["profile_error"] = json!(error);
-        row["profile_allocations"] = json!(before.zip(after).map(|(a, b)| b.0 - a.0));
-        row["profile_allocated_bytes"] = json!(before.zip(after).map(|(a, b)| b.1 - a.1));
+            _ => return Err("invalid_order".into()),
+        }
+    }
+    if request.phase != "measure" {
+        for (fixture, row) in request.fixtures.iter().zip(results.iter_mut()) {
+            let before = allocations.map(|f| f());
+            let (profile, stages) = detector.profile(&fixture.text);
+            let after = allocations.map(|f| f());
+            let (replacement_ms, error) = match profile {
+                Ok(spans) => {
+                    let start = Instant::now();
+                    let _ = apply_replacements(&fixture.text, &spans, threshold, &marker);
+                    (json!(start.elapsed().as_secs_f64() * 1000.), None)
+                }
+                Err(e) => (json!(null), Some(e.to_string())),
+            };
+            row["stages"] = stages;
+            row["replacement_only_ms"] = replacement_ms;
+            row["profile_error"] = json!(error);
+            row["profile_allocations"] = json!(before.zip(after).map(|(a, b)| b.0 - a.0));
+            row["profile_allocated_bytes"] = json!(before.zip(after).map(|(a, b)| b.1 - a.1));
+        }
     }
     println!(
         "{}",
-        json!({"allocation_instrumented":allocations.is_some(),"detector":request.detector,"threshold":threshold,"backend":request.backend,"fp16":request.fp16,"compute_units":request.compute_units,"accelerate":cfg!(feature="accelerate"),"window_batch":request.batch,"load_ms":load_ms,"peak_rss_bytes":peak_rss_bytes(),"results":results})
+        json!({"allocation_instrumented":allocations.is_some(),"replacement_strategy":request.replacement_strategy.as_deref().unwrap_or("fixed_phrase"),"detector":request.detector,"threshold":threshold,"backend":request.backend,"fp16":request.fp16,"compute_units":request.compute_units,"accelerate":cfg!(feature="accelerate"),"window_batch":request.batch,"load_ms":load_ms,"peak_rss_bytes":peak_rss_bytes(),"results":results})
     );
     Ok(())
 }

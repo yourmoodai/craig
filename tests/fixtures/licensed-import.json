@@ -1,0 +1,5 @@
+{
+  "notice": "See benchmarks/NOTICE.md and benchmarks/sources.json for attribution, licenses, pinned sources, and adaptation details.",
+  "scunthorpe": {"id":"clean-00001","text":"Have a lovely day everyone","context":"comment","lang":"en","kind":"clean","expected":{"flagged":false,"action_by_policy":{"kids":"allow","teen":"allow","standard":"allow","strict":"allow"},"categories":[],"severity":"none","evasion":[]},"split":"dev","source":"Unprofane generated","license":"CC BY 4.0"},
+  "hatecheck_csv": ",functionality,case_id,test_case,label_gold,target_ident,direction,focus_words,focus_lemma,ref_case_id,ref_templ_id,templ_id,case_templ\r\n0,derog_neg_emote_h,1,I hate women. ,hateful,women,general,hate,hate,,,1,I hate [IDENTITY_P].\r\n"
+}

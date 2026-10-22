@@ -1,1 +1,4 @@
 * @awill1988
+
+# Architecture records require an explicit maintainer review.
+/docs/adr/** @awill1988

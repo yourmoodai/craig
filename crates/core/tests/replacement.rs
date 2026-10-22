@@ -102,6 +102,27 @@ fn configurable_marker_and_threshold() {
     assert!(normalize_spans("text", &[], -0.1).is_err());
 }
 #[test]
+fn omission_removes_only_normalized_spans() {
+    let text = "Keep this bad phrase, and keep that.";
+    let result = apply_replacements(
+        text,
+        &[span(10, 20)],
+        0.5,
+        &ReplacementMode::new(Some("omit"), None).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(result.text, "Keep this , and keep that.");
+    assert_eq!(result.replacement_count, 1);
+    assert!(matches!(
+        ReplacementMode::new(Some("omit"), Some("x".into())),
+        Err(Error::InvalidOptions)
+    ));
+    assert!(matches!(
+        ReplacementMode::new(Some("unknown"), None),
+        Err(Error::InvalidOptions)
+    ));
+}
+#[test]
 fn dense_replacements_can_expand_past_the_input_limit() {
     let text = "a!".repeat(MAX_TEXT_BYTES / 2);
     let spans: Vec<_> = (0..text.len()).step_by(2).map(|i| span(i, i + 1)).collect();

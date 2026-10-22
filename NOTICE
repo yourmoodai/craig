@@ -28,3 +28,9 @@ Separate Model and Dataset Licenses
   See `models/catalog.json`, `models/NOTICE`, and `models/LICENSE-APACHE-2.0`.
 - Synthetic evaluation corpus fixtures in `tests/fixtures/` are provided under
   CC0-1.0 unless otherwise noted in the fixture record.
+
+Local Inspection Dependencies
+-----------------------------
+The local inspector includes DuckDB (MIT) and tiny-http (MIT OR Apache-2.0).
+Their notices are retained in THIRD-PARTY-NOTICES.md. Browser test tooling is
+development-only and is not shipped in the installed plugin.

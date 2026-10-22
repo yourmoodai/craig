@@ -50,9 +50,9 @@ fn manually_moved_metrics_retain_data_without_consent() {
     store.set_consent(false, false).unwrap();
     drop(store);
 
-    // The old and new applications use the same database schema.
+    // Moving a closed store preserves metrics without restoring consent.
     let current = profile.path().join("craig");
-    let retired = profile.path().join("middle-finger");
+    let retired = profile.path().join("metrics-backup");
     std::fs::rename(&current, &retired).unwrap();
     assert!(!current.exists());
     std::fs::rename(&retired, &current).unwrap();

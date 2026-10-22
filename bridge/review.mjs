@@ -25,7 +25,7 @@ async function exchange(request, timeout=30000) {
 }
 const artifact_path=process.env.CRAIG_MODEL_DIR ? join(process.env.CRAIG_MODEL_DIR,process.env.CRAIG_DETECTOR==='lexical'?'decision.json':'manifest.json') : null;
 const artifact_hash=artifact_path ? await readFile(artifact_path).then(b=>createHash('sha256').update(b).digest('hex')).catch(()=>'') : '';
-const runtime_fingerprint=createHash('sha256').update(JSON.stringify(['CRAIG_MODEL_DIR','CRAIG_DETECTOR','CRAIG_POLICY','CRAIG_THRESHOLD','CRAIG_REPLACEMENT','CRAIG_JUDGE_CONFIG'].map(key=>process.env[key]||'').concat(artifact_hash))).digest('hex');
+const runtime_fingerprint=createHash('sha256').update(JSON.stringify(['CRAIG_MODEL_DIR','CRAIG_DETECTOR','CRAIG_POLICY','CRAIG_THRESHOLD','CRAIG_REPLACEMENT_STRATEGY','CRAIG_REPLACEMENT','CRAIG_JUDGE_CONFIG'].map(key=>process.env[key]||'').concat(artifact_hash))).digest('hex');
 async function start(allow_mismatch=false) {
   const deadline=Date.now()+10000;
   let current;
