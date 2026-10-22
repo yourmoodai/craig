@@ -3,10 +3,29 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: verify-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
   actions: read
 jobs:
+  tooling:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s tools/adversarial_reviewer
+      - run: python3 -m unittest discover -s scripts/release
   coreml:
     runs-on: macos-15
     steps:
@@ -47,9 +66,13 @@ jobs:
           components: rustfmt, clippy
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.22.0
           cache: npm
-      - run: npm ci
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - uses: actions/cache@v4
+        with:
+          path: .cache/host-types
+          key: host-types-v1-${{ runner.os }}-${{ hashFiles('scripts/fetch-types.mjs') }}
       - name: restore rust dependencies
         id: rust_cache
         uses: Swatinem/rust-cache@v2
@@ -62,12 +85,10 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: npm run check
       - run: npm test
-      - run: python3 -m unittest discover -s tools/adversarial_reviewer
-      - run: python3 -m unittest discover -s scripts/release
-      - run: npm run model:fetch
+      - uses: ./.github/actions/model-cache
       - run: npm run eval:local
       - run: npm run inspect:test
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps --only-shell chromium
       - name: standalone local inspector browser checks
         env:
           CRAIG_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base

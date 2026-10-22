@@ -17,13 +17,20 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.22.0
           cache: npm
       - uses: Swatinem/rust-cache@v2
-      - run: npm ci
+        with:
+          shared-key: native-ubuntu-24.04-${{ runner.arch }}
+          cache-on-failure: true
+      - run: npm ci --prefer-offline --no-audit --no-fund
       - run: npm run bench:build
       - run: npm run bench:test
-      - run: npm run model:fetch
+      - uses: ./.github/actions/model-cache
+      - uses: actions/cache@v4
+        with:
+          path: .cache/bench-corpus
+          key: benchmark-corpus-v1-${{ runner.os }}-${{ hashFiles('benchmarks/sources.json', 'scripts/bench/corpus.mjs') }}
       - run: npm run corpus:fetch
       - name: measure quality and implementation boundaries
         env:
