@@ -10,7 +10,8 @@ use candle_nn::{
     ops::{log_softmax, softmax_last_dim},
 };
 use craig::{
-    MODEL_ID, MODEL_REVISION, ModelDetector, ModelManifest, Policy, Span, artifact_digest,
+    FixedMarker, MODEL_ID, MODEL_REVISION, ModelDetector, ModelManifest, Policy, Span,
+    artifact_digest,
 };
 use std::{collections::BTreeMap, path::Path};
 
@@ -120,7 +121,16 @@ fn validation(head: &Linear, cached: &[Cached<'_>], policy: Policy) -> LabResult
         let threshold = step as f32 * 0.05;
         let mut metrics = Metrics::default();
         for (row, spans) in rows.iter().zip(&predicted) {
-            metrics.add(&evaluation::score(row.example, policy, spans, threshold).metrics);
+            metrics.add(
+                &evaluation::score(
+                    row.example,
+                    policy,
+                    spans,
+                    threshold,
+                    &FixedMarker::default(),
+                )
+                .metrics,
+            );
         }
         if (metrics.f1(), metrics.precision()) > (best.0, best.1) {
             best = (metrics.f1(), metrics.precision(), threshold);

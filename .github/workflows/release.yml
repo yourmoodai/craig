@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: npm ci
+      - run: npm ci --prefer-offline --no-audit --no-fund
       - if: runner.os == 'Windows'
         shell: pwsh
         run: '"RUSTFLAGS=-C target-feature=+crt-static" | Out-File -FilePath $env:GITHUB_ENV -Append'
@@ -49,9 +49,18 @@ jobs:
         run: npm run build
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
-      - run: npm run model:fetch
+      - run: npm run inspect:test
+      - uses: ./.github/actions/model-cache
+      - run: npm run test:bootstrap
       - run: npm run eval:local
       - run: node --test tests/native.spec.mjs tests/review.spec.mjs
+      - name: restore pinned node runtime archive
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/node-v*.tar.gz
+            .cache/node-v*.zip
+          key: release-node-v1-${{ matrix.target }}-${{ hashFiles('scripts/release/package.py') }}
       - run: python scripts/release/package.py stage ${{ matrix.target }} .cache/part
       - uses: actions/upload-artifact@v4
         with:
@@ -71,15 +80,19 @@ jobs:
   package:
     needs: build
     runs-on: ubuntu-24.04
+    environment: release
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24.22.0
+          cache: npm
       - uses: actions/download-artifact@v4
         with:
           path: .cache/parts
       - run: python3 scripts/release/package.py assemble .cache/parts .cache/release/plugin
+        env:
+          CRAIG_RELEASE_SIGNING_KEY: ${{ startsWith(github.ref, 'refs/tags/') && secrets.CRAIG_RELEASE_SIGNING_KEY || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: release
@@ -87,6 +100,8 @@ jobs:
             .cache/release/*.zip
             .cache/release/marketplace.json
             .cache/release/SHA256SUMS
+            .cache/release/runtime-*
+            .cache/release/release-public.pem
   installed:
     timeout-minutes: 15
     needs: package
@@ -109,6 +124,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.22.0
+          cache: npm
       - run: npm install --global @anthropic-ai/claude-code@2.1.290
       - if: runner.os == 'Windows'
         run: python -m pip install pywinpty==3.0.2
@@ -119,6 +135,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: installed
     runs-on: ubuntu-24.04
+    environment: release
     permissions:
       contents: write
     steps:
@@ -132,8 +149,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.22.0
-      - run: npm run model:fetch
+      - uses: ./.github/actions/model-cache
       - name: publish immutable assets
         env:
           GH_TOKEN: ${{ github.token }}
+          CRAIG_RELEASE_SIGNING_KEY: ${{ secrets.CRAIG_RELEASE_SIGNING_KEY }}
         run: python3 scripts/release/publish.py
+  published-download:
+    needs: publish
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: download published plugin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download ${{ github.ref_name }} --pattern 'craig-*.zip' --dir .cache/downloaded
+      - name: qualify public signed downloads before marketplace promotion
+        run: python scripts/release/smoke.py .cache/downloaded --download

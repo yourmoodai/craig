@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "timestamp": "2026-10-21T23:19:09.483Z",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpus": 10,
+  "loadavg": [
+    7.75634765625,
+    20.86328125,
+    20.78466796875
+  ],
+  "measurements": [
+    {
+      "mode": "disabled",
+      "samples_ms": [
+        25.22687499999995,
+        24.264042000000018,
+        26.523124999999936,
+        32.685749999999985,
+        27.732667000000106
+      ],
+      "rss_bytes": 499417088
+    },
+    {
+      "mode": "metadata",
+      "samples_ms": [
+        31.084792000000107,
+        25.205625000000055,
+        24.828500000000076,
+        25.49279200000001,
+        27.010500000000093
+      ],
+      "rss_bytes": 500875264
+    },
+    {
+      "mode": "full_text",
+      "samples_ms": [
+        26.060666000000083,
+        25.184083999999984,
+        25.78170799999998,
+        25.19745799999987,
+        26.120167000000038
+      ],
+      "rss_bytes": 501874688
+    }
+  ],
+  "cold_export_ms": 31.08079100000009,
+  "warm_export_ms": 13.263708999999835,
+  "parquet_bytes": 3742,
+  "max_rss_bytes": 502857728,
+  "scope": "synthetic short input; five samples; not detector latency qualification",
+  "identity": {
+    "crates/core/src/model.rs": "e37c4c6f9da7f38959975903e0681c459e71cd8d0719a2f6cc23d81f93b2e93c",
+    "crates/node/src/lib.rs": "308bfad9b5c308ebd2b4e8421843bd069a6c05d80fe677ddddf3a6d3b0900f5a",
+    "crates/review/src/traces.rs": "2882d9dd084ce663b6d2d97b99f02b1d8b511763fbffaad26a833c4b661c9bfa",
+    "crates/review/src/inspector.rs": "f3754e06dfdea6f7598c7eaf17e608695aaf9ee10d81d068ce17b629ec733607",
+    "scripts/profile-inspector.mjs": "a5f0cec9f360bdd1ead19ce5d800dfaea1ea4ba78574f890d0989d2833ad5540"
+  }
+}

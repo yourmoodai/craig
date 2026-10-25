@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { spawn, spawnSync } from 'node:child_process';
 const { applyReplacements, loadDetector } = createRequire(import.meta.url)('../native/index.cjs');
-test('craig ignores the retired model environment variable', () => {
-  const env = {...process.env, MIDDLE_FINGER_MODEL_DIR:'/synthetic/retired-model', LOG_LEVEL:'silent'};
+test('craig ignores unrelated model environment variables', () => {
+  const env = {...process.env, UNRELATED_MODEL_DIR:'/synthetic/unrelated-model', LOG_LEVEL:'silent'};
   delete env.CRAIG_MODEL_DIR;
   const result = spawnSync(process.execPath, ['bridge/cli.mjs','doctor'], {env, encoding:'utf8'});
   assert.equal(result.status, 1);
@@ -26,6 +26,11 @@ test('ffi rejects invalid ranges and protected source', () => {
 test('ffi supports configurable marker', () => {
   assert.equal(applyReplacements('idiot',[{start:0,end:5,score:1}],{marker:'la la'}).text, 'la la');
   assert.equal(applyReplacements('idiot',[{start:0,end:5,score:0.2}]).text, 'ya ya ya');
+});
+test('ffi supports omission and rejects ambiguous options', () => {
+  assert.equal(applyReplacements('Keep idiot here',[{start:5,end:10,score:1}],{strategy:'omit'}).text,'Keep  here');
+  assert.throws(() => applyReplacements('idiot',[{start:0,end:5,score:1}],{strategy:'omit',marker:'x'}), /invalid_options/);
+  assert.throws(() => applyReplacements('idiot',[{start:0,end:5,score:1}],{strategy:'unknown'}), /invalid_options/);
 });
 test('ffi keeps original UTF-16 offsets across multiple Unicode gaps', () => {
   const text='🙂 idiot! café 🤦 stupid!';

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "timestamp": "2026-10-21T23:19:07.984Z",
+  "platform": "darwin",
+  "arch": "arm64",
+  "checks": [
+    "metadata_default",
+    "explicit_consent",
+    "unicode_diff",
+    "annotation",
+    "xss_literal",
+    "authentication",
+    "origin",
+    "host",
+    "parquet_export",
+    "delete",
+    "no_external_browser_requests",
+    "trace_failure_preserves_filtered_output"
+  ],
+  "identity": {
+    "crates/review/src/traces.rs": "2882d9dd084ce663b6d2d97b99f02b1d8b511763fbffaad26a833c4b661c9bfa",
+    "crates/review/src/inspector.rs": "f3754e06dfdea6f7598c7eaf17e608695aaf9ee10d81d068ce17b629ec733607",
+    "inspector/app.js": "a7ea95ab8f2139816d16559924d9f2cd6930d7905cb744884f588b7ad0c1f1ad",
+    "scripts/test-inspector.mjs": "c7e5f98d3e8f3d700366ed02d18b2357256b8828e1b9a410f69074d02211ac8f"
+  }
+}

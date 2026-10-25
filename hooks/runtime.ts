@@ -11,7 +11,7 @@ export class Runtime {
   async start(host: Host) {
     if (!this.release) return;
     this.ready = false;
-    this.status = 'downloading and verifying local model; drafts remain local until ready';
+    this.status = 'downloading and verifying local runtime and model; drafts remain local until ready';
     const targets = [['darwin-arm64','node'], ['linux-x64','node'], ['win32-x64','node.exe']] as const;
     try {
       let target: string | undefined;
@@ -23,11 +23,14 @@ export class Runtime {
         } catch {}
       }
       if (!target) { this.status = 'unsupported platform or runtime unavailable'; return; }
-      const binary = host.plugin.root + '/runtime/' + target + '/craig' + (target === 'win32-x64' ? '.exe' : '');
+      const setup = await host.process.run([this.node, host.plugin.root + '/bridge/bootstrap.mjs'], {timeoutMs:600000});
+      const prepared = JSON.parse(setup.stdout);
+      if (setup.exitCode !== 0 || prepared.status !== 'ready' || typeof prepared.runtime_dir !== 'string' || !prepared.runtime_dir) throw Error('setup_failed');
+      const binary = prepared.runtime_dir + '/craig' + (target === 'win32-x64' ? '.exe' : '');
       const result = await host.process.run([binary, 'prepare'], {timeoutMs:600000});
       const value = JSON.parse(result.stdout);
       if (result.exitCode !== 0 || value.status !== 'ready' || typeof value.model_dir !== 'string' || !value.model_dir) throw Error('setup_failed');
-      this.env = {CRAIG_MODEL_DIR:value.model_dir};
+      this.env = {CRAIG_MODEL_DIR:value.model_dir, CRAIG_RUNTIME_DIR:prepared.runtime_dir, ...(typeof prepared.manifest_sha256==='string' ? {CRAIG_RELEASE_MANIFEST_SHA256:prepared.manifest_sha256}: {})};
       const doctor = await host.process.run([this.node,host.plugin.root+'/bridge/cli.mjs','doctor'], {env:this.env,timeoutMs:45000});
       if (doctor.exitCode !== 0 || JSON.parse(doctor.stdout).status !== 'ready') throw Error('setup_failed');
       this.ready = true; this.status = 'local filter ready';

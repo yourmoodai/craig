@@ -16,6 +16,7 @@ crate-type = ["cdylib"]
 [dependencies]
 craig.workspace = true
 craig-review = { path = "../review" }
+serde_json.workspace = true
 napi = { version = "3", default-features = false, features = ["napi8"] }
 napi-derive = "3"
 

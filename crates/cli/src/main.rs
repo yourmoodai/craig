@@ -1,5 +1,5 @@
 mod prepare;
-use craig::{FixedMarker, MAX_TEXT_BYTES, RuntimeDetector, rewrite};
+use craig::{MAX_TEXT_BYTES, ReplacementMode, RuntimeDetector, rewrite};
 use serde::Deserialize;
 use std::io::{self, Read};
 
@@ -11,12 +11,30 @@ struct Request {
 }
 fn run() -> Result<serde_json::Value, String> {
     let command = std::env::args().nth(1).unwrap_or_else(|| "help".into());
+    if ["inspect", "traces"].contains(&command.as_str()) {
+        let executable = std::env::current_exe().map_err(|_| "inspector_unavailable")?;
+        let worker = executable
+            .parent()
+            .ok_or("inspector_unavailable")?
+            .join(if cfg!(windows) {
+                "craig-review.exe"
+            } else {
+                "craig-review"
+            });
+        let status = std::process::Command::new(worker)
+            .args(std::env::args().skip(1))
+            .status()
+            .map_err(|_| "inspector_unavailable")?;
+        std::process::exit(status.code().unwrap_or(1));
+    }
     if command == "prepare" && std::env::args().count() == 2 {
         return prepare::prepare()
             .map(|path| serde_json::json!({"version":1,"status":"ready","model_dir":path}));
     }
     if command == "help" || command == "--help" {
-        return Ok(serde_json::json!({"commands":["rewrite", "doctor"]}));
+        return Ok(
+            serde_json::json!({"commands":["rewrite", "doctor", "prepare", "inspect", "traces"]}),
+        );
     }
     if !["rewrite", "doctor"].contains(&command.as_str()) || std::env::args().count() != 2 {
         return Err("invalid_command".into());
@@ -36,9 +54,10 @@ fn run() -> Result<serde_json::Value, String> {
     if !threshold.is_finite() || threshold <= 0.0 || threshold > 1.0 {
         return Err("invalid_options".into());
     }
-    let marker =
-        FixedMarker::new(std::env::var("CRAIG_REPLACEMENT").unwrap_or_else(|_| "ya ya ya".into()))
-            .map_err(|e| e.to_string())?;
+    let strategy =
+        std::env::var("CRAIG_REPLACEMENT_STRATEGY").unwrap_or_else(|_| "fixed_phrase".into());
+    let marker = std::env::var("CRAIG_REPLACEMENT").ok();
+    let replacement = ReplacementMode::new(Some(&strategy), marker).map_err(|e| e.to_string())?;
     if command == "doctor" {
         return Ok(
             serde_json::json!({"version":1,"status":"ready","detector":kind,"model":if kind == "bert" { craig::MODEL_ID } else { "local-lexical" },"revision":if kind == "bert" { Some(craig::MODEL_REVISION) } else { None },"policy":policy.name(),"threshold":threshold}),
@@ -57,7 +76,7 @@ fn run() -> Result<serde_json::Value, String> {
         return Err("invalid_request".into());
     }
     let result =
-        rewrite(&mut model, &request.text, threshold, &marker).map_err(|e| e.to_string())?;
+        rewrite(&mut model, &request.text, threshold, &replacement).map_err(|e| e.to_string())?;
     Ok(
         serde_json::json!({"version":1,"status":if result.replacement_count == 0 {"unchanged"} else {"rewritten"},"text":result.text,"replacement_count":result.replacement_count}),
     )

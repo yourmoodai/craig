@@ -5,7 +5,7 @@ mod setup;
 mod training;
 
 use clap::{Parser, Subcommand};
-use craig::{ModelDetector, Policy, artifact_digest};
+use craig::{ModelDetector, Policy, ReplacementMode, artifact_digest};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::{
@@ -63,6 +63,10 @@ enum Commands {
         split: String,
         #[arg(long)]
         threshold: Option<f32>,
+        #[arg(long, default_value = "fixed_phrase")]
+        replacement_strategy: String,
+        #[arg(long)]
+        marker: Option<String>,
         #[arg(long)]
         judge: Option<PathBuf>,
         #[arg(long, default_value_t = 100)]
@@ -149,6 +153,7 @@ fn compare(report: &serde_json::Value, baseline: &serde_json::Value) -> serde_js
         "corpus_sha256",
         "policy",
         "split",
+        "replacement_strategy",
         "machine",
         "runner_sha256",
         "rubric_sha256",
@@ -251,6 +256,8 @@ fn run(args: Args) -> LabResult<()> {
             policy,
             split,
             threshold,
+            replacement_strategy,
+            marker,
             judge: judge_config,
             sample,
             baseline,
@@ -260,6 +267,8 @@ fn run(args: Args) -> LabResult<()> {
                 return fail("invalid_evaluation_options");
             }
             let policy: Policy = policy.parse().map_err(|_| "invalid_policy")?;
+            let replacement = ReplacementMode::new(Some(&replacement_strategy), marker)
+                .map_err(|_| "invalid_options")?;
             let runner_hash = hash(&std::env::current_exe().map_err(|_| "runner_unavailable")?)?;
             let corpus_hash = hash(&corpus)?;
             let rows = corpus::read(&corpus)?;
@@ -289,7 +298,8 @@ fn run(args: Args) -> LabResult<()> {
             detector
                 .detect("Please preserve the test.")
                 .map_err(|_| "warmup_failed")?;
-            let outcomes = evaluation::run(&mut detector, &selected, policy, threshold)?;
+            let outcomes =
+                evaluation::run(&mut detector, &selected, policy, threshold, &replacement)?;
             let peak = rss_bytes();
             drop(detector);
             let sampled = judge::sample(&outcomes, sample);
@@ -359,7 +369,7 @@ fn run(args: Args) -> LabResult<()> {
             }
             let machine = std::env::var("CRAIG_BENCH_MACHINE")
                 .unwrap_or_else(|_| format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH));
-            let mut report = serde_json::json!({"version":1,"kind":"empirical_evaluation","status":"inconclusive","policy":policy,"split":split,"threshold":threshold,
+            let mut report = serde_json::json!({"version":1,"kind":"empirical_evaluation","status":"inconclusive","policy":policy,"split":split,"replacement_strategy":replacement.name(),"threshold":threshold,
                 "threshold_only_baseline":baseline_only,"model":model_identity,"corpus_sha256":corpus_hash,"seed":42,"sample_limit":sample,
                 "machine":machine,"machine_declared":std::env::var("CRAIG_BENCH_MACHINE").is_ok(),"runner_sha256":runner_hash,
                 "optimized":!cfg!(debug_assertions),"labels_reviewed":selected.iter().all(|r|r.reviewed),"cold_load_ms":load_ms,"detector_peak_rss_bytes":peak,

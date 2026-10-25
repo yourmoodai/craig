@@ -43,6 +43,8 @@ pub struct Options {
 }
 #[napi(object)]
 pub struct ReplacementOptions {
+    #[napi(ts_type = "'fixed_phrase' | 'omit'")]
+    pub strategy: Option<String>,
     pub marker: Option<String>,
 }
 #[napi(object)]
@@ -83,7 +85,7 @@ pub struct Assess {
     model: Arc<Mutex<core::RuntimeDetector>>,
     text: String,
     threshold: f32,
-    marker: core::FixedMarker,
+    strategy: core::ReplacementMode,
     _permit: Permit,
 }
 #[napi]
@@ -92,7 +94,7 @@ impl Task for Assess {
     type JsValue = AssessedRewrite;
     fn compute(&mut self) -> Result<Self::Output> {
         let mut model = self.model.try_lock().map_err(|_| err(core::Error::Busy))?;
-        craig_review::assessment::assess(&mut *model, &self.text, self.threshold, &self.marker)
+        craig_review::assessment::assess(&mut *model, &self.text, self.threshold, &self.strategy)
             .map_err(|code| Error::new(Status::GenericFailure, code))
     }
     fn resolve(&mut self, _: Env, (assessment, text): Self::Output) -> Result<Self::JsValue> {
@@ -144,13 +146,11 @@ fn output(text: &str, result: core::RewriteResult) -> Result<RewriteResult> {
         offset_unit: "utf16".into(),
     })
 }
-fn marker(options: Option<ReplacementOptions>) -> Result<core::FixedMarker> {
-    core::FixedMarker::new(
-        options
-            .and_then(|o| o.marker)
-            .unwrap_or_else(|| core::DEFAULT_MARKER.into()),
-    )
-    .map_err(err)
+fn replacement_mode(options: Option<ReplacementOptions>) -> Result<core::ReplacementMode> {
+    let (strategy, marker) = options
+        .map(|options| (options.strategy, options.marker))
+        .unwrap_or((None, None));
+    core::ReplacementMode::new(strategy.as_deref(), marker).map_err(err)
 }
 
 #[napi]
@@ -176,7 +176,8 @@ pub fn apply_replacements(
             })
         })
         .collect::<Result<_>>()?;
-    let result = core::apply_replacements(&text, &spans, 0.0, &marker(options)?).map_err(err)?;
+    let result =
+        core::apply_replacements(&text, &spans, 0.0, &replacement_mode(options)?).map_err(err)?;
     output(&text, result)
 }
 
@@ -197,6 +198,7 @@ pub struct Detector {
     model: Arc<Mutex<core::RuntimeDetector>>,
     threshold: f32,
     busy: Arc<AtomicBool>,
+    trace_context: Arc<craig_review::traces::TraceContext>,
 }
 pub struct Load {
     options: Options,
@@ -260,11 +262,61 @@ impl Task for Load {
             .threshold
             .map(|t| t as f32)
             .unwrap_or(model.threshold());
+        let model_fingerprint = match &model {
+            core::RuntimeDetector::Bert(model) => model.fingerprint().to_owned(),
+            core::RuntimeDetector::Lexical(model) => craig_review::store::fingerprint(
+                &serde_json::to_vec(&model.artifact)
+                    .map_err(|_| err(core::Error::ModelIncompatible))?,
+            ),
+        };
         Ok(Detector {
             model: Arc::new(Mutex::new(model)),
             threshold,
             busy: Arc::new(AtomicBool::new(false)),
+            trace_context: Arc::new(craig_review::traces::TraceContext {
+                model_fingerprint,
+                detector: self
+                    .options
+                    .detector
+                    .clone()
+                    .unwrap_or_else(|| "bert".into()),
+                policy: self
+                    .options
+                    .policy
+                    .clone()
+                    .unwrap_or_else(|| "offensive_spans".into()),
+            }),
         })
+    }
+}
+
+pub struct TracedRewrite {
+    model: Arc<Mutex<core::RuntimeDetector>>,
+    context: Arc<craig_review::traces::TraceContext>,
+    text: String,
+    threshold: f32,
+    strategy: core::ReplacementMode,
+    assess: bool,
+    _permit: Permit,
+}
+#[napi]
+impl Task for TracedRewrite {
+    type Output = String;
+    type JsValue = String;
+    fn compute(&mut self) -> Result<String> {
+        let mut model = self.model.try_lock().map_err(|_| err(core::Error::Busy))?;
+        Ok(craig_review::traces::rewrite_traced(
+            &mut *model,
+            &self.text,
+            self.threshold,
+            &self.strategy,
+            &self.context,
+            self.assess,
+        )
+        .to_string())
+    }
+    fn resolve(&mut self, _: Env, value: String) -> Result<String> {
+        Ok(value)
     }
 }
 #[napi]
@@ -299,7 +351,7 @@ pub struct Rewrite {
     model: Arc<Mutex<core::RuntimeDetector>>,
     text: String,
     threshold: f32,
-    marker: core::FixedMarker,
+    strategy: core::ReplacementMode,
     _permit: Permit,
 }
 #[napi]
@@ -308,7 +360,7 @@ impl Task for Rewrite {
     type JsValue = RewriteResult;
     fn compute(&mut self) -> Result<Self::Output> {
         let mut model = self.model.try_lock().map_err(|_| err(core::Error::Busy))?;
-        core::rewrite(&mut *model, &self.text, self.threshold, &self.marker).map_err(err)
+        core::rewrite(&mut *model, &self.text, self.threshold, &self.strategy).map_err(err)
     }
     fn resolve(&mut self, _: Env, result: Self::Output) -> Result<RewriteResult> {
         output(&self.text, result)
@@ -316,6 +368,23 @@ impl Task for Rewrite {
 }
 #[napi]
 impl Detector {
+    #[napi]
+    pub fn rewrite_traced(
+        &self,
+        text: Utf16String,
+        options: Option<ReplacementOptions>,
+        assess: Option<bool>,
+    ) -> Result<AsyncTask<TracedRewrite>> {
+        Ok(AsyncTask::new(TracedRewrite {
+            model: self.model.clone(),
+            context: self.trace_context.clone(),
+            text: valid_text(text)?,
+            threshold: self.threshold,
+            strategy: replacement_mode(options)?,
+            assess: assess.unwrap_or(false),
+            _permit: Permit::acquire(&self.busy)?,
+        }))
+    }
     #[napi]
     pub fn assess(
         &self,
@@ -326,7 +395,7 @@ impl Detector {
             model: self.model.clone(),
             text: valid_text(text)?,
             threshold: self.threshold,
-            marker: marker(options)?,
+            strategy: replacement_mode(options)?,
             _permit: Permit::acquire(&self.busy)?,
         }))
     }
@@ -351,7 +420,7 @@ impl Detector {
             model: self.model.clone(),
             text,
             threshold: self.threshold,
-            marker: marker(options)?,
+            strategy: replacement_mode(options)?,
             _permit: Permit::acquire(&self.busy)?,
         }))
     }

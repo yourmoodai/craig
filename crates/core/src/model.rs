@@ -79,12 +79,14 @@ impl Default for ExecutionOptions {
 pub struct InferenceTimings {
     pub tokens: usize,
     pub windows: usize,
+    pub completed_windows: usize,
     pub tokenize_ms: f64,
     pub encoder_ms: f64,
     pub classifier_ms: f64,
     pub offsets_ms: f64,
 }
 pub struct ModelDetector {
+    fingerprint: String,
     device: Device,
     window_batch: usize,
     tokenizer: Tokenizer,
@@ -217,7 +219,15 @@ impl ModelDetector {
             }
             (Some(encoder), Some(classifier), None)
         };
+        let artifacts: Vec<_> = crate::model_catalog::delivery_detector()
+            .artifacts
+            .iter()
+            .map(|a| (&a.file, &a.sha256))
+            .collect();
+        let provenance = serde_json::json!({"artifacts":artifacts,"head":manifest,"backend":execution.backend,"fp16":execution.fp16,"window_batch":execution.window_batch});
+        let fingerprint = format!("{:x}", Sha256::digest(provenance.to_string().as_bytes()));
         Ok(Self {
+            fingerprint,
             device,
             window_batch: execution.window_batch,
             tokenizer,
@@ -231,6 +241,9 @@ impl ModelDetector {
     }
     pub fn threshold(&self) -> f32 {
         self.threshold
+    }
+    pub fn fingerprint(&self) -> &str {
+        &self.fingerprint
     }
 
     fn encode_windows(&self, windows: &[&[u32]]) -> Result<Tensor> {
@@ -265,9 +278,15 @@ impl ModelDetector {
     }
 
     pub fn detect_profiled(&mut self, text: &str) -> Result<(Vec<Span>, InferenceTimings)> {
+        let (spans, timings) = self.detect_profiled_outcome(text);
+        Ok((spans?, timings))
+    }
+
+    /// Retains numeric stage evidence on failure without returning partial spans.
+    pub fn detect_profiled_outcome(&mut self, text: &str) -> (Result<Vec<Span>>, InferenceTimings) {
         let mut timings = InferenceTimings::default();
-        let spans = self.detect_inner(text, Some(&mut timings))?;
-        Ok((spans, timings))
+        let spans = self.detect_inner(text, Some(&mut timings));
+        (spans, timings)
     }
     #[cfg(feature = "training")]
     pub fn training_windows(&self, text: &str) -> Result<Vec<TrainingWindow>> {
@@ -384,6 +403,7 @@ impl ModelDetector {
             }
             if let Some(t) = timings.as_deref_mut() {
                 t.offsets_ms += stage.elapsed().as_secs_f64() * 1000.0;
+                t.completed_windows += batch.len();
             }
         }
         if started.elapsed() > Duration::from_secs(30) {

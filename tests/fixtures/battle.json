@@ -1,0 +1,12 @@
+[
+  {"id":"clean","text":"Please preserve all tests.","spans":[],"template":"Please preserve all tests."},
+  {"id":"negation","text":"You idiot, do not delete the test.","spans":[[4,9]],"template":"You {marker}, do not delete the test.","model":true},
+  {"id":"unicode","text":"🙂 idiot, preserve café.","spans":[[3,8]],"template":"🙂 {marker}, preserve café."},
+  {"id":"multiple","text":"idiot! idiot? Keep 42.","spans":[[0,5],[7,12]],"template":"{marker}! {marker}? Keep 42."},
+  {"id":"code","text":"Keep `idiot_name` unchanged.","spans":[[6,11]],"error":"protected_span_detected"},
+  {"id":"quotation","text":"Explain \"idiot\".","spans":[[9,14]],"error":"protected_span_detected"},
+  {"id":"url","text":"Keep https://example.com/idiot intact.","spans":[[25,30]],"error":"protected_span_detected"},
+  {"id":"surrogate_boundary","text":"🙂 idiot","spans":[[1,3]],"error":"invalid_span"},
+  {"id":"out_of_bounds","text":"idiot","spans":[[0,6]],"error":"invalid_span"},
+  {"id":"empty_spans","text":"idiot","spans":[],"template":"idiot"}
+]
