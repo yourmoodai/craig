@@ -1,12 +1,12 @@
 #import <CoreML/CoreML.h>
 #import <Foundation/Foundation.h>
 
-@interface CraigCoreMlHandle : NSObject
+@interface SaviorCoreMlHandle : NSObject
 @property(nonatomic, strong) MLModel *model;
 @property(nonatomic, strong) NSURL *compiled;
 @end
 
-@implementation CraigCoreMlHandle
+@implementation SaviorCoreMlHandle
 - (void)dealloc {
     // Core ML may prepare shape-specific execution lazily; retain its assets for the model lifetime.
     _model = nil;
@@ -15,12 +15,12 @@
 @end
 
 // The Rust owner serializes predictions. No NSError or exception text crosses this boundary.
-void *craig_coreml_load(const char *path, int units) {
+void *savior_coreml_load(const char *path, int units) {
     @autoreleasepool {
         @try {
             NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
             NSError *error = nil;
-            CraigCoreMlHandle *handle = [CraigCoreMlHandle new];
+            SaviorCoreMlHandle *handle = [SaviorCoreMlHandle new];
             handle.compiled = [MLModel compileModelAtURL:url error:&error];
             if (!handle.compiled) return NULL;
             MLModelConfiguration *config = [MLModelConfiguration new];
@@ -37,14 +37,14 @@ void *craig_coreml_load(const char *path, int units) {
     }
 }
 
-void craig_coreml_free(void *handle) {
+void savior_coreml_free(void *handle) {
     @autoreleasepool { (void)CFBridgingRelease(handle); }
 }
 
-int craig_coreml_predict(void *handle, const int32_t *features, size_t batch, size_t width, float *logits) {
+int savior_coreml_predict(void *handle, const int32_t *features, size_t batch, size_t width, float *logits) {
     @autoreleasepool {
         @try {
-            MLModel *model = ((__bridge CraigCoreMlHandle *)handle).model;
+            MLModel *model = ((__bridge SaviorCoreMlHandle *)handle).model;
             NSError *error = nil;
             MLMultiArray *input = [[MLMultiArray alloc] initWithShape:@[@3, @(batch), @(width)]
                                                            dataType:MLMultiArrayDataTypeInt32 error:&error];

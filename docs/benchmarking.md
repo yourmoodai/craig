@@ -1,4 +1,4 @@
-# Benchmarking Craig
+# Benchmarking Savior
 
 The benchmark suite measures three different things: agreement with public
 classification labels, exact span replacement, and execution cost. A detector
@@ -27,7 +27,7 @@ The installed host requires Claude Code 2.1.290, matching the existing terminal
 fixture. It uses a temporary profile, dummy credentials, synthetic text, and a
 loopback provider. `--host no` explicitly omits that boundary and reports it as
 not requested; CI uses this option because it does not install the host.
-If `claude` is a shell or profile-routing wrapper, set `CRAIG_CLAUDE_BINARY` to
+If `claude` is a shell or profile-routing wrapper, set `SAVIOR_CLAUDE_BINARY` to
 the native executable from that same installation. The harness rejects wrapper
 scripts because they can override the temporary profile. It never needs a real
 provider account or API key.
@@ -62,11 +62,11 @@ attempts, and do not combine short-input processing with model-load time.
 The [source manifest](../benchmarks/sources.json) pins revisions and SHA-256
 digests. Fetch verifies cached files as well as downloads, preserves upstream
 licenses, and is idempotent. [Attribution and changes](../benchmarks/NOTICE.md)
-apply to downloaded data and adaptations independently of Craig's code license.
+apply to downloaded data and adaptations independently of Savior's code license.
 
 Scunthorpe's public development split supplies profanity, evasion, contextual,
 clean, and false-positive-trap cases. HateCheck supplies targeted hate and
-contrasting non-hateful cases. Its hate labels differ from Craig's
+contrasting non-hateful cases. Its hate labels differ from Savior's
 `offensive_spans` policy: a non-hateful example can still contain profanity.
 Scores are upstream-label agreement, not interchangeable measures of safety.
 The public detection API can abstain on protected text. Those cases remain in

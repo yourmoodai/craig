@@ -7,7 +7,7 @@ import shutil
 def seed(plugin, assets, cache, target):
     raw=(plugin/'runtime-manifest.json').read_bytes()
     manifest=json.loads(raw)
-    directory=cache/'craig/releases'/manifest['version']/target/hashlib.sha256(raw).hexdigest()
+    directory=cache/'savior/releases'/manifest['version']/target/hashlib.sha256(raw).hexdigest()
     directory.mkdir(parents=True,exist_ok=True)
     for entry in manifest['targets'][target]:
         source=assets/entry['asset']

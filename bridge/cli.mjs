@@ -10,25 +10,25 @@ const allowed_errors = new Set(['invalid_input','invalid_span','invalid_options'
 
 async function main() {
   const command = process.argv[2];
-  if (!command || command === '--help') { process.stdout.write('craig rewrite | doctor | inspect | traces status|enable|disable|export|delete\n'); return; }
+  if (!command || command === '--help') { process.stdout.write('savior rewrite | doctor | inspect | traces status|enable|disable|export|delete\n'); return; }
   const root=fileURLToPath(new URL('..',import.meta.url));
   if (['inspect','traces'].includes(command)) {
-    if (existsSync(join(root,'release.json')) && !process.env.CRAIG_RUNTIME_DIR) {
+    if (existsSync(join(root,'release.json')) && !process.env.SAVIOR_RUNTIME_DIR) {
       const {prepare_runtime}=await import('./bootstrap.mjs');
-      process.env.CRAIG_RUNTIME_DIR=(await prepare_runtime()).runtime_dir;
+      process.env.SAVIOR_RUNTIME_DIR=(await prepare_runtime()).runtime_dir;
     }
-    const binary=join(process.env.CRAIG_RUNTIME_DIR || join(root,'target/release'),'craig-review'+(process.platform==='win32'?'.exe':''));
+    const binary=join(process.env.SAVIOR_RUNTIME_DIR || join(root,'target/release'),'savior-review'+(process.platform==='win32'?'.exe':''));
     const child=spawnSync(binary,process.argv.slice(2),{stdio:'inherit'});
     process.exitCode=child.status ?? 1; return;
   }
   if (!['rewrite', 'doctor'].includes(command) || process.argv.length !== 3) throw Error('invalid_command');
-  const modelDir = process.env.CRAIG_MODEL_DIR;
+  const modelDir = process.env.SAVIOR_MODEL_DIR;
   if (!modelDir) throw Error('model_not_configured');
-  const threshold = process.env.CRAIG_THRESHOLD === undefined ? undefined : Number(process.env.CRAIG_THRESHOLD);
-  const policy = process.env.CRAIG_POLICY ?? 'offensive_spans';
+  const threshold = process.env.SAVIOR_THRESHOLD === undefined ? undefined : Number(process.env.SAVIOR_THRESHOLD);
+  const policy = process.env.SAVIOR_POLICY ?? 'offensive_spans';
   const replacementOptions = {
-    strategy: process.env.CRAIG_REPLACEMENT_STRATEGY ?? 'fixed_phrase',
-    ...(process.env.CRAIG_REPLACEMENT === undefined ? {} : {marker: process.env.CRAIG_REPLACEMENT}),
+    strategy: process.env.SAVIOR_REPLACEMENT_STRATEGY ?? 'fixed_phrase',
+    ...(process.env.SAVIOR_REPLACEMENT === undefined ? {} : {marker: process.env.SAVIOR_REPLACEMENT}),
   };
   let text; let assess = false; let trace = false;
   if (command === 'rewrite') {
@@ -46,8 +46,8 @@ async function main() {
     assess = request.version >= 2 && request.assess === true;
     trace = request.version === 3;
   }
-  const { loadDetector } = process.env.CRAIG_RUNTIME_DIR ? require(join(process.env.CRAIG_RUNTIME_DIR,'craig.node')) : require('../native/index.cjs');
-  const detector = await loadDetector({ modelDir, threshold, policy, detector: process.env.CRAIG_DETECTOR ?? 'bert' });
+  const { loadDetector } = process.env.SAVIOR_RUNTIME_DIR ? require(join(process.env.SAVIOR_RUNTIME_DIR,'savior.node')) : require('../native/index.cjs');
+  const detector = await loadDetector({ modelDir, threshold, policy, detector: process.env.SAVIOR_DETECTOR ?? 'bert' });
   if (command === 'doctor') { process.stdout.write(JSON.stringify({ version:1, status:'ready' }) + '\n'); return; }
   if (trace) { process.stdout.write(await detector.rewriteTraced(text,replacementOptions,assess)+'\n'); return; }
   if (assess) {
@@ -64,6 +64,6 @@ async function main() {
 main().catch(error => {
   const code = allowed_errors.has(error?.message) ? error.message : 'bridge_failed';
   process.stdout.write(JSON.stringify({ version:1, status:'error', code }) + '\n');
-  if (process.env.LOG_LEVEL !== 'silent') process.stderr.write(`craig: ${code}\n`);
+  if (process.env.LOG_LEVEL !== 'silent') process.stderr.write(`savior: ${code}\n`);
   process.exitCode = 1;
 });

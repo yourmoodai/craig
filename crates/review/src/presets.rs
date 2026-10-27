@@ -13,7 +13,7 @@ pub struct Preset {
 }
 
 pub fn presets() -> Vec<Preset> {
-    craig::model_catalog::judges()
+    savior::model_catalog::judges()
         .map(|model| {
             let artifact = model.artifacts.first().expect("judge artifact");
             let converter_url = model
@@ -92,7 +92,7 @@ pub fn fetch(name: &str, directory: &Path, binary: &Path) -> ReviewResult<()> {
         }
     }
     if !artifact.exists()
-        || craig::artifact_digest(&artifact).map_err(|_| "judge_artifact_unavailable")?
+        || savior::artifact_digest(&artifact).map_err(|_| "judge_artifact_unavailable")?
             != preset.sha256
     {
         let url = format!(
@@ -115,7 +115,7 @@ pub fn fetch(name: &str, directory: &Path, binary: &Path) -> ReviewResult<()> {
             .copy_to(&mut file)
             .map_err(|_| "judge_download_failed")?;
         file.flush().map_err(|_| "judge_download_failed")?;
-        if craig::artifact_digest(&temporary).map_err(|_| "judge_artifact_unavailable")?
+        if savior::artifact_digest(&temporary).map_err(|_| "judge_artifact_unavailable")?
             != preset.sha256
         {
             return Err("judge_artifact_mismatch".into());

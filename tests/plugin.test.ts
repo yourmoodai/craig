@@ -143,7 +143,7 @@ test('slash commands bypass replacement', async ($, on) => {
 
 test('inspection command adds no transcript text or model context', async ($, on) => {
   on('ui.open', ($, e) => {expect(e.focus).toBe(true);return {value:undefined};});
-  const result = await $.command.run({command:'craig',args:'',origin:{kind:'composer'},presentation:{isFullscreen:true,columns:80}});
+  const result = await $.command.run({command:'savior',args:'',origin:{kind:'composer'},presentation:{isFullscreen:true,columns:80}});
   expect(result.text).toBeUndefined();
   expect(result.context).toBeUndefined();
 });
@@ -166,7 +166,7 @@ test('ending the session cancels an in-flight replacement', async ($, on) => {
 test('disabled personal review neither scans history nor writes metrics', async ($, on) => {
   mock.store(on);mock.clock(on,{now:1791800000000});
   on('session.id',()=>({value:'synthetic-session'}));
-  on('command.register',()=>({value:{command:'craig'}}));
+  on('command.register',()=>({value:{command:'savior'}}));
   on('session.start',($,e)=>({cwd:e.cwd}));
   let calls=0;
   on('process.run',($,e)=>{calls++;expect(e.argv.at(-1)).toBe('rewrite');expect(JSON.parse(e.init?.stdin??'{}').version).toBe(3);return {value:{exitCode:0,stdout:JSON.stringify({version:1,status:'rewritten',text:replacement}),stderr:''}};});
@@ -177,7 +177,7 @@ test('disabled personal review neither scans history nor writes metrics', async 
 
 test('metrics failure never restores an original submission', async ($,on)=>{
   mock.store(on,{personal_review_enabled:true});mock.clock(on,{now:1791800000000});
-  on('session.id',()=>({value:'synthetic-session'}));on('command.register',()=>({value:{command:'craig'}}));on('session.start',($,e)=>({cwd:e.cwd}));
+  on('session.id',()=>({value:'synthetic-session'}));on('command.register',()=>({value:{command:'savior'}}));on('session.start',($,e)=>({cwd:e.cwd}));
   const assessment={input_characters:25,removed_characters:5,replacement_count:1,removed_proportion:0.2,detector_confidence:0.9,residual_confidence:0.1,protected_abstention:false};
   on('process.run',($,e)=>{
     const request=JSON.parse(e.init?.stdin??'{}');
@@ -193,7 +193,7 @@ test('metrics failure never restores an original submission', async ($,on)=>{
 
 test('history controls default to three days and cap selection at five',async($,on)=>{
   mock.store(on);mock.clock(on,{now:1791800000000});
-  const ui=await $.ui.mount({plugin:'craig',surface:'terminal',component:'Pane',requestId:'craig',props:{title:'local replacement',isFocused:true,bodyColumns:80,placement:'inline',scroll:{offset:0,bodyRows:30},view:{}}});
+  const ui=await $.ui.mount({plugin:'savior',surface:'terminal',component:'Pane',requestId:'savior',props:{title:'local replacement',isFocused:true,bodyColumns:80,placement:'inline',scroll:{offset:0,bodyRows:30},view:{}}});
   await ui.press({key:'personal-metrics'});
   expect(await ui.find({type:'Text',text:/lookback: 3 days/})).toBeDefined();
   await ui.press({key:'days-5'});
@@ -205,7 +205,7 @@ test('history controls default to three days and cap selection at five',async($,
 test('rejected consent remains disabled in the metrics pane',async($,on)=>{
   mock.store(on);mock.clock(on,{now:1791800000000});
   on('process.run',()=>({value:{exitCode:1,stdout:'',stderr:''}}));
-  const ui=await $.ui.mount({plugin:'craig',surface:'terminal',component:'Pane',requestId:'craig',props:{title:'local replacement',isFocused:true,bodyColumns:80,placement:'inline',scroll:{offset:0,bodyRows:30},view:{}}});
+  const ui=await $.ui.mount({plugin:'savior',surface:'terminal',component:'Pane',requestId:'savior',props:{title:'local replacement',isFocused:true,bodyColumns:80,placement:'inline',scroll:{offset:0,bodyRows:30},view:{}}});
   await ui.press({key:'personal-metrics'});
   await ui.press({key:'live'});
   expect(await ui.find({type:'Text',text:/personal metrics setting could not be changed/})).toBeDefined();
@@ -233,7 +233,7 @@ test('packaged runtime becomes ready only after prepare and doctor', async () =>
     if (args[1]==='-p') return {exitCode:0,stdout:'darwin-arm64',stderr:''};
     if (args[1]?.endsWith('/bridge/bootstrap.mjs')) return {exitCode:0,stdout:JSON.stringify({status:'ready',runtime_dir:'/synthetic/runtime'}),stderr:''};
     if (args[1]==='prepare') return {exitCode:0,stdout:JSON.stringify({status:'ready',model_dir:'/synthetic/cache'}),stderr:''};
-    expect(options?.env?.CRAIG_MODEL_DIR).toBe('/synthetic/cache');
+    expect(options?.env?.SAVIOR_MODEL_DIR).toBe('/synthetic/cache');
     return {exitCode:0,stdout:JSON.stringify({status:'ready'}),stderr:''};
   }}});
   expect(runtime.ready).toBe(true);

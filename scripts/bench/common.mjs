@@ -7,7 +7,7 @@ import {digest} from './corpus.mjs';
 export const strategies = [{strategy:'fixed_phrase'}, {strategy:'fixed_phrase',marker:'please'}, {strategy:'omit'}];
 export const strategyName = options => options.marker === undefined ? options.strategy : 'custom_phrase';
 export function options(argv) {
-  const result = {model:process.env.CRAIG_MODEL_DIR ?? '.cache/models/mudes-en-base',
+  const result = {model:process.env.SAVIOR_MODEL_DIR ?? '.cache/models/mudes-en-base',
     corpus:'.cache/bench-corpus/corpus.json', output:undefined, limit:200, profile:'release', host:'yes',
     samples:10, warmup:2, runs:3, 'timeout-ms':120000, annotations:undefined,
     retry:undefined};
@@ -50,10 +50,10 @@ export function child(command, args, {input, env = process.env, timeout = 120000
   });
 }
 export function environment(model, replacement) {
-  const env = {...process.env,CRAIG_MODEL_DIR:resolve(model),CRAIG_DETECTOR:'bert',CRAIG_POLICY:'offensive_spans',CRAIG_THRESHOLD:'0.5',
-    CRAIG_REPLACEMENT_STRATEGY:replacement.strategy,LOG_LEVEL:'silent'};
-  delete env.CRAIG_REPLACEMENT;
-  if (replacement.marker !== undefined) env.CRAIG_REPLACEMENT = replacement.marker;
+  const env = {...process.env,SAVIOR_MODEL_DIR:resolve(model),SAVIOR_DETECTOR:'bert',SAVIOR_POLICY:'offensive_spans',SAVIOR_THRESHOLD:'0.5',
+    SAVIOR_REPLACEMENT_STRATEGY:replacement.strategy,LOG_LEVEL:'silent'};
+  delete env.SAVIOR_REPLACEMENT;
+  if (replacement.marker !== undefined) env.SAVIOR_REPLACEMENT = replacement.marker;
   return env;
 }
 export async function identity(config) {

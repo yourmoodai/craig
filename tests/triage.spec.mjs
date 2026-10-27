@@ -115,8 +115,8 @@ test('review priorities identify identity, context, evasion, and abstention with
   assert.throws(()=>qualityInventory(rows,{rows:[{id:'0',dataset:rows[0].dataset,category:rows[0].category,expected:false}]}),/identity/);
 });
 
-test('native runner separates measurement and profiling and retains failed stage evidence', {skip:!process.env.CRAIG_MODEL_DIR}, async()=>{
-  const request={model:process.env.CRAIG_MODEL_DIR,backend:'cpu',batch:1,samples:1,warmup:0,fixtures:[{id:'one',text:'Please keep the test.'}]};
+test('native runner separates measurement and profiling and retains failed stage evidence', {skip:!process.env.SAVIOR_MODEL_DIR}, async()=>{
+  const request={model:process.env.SAVIOR_MODEL_DIR,backend:'cpu',batch:1,samples:1,warmup:0,fixtures:[{id:'one',text:'Please keep the test.'}]};
   for(const phase of ['measure','profile']) {
     const result=await child('target/release/examples/inference',[],{input:JSON.stringify({...request,phase})});
     assert.equal(result.status,0);

@@ -7,7 +7,7 @@
   },
   "plugins": [
     {
-      "name": "craig",
+      "name": "savior",
       "source": "./",
       "description": "A Claude Code mod for keeping a provider's tone policy out of your private draft."
     }

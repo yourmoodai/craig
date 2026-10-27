@@ -33,15 +33,15 @@ fn regular(path: &Path) -> Result<(), String> {
 
 pub fn prepare() -> Result<PathBuf, String> {
     // An explicit override is validated by the detector; setup must not overwrite it.
-    if let Some(path) = std::env::var_os("CRAIG_MODEL_DIR").filter(|p| !p.is_empty()) {
+    if let Some(path) = std::env::var_os("SAVIOR_MODEL_DIR").filter(|p| !p.is_empty()) {
         let path = PathBuf::from(path);
         if !path.is_absolute() {
             return Err("invalid_model_path".into());
         }
-        craig::RuntimeDetector::load(
+        savior::RuntimeDetector::load(
             &path,
-            &std::env::var("CRAIG_DETECTOR").unwrap_or_else(|_| "bert".into()),
-            craig::Policy::OffensiveSpans,
+            &std::env::var("SAVIOR_DETECTOR").unwrap_or_else(|_| "bert".into()),
+            savior::Policy::OffensiveSpans,
             Default::default(),
         )
         .map_err(|_| "model_unavailable")?;
@@ -57,7 +57,7 @@ pub fn prepare() -> Result<PathBuf, String> {
     if !root.is_absolute() {
         return Err("invalid_cache_path".into());
     }
-    let dir = root.join("craig/models").join(craig::MODEL_REVISION);
+    let dir = root.join("savior/models").join(savior::MODEL_REVISION);
     fs::create_dir_all(&dir).map_err(|_| "cache_unavailable")?;
     if fs::symlink_metadata(&dir)
         .map_err(|_| "cache_unavailable")?
@@ -94,7 +94,7 @@ pub fn prepare() -> Result<PathBuf, String> {
         .timeout(Duration::from_secs(480))
         .build()
         .map_err(|_| "download_failed")?;
-    for artifact in &craig::model_catalog::delivery_detector().artifacts {
+    for artifact in &savior::model_catalog::delivery_detector().artifacts {
         let path = dir.join(&artifact.file);
         regular(&path)?;
         if digest(&path).ok().as_deref() == Some(&artifact.sha256) {
@@ -107,7 +107,7 @@ pub fn prepare() -> Result<PathBuf, String> {
             continue;
         }
         let url = format!(
-            "https://github.com/yourmoodai/craig/releases/download/v{}/model-{}",
+            "https://github.com/yourmoodai/savior/releases/download/v{}/model-{}",
             env!("CARGO_PKG_VERSION"),
             artifact.file
         );

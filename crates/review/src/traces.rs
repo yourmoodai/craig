@@ -77,13 +77,13 @@ pub fn state_directory() -> ReviewResult<PathBuf> {
     let root = if cfg!(windows) {
         std::env::var_os("LOCALAPPDATA")
             .map(PathBuf::from)
-            .map(|p| p.join("craig/state"))
+            .map(|p| p.join("savior/state"))
     } else {
         std::env::var_os("XDG_STATE_HOME")
             .filter(|s| !s.is_empty())
             .map(PathBuf::from)
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/state")))
-            .map(|p| p.join("craig"))
+            .map(|p| p.join("savior"))
     }
     .ok_or("state_unavailable")?;
     let profile = std::env::var_os("CLAUDE_CONFIG_DIR")
@@ -105,8 +105,8 @@ pub fn state_directory() -> ReviewResult<PathBuf> {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Decision {
-    pub detected: Vec<craig::Span>,
-    pub applied: Vec<craig::Span>,
+    pub detected: Vec<savior::Span>,
+    pub applied: Vec<savior::Span>,
     pub threshold: f32,
     pub strategy: String,
     pub marker: Option<String>,
@@ -180,15 +180,15 @@ impl Trace {
             return Err("invalid_trace".into());
         }
         if let Some(original) = &self.original {
-            if original.len() > craig::MAX_TEXT_BYTES {
+            if original.len() > savior::MAX_TEXT_BYTES {
                 return Err("invalid_trace".into());
             }
             if let Some(decision) = &self.decision {
                 let strategy =
-                    craig::ReplacementMode::new(Some(&decision.strategy), decision.marker.clone())
+                    savior::ReplacementMode::new(Some(&decision.strategy), decision.marker.clone())
                         .map_err(|_| "invalid_trace")?;
                 if let Some(output) = &self.output {
-                    let result = craig::apply_replacements(
+                    let result = savior::apply_replacements(
                         original,
                         &decision.detected,
                         decision.threshold,
@@ -458,7 +458,7 @@ pub fn record_failure(code: &str, cancelled: bool) -> ReviewResult<String> {
             id: id.clone(),
             timestamp_ms: now_ms(),
             release: env!("CARGO_PKG_VERSION").into(),
-            release_manifest_sha256: std::env::var("CRAIG_RELEASE_MANIFEST_SHA256").ok(),
+            release_manifest_sha256: std::env::var("SAVIOR_RELEASE_MANIFEST_SHA256").ok(),
             model_fingerprint: None,
             policy: "unavailable".into(),
             detector: "unavailable".into(),
@@ -475,10 +475,10 @@ pub fn record_failure(code: &str, cancelled: bool) -> ReviewResult<String> {
     Ok(id)
 }
 pub fn rewrite_traced(
-    model: &mut dyn craig::Detector,
+    model: &mut dyn savior::Detector,
     text: &str,
     threshold: f32,
-    strategy: &craig::ReplacementMode,
+    strategy: &savior::ReplacementMode,
     context: &TraceContext,
     assess: bool,
 ) -> Value {
@@ -494,7 +494,7 @@ pub fn rewrite_traced(
         .as_ref()
         .map_err(|e| e.to_string())
         .and_then(|spans| {
-            craig::apply_replacements(text, spans, threshold, strategy).map_err(|e| e.to_string())
+            savior::apply_replacements(text, spans, threshold, strategy).map_err(|e| e.to_string())
         });
     let (outcome, output, code, applied) = match &result {
         Ok(r) => (
@@ -544,7 +544,7 @@ pub fn rewrite_traced(
         id: id.clone(),
         timestamp_ms: now_ms(),
         release: env!("CARGO_PKG_VERSION").into(),
-        release_manifest_sha256: std::env::var("CRAIG_RELEASE_MANIFEST_SHA256").ok(),
+        release_manifest_sha256: std::env::var("SAVIOR_RELEASE_MANIFEST_SHA256").ok(),
         model_fingerprint: Some(context.model_fingerprint.clone()),
         policy: context.policy.clone(),
         detector: context.detector.clone(),

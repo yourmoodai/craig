@@ -1,5 +1,5 @@
 [package]
-name = "craig-cli"
+name = "savior-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,11 +11,11 @@ keywords = ["privacy", "local-inference", "offline", "open-source-models", "span
 categories = ["command-line-utilities", "text-processing"]
 
 [[bin]]
-name = "craig"
+name = "savior"
 path = "src/main.rs"
 
 [dependencies]
-craig.workspace = true
+savior.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 fs2 = "0.4"

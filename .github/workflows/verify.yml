@@ -24,6 +24,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: node scripts/verify-branding.mjs
       - run: python3 -m unittest discover -s tools/adversarial_reviewer
       - run: python3 -m unittest discover -s scripts/release
   coreml:
@@ -40,8 +41,8 @@ jobs:
           shared-key: coreml-macos-15-${{ runner.arch }}
           cache-on-failure: true
       - name: native build
-        run: cargo clippy -p craig --features coreml --all-targets -- -D warnings
-      - run: cargo test -p craig --features coreml
+        run: cargo clippy -p savior --features coreml --all-targets -- -D warnings
+      - run: cargo test -p savior --features coreml
       - name: summarize cache measurements
         if: always()
         continue-on-error: true
@@ -91,17 +92,17 @@ jobs:
       - run: npx playwright install --with-deps --only-shell chromium
       - name: standalone local inspector browser checks
         env:
-          CRAIG_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
+          SAVIOR_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
         run: npm run inspect:e2e
       - name: native assessment and synthetic SDK history
         env:
-          CRAIG_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
+          SAVIOR_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
         run: node --test tests/review.spec.mjs
       - name: real model training and reload parity
         if: github.event_name == 'workflow_dispatch'
         env:
-          CRAIG_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
-        run: cargo test --profile profiling -p craig-lab --test cli -- --ignored
+          SAVIOR_MODEL_DIR: ${{ github.workspace }}/.cache/models/mudes-en-base
+        run: cargo test --profile profiling -p savior-lab --test cli -- --ignored
       - name: summarize cache measurements
         if: always()
         continue-on-error: true

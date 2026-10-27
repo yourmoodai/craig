@@ -250,7 +250,7 @@ pub fn serve() -> ReviewResult<()> {
                 .with_header(header("Content-Type", "application/octet-stream"))
                 .with_header(header(
                     "Content-Disposition",
-                    "attachment; filename=\"craig-replacements.parquet\"",
+                    "attachment; filename=\"savior-replacements.parquet\"",
                 ))
                 .with_header(header("Cache-Control", "no-store"))
                 .with_header(header("X-Content-Type-Options", "nosniff"));
@@ -275,6 +275,11 @@ pub fn serve() -> ReviewResult<()> {
             (
                 "text/css",
                 include_str!("../../../inspector/style.css").into(),
+            )
+        } else if request.method() == &Method::Get && path == "/savior.svg" {
+            (
+                "image/svg+xml",
+                include_str!("../../../docs/assets/savior.svg").into(),
             )
         } else if !authorized {
             status = 403;

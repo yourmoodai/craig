@@ -1,4 +1,4 @@
-const marker = '<!-- craig-adversarial-review -->';
+const marker = '<!-- savior-adversarial-review -->';
 
 function verdict(report) {
   if (typeof report.body !== 'string' || !report.body.trim()) throw Error('review body is empty or missing');

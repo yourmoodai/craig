@@ -11,7 +11,7 @@ import {loadModelCatalog} from '../scripts/model-catalog.mjs';
 const artifact = 'synthetic detector artifact';
 
 async function fixture(t, cached) {
-  const directory = await mkdtemp(join(tmpdir(), 'craig-model-cache-'));
+  const directory = await mkdtemp(join(tmpdir(), 'savior-model-cache-'));
   t.after(() => rm(directory, {recursive: true, force: true}));
   for (const name of ['scripts', 'models', 'downloads']) await mkdir(join(directory, name));
   for (const name of ['fetch-model.mjs', 'model-catalog.mjs']) {

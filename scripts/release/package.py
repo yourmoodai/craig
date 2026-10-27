@@ -40,12 +40,12 @@ def stage(target, destination):
             source = bundle.open(filename) if suffix else bundle.extractfile(filename)
             with source, (directory/output).open('wb') as stream:
                 shutil.copyfileobj(source,stream)
-    for binary in ['craig','craig-review']:
+    for binary in ['savior','savior-review']:
         shutil.copy2(ROOT/'target/release'/(binary+suffix),directory/(binary+suffix))
-    for name in ['node'+suffix,'craig'+suffix,'craig-review'+suffix]:
+    for name in ['node'+suffix,'savior'+suffix,'savior-review'+suffix]:
         (directory/name).chmod(0o755)
     (destination/'native').mkdir(exist_ok=True)
-    shutil.copy2(ROOT/'native'/f'craig.{addon}.node',destination/'native')
+    shutil.copy2(ROOT/'native'/f'savior.{addon}.node',destination/'native')
     for name in ['index.cjs','index.d.ts']:
         shutil.copy2(ROOT/'native'/name,destination/'native'/name)
 
@@ -59,14 +59,16 @@ def assemble(parts, destination):
         if not (part/'runtime'/target).is_dir(): raise ValueError('missing target '+target)
         shutil.copytree(part,destination,dirs_exist_ok=True)
         suffix='.exe' if target.startswith('win32') else ''
-        for name in ['node','craig','craig-review']:
+        for name in ['node','savior','savior-review']:
             (destination/'runtime'/target/(name+suffix)).chmod(0o755)
     for name in ['hooks','bridge','src','models','.claude-plugin']:
         shutil.copytree(ROOT/name,destination/name,ignore=shutil.ignore_patterns('__pycache__'))
     for name in ['LICENSE','NOTICE','THIRD-PARTY-NOTICES.md','README.md','package.json','package-lock.json']:
         shutil.copy2(ROOT/name,destination/name)
     (destination/'docs/assets').mkdir(parents=True)
-    shutil.copy2(ROOT/'docs/assets/craig.png',destination/'docs/assets')
+    for name in ['savior.png', 'savior.svg']:
+        shutil.copy2(ROOT/'docs/assets'/name,destination/'docs/assets')
+    shutil.copy2(ROOT/'docs/migration.md',destination/'docs')
     subprocess.run(['npm','ci','--omit=dev','--omit=optional','--ignore-scripts','--bin-links=false','--prefix',str(destination)],check=True)
     package=json.loads((destination/'package.json').read_text())
     for key in ['dependencies','devDependencies','scripts','napi','bin','files']:
@@ -81,9 +83,9 @@ def assemble(parts, destination):
     for target, (_, _, addon) in TARGETS.items():
         suffix='.exe' if target.startswith('win32') else ''
         entries=[]
-        for source, name in [(destination/'runtime'/target/('craig'+suffix),'craig'+suffix),
-                             (destination/'runtime'/target/('craig-review'+suffix),'craig-review'+suffix),
-                             (destination/'native'/f'craig.{addon}.node','craig.node')]:
+        for source, name in [(destination/'runtime'/target/('savior'+suffix),'savior'+suffix),
+                             (destination/'runtime'/target/('savior-review'+suffix),'savior-review'+suffix),
+                             (destination/'native'/f'savior.{addon}.node','savior.node')]:
             asset=f'runtime-{version}-{target}-{name}'
             entries.append({'name':name,'asset':asset,'bytes':source.stat().st_size,'sha256':digest(source)})
             shutil.copy2(source,destination.parent/asset)
@@ -95,14 +97,14 @@ def assemble(parts, destination):
         shutil.copy2(destination/name,destination.parent/name)
     manifest['files']={str(p.relative_to(destination)).replace('\\','/'):digest(p) for p in sorted(destination.rglob('*')) if p.is_file()}
     (destination/'release.json').write_text(json.dumps(manifest,indent=2)+'\n')
-    output=destination.parent/f'craig-{version}.zip'
+    output=destination.parent/f'savior-{version}.zip'
     with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
         for path in sorted(destination.rglob('*')):
             if path.is_symlink(): raise ValueError('release contains symlink')
             if path.is_file():archive.write(path,path.relative_to(destination))
     if output.stat().st_size>=LIMIT: raise ValueError('plugin archive exceeds 210 MB')
     marketplace=json.loads((ROOT/'.claude-plugin/marketplace.json').read_text())
-    marketplace['plugins'][0]['source']={'source':'archive','url':f'https://github.com/yourmoodai/craig/releases/download/v{version}/{output.name}','sha256':digest(output)}
+    marketplace['plugins'][0]['source']={'source':'archive','url':f'https://github.com/yourmoodai/savior/releases/download/v{version}/{output.name}','sha256':digest(output)}
     (destination.parent/'marketplace.json').write_text(json.dumps(marketplace,indent=2)+'\n')
     (destination.parent/'SHA256SUMS').write_text(f'{digest(output)}  {output.name}\n')
     print(json.dumps({'archive':str(output),'bytes':output.stat().st_size,'sha256':digest(output)}))

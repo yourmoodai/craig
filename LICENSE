@@ -618,10 +618,10 @@ copy of the Program in return for a fee.
 
                      END OF TERMS AND CONDITIONS
 
-        Copyright and Section 7 Additional Terms for craig
+        Copyright and Section 7 Additional Terms for savior
 
 Copyright (c) 2026 Adam Williams and yourmood.ai
-Upstream repository: https://github.com/yourmoodai/craig
+Upstream repository: https://github.com/yourmoodai/savior
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
@@ -635,12 +635,12 @@ requirements on all copies, forks, and modified versions:
   1. Preservation of Attribution (Section 7(b)): You must retain the root
      NOTICE file and all copyright, author, and upstream repository attributions
      referencing Adam Williams, yourmood.ai, and
-     https://github.com/yourmoodai/craig in all source distributions,
+     https://github.com/yourmoodai/savior in all source distributions,
      plugin packages, marketplace listings, and documentation.
   2. Distinct Marking of Forks and Modified Versions (Section 7(c)): You must
      not misrepresent the origin of this software. Any fork or modified version
      published to a plugin marketplace, directory, or package registry must be
-     clearly marked as a modified version derived from yourmoodai/craig
+     clearly marked as a modified version derived from yourmoodai/savior
      and must use a distinct plugin identifier (`name`) and `displayName`.
   3. Reciprocal Source Availability for Upstream Improvements (Sections 5, 6,
      and 13): Any modified version conveyed or offered to users must provide

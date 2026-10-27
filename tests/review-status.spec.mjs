@@ -7,7 +7,7 @@ import snapshot from '../tools/adversarial_reviewer/test_status.cjs';
 
 const runs=['verify.yml','commit-messages.yml','release.yml'].map((file,i)=>({id:i+1,head_sha:'head',event:'pull_request',path:'.github/workflows/'+file,status:'completed',conclusion:'success',run_attempt:2,html_url:'https://example.test/run/'+i}));
 async function exercise({checks=runs,head='head'}={}) {
-  const directory=await mkdtemp(join(tmpdir(),'craig-gate-'));
+  const directory=await mkdtemp(join(tmpdir(),'savior-gate-'));
   const output=join(directory,'evidence.json');
   const github={rest:{pulls:{get:async()=>({data:{state:'open',draft:false,head:{sha:head}}})},actions:{listWorkflowRunsForRepo:'runs',listJobsForWorkflowRunAttempt:'jobs'}},
     paginate:async(method,args)=>{

@@ -89,7 +89,7 @@ jobs:
           aws-region: us-east-1
           allowed-account-ids: '463509296941'
           role-duration-seconds: 900
-          role-session-name: craig-oidc-${{ github.run_id }}
+          role-session-name: savior-oidc-${{ github.run_id }}
       - name: verify assumed identity without inference
         run: aws sts get-caller-identity --query Arn --output text
   review:
@@ -152,7 +152,7 @@ jobs:
           aws-region: us-east-1
           allowed-account-ids: '463509296941'
           role-duration-seconds: 3600
-          role-session-name: craig-review-${{ github.run_id }}
+          role-session-name: savior-review-${{ github.run_id }}
       - name: restore pilot budget
         if: vars.BEDROCK_REVIEW_ENABLED == 'true'
         uses: actions/github-script@v7

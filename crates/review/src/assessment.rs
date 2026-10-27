@@ -1,5 +1,5 @@
 use crate::ReviewResult;
-use craig::{Detector, ReplacementStrategy, apply_replacements};
+use savior::{Detector, ReplacementStrategy, apply_replacements};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -42,7 +42,7 @@ pub fn assess<D: Detector>(
                 .and_then(|spans| spans.iter().map(|s| s.score).reduce(f32::max));
             Ok((assessment, Some(result.text)))
         }
-        Err(craig::Error::ProtectedSpan) => {
+        Err(savior::Error::ProtectedSpan) => {
             assessment.protected_abstention = true;
             Ok((assessment, None))
         }

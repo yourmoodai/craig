@@ -1,6 +1,6 @@
 # Evaluation
 
-Craig reports what it measured and what remains unknown. It does not use one
+Savior reports what it measured and what remains unknown. It does not use one
 number—or one model's opinion—to claim safety, provider approval, or
 enforcement.
 
@@ -39,7 +39,7 @@ remain unresolved.
 
 ## Where to reproduce and inspect detail
 
-[Benchmarking Craig](benchmarking.md) owns corpus provenance, benchmark commands,
+[Benchmarking Savior](benchmarking.md) owns corpus provenance, benchmark commands,
 performance protocols, and generated reports. [Contributing](../CONTRIBUTING.md)
 owns developer setup and release procedure. The repository's tests, package
 scripts, and tool guides are the implementation-level source of truth.

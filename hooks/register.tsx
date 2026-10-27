@@ -21,7 +21,7 @@ export function register(on: On) {
     latest = null; generation += 1;
     await runtime.start({plugin:{root:$.plugin.root},process:{run:(argv,init)=>$.process.run(argv,init)}});
     if (runtime.ready) await review.start(host);
-    await $.command.register({ name: 'craig', description: 'inspect the latest local replacement', immediate: true });
+    await $.command.register({ name: 'savior', description: 'inspect the latest local replacement', immediate: true });
     return next(e);
   });
   on('session.end', async ($, e, next) => {
@@ -36,8 +36,8 @@ export function register(on: On) {
     await review.end(host);
     return next(e);
   });
-  on('command.run', { command: 'craig' }, async ($) => {
-    await $.ui.open({ id: 'craig', title: 'local replacement', focus: true, closeOnEscape: true });
+  on('command.run', { command: 'savior' }, async ($) => {
+    await $.ui.open({ id: 'savior', title: 'local replacement', focus: true, closeOnEscape: true });
     if (!runtime.ready) { await runtime.start({plugin:{root:$.plugin.root},process:{run:(argv,init)=>$.process.run(argv,init)}}); $.ui.invalidate('ui.render'); }
     return {};
   });
@@ -91,14 +91,14 @@ export function register(on: On) {
       const result = await $.process.run([runtime.node, $.plugin.root + '/bridge/cli.mjs', 'rewrite'], {
         env: runtime.env, stdin: JSON.stringify({version:3,text:e.text,assess:review.consent.live}), timeoutMs: 45000,
       });
-      if (result.exitCode !== 0) return drop('local replacement failed; check craig doctor and resubmit');
+      if (result.exitCode !== 0) return drop('local replacement failed; check savior doctor and resubmit');
       const answer = read_result(JSON.parse(result.stdout));
       trace_id = answer.trace_id;
       trace_warning = answer.trace_warning ? 'recording gap: this replacement was not saved' : '';
       if (next.signal.aborted || generation !== current_generation) return drop('submission cancelled; resubmit to retry');
       if(answer.assessment) await review.observe(host,e.text,answer.status==='error'?null:answer.text,answer.assessment);
       if (next.signal.aborted || generation !== current_generation) return drop('submission cancelled; resubmit to retry');
-      if (answer.status === 'error') return drop('local replacement failed; check craig doctor and resubmit');
+      if (answer.status === 'error') return drop('local replacement failed; check savior doctor and resubmit');
       const output_limit = Math.min(max_output_bytes, new TextEncoder().encode(e.text).length * 80 * 4);
       if (new TextEncoder().encode(answer.text).length > output_limit) return drop('invalid local replacement; resubmit to retry');
       if (submission === submitted) latest = { original: e.text, replacement: answer.text };
@@ -123,7 +123,7 @@ export function register(on: On) {
       save: (enabled: boolean) => $.store.set('personal_review_enabled', enabled),
       invalidate: () => { $.ui.invalidate('ui.render'); },
     };
-    if (e.requestId !== 'craig' || e.surface !== 'terminal') return next(e);
+    if (e.requestId !== 'savior' || e.surface !== 'terminal') return next(e);
     const { Box, Text, Button } = $.ui.resolve(e);
     if(review.view==='metrics')return <Box flexDirection="column">
       <Text bold>personal metrics — active profile only; no prompt text is saved</Text>

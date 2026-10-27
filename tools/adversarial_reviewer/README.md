@@ -9,7 +9,7 @@ evidence, coverage, and disposition tests. CI uses AWS CLI v2 and Bedrock Conver
 with `deepseek.v3.2` in `us-east-1`.
 The application detector and personal-review judges remain offline.
 
-GitHub Actions assumes `arn:aws:iam::463509296941:role/craig-bedrock-review`
+GitHub Actions assumes `arn:aws:iam::463509296941:role/savior-bedrock-review`
 through OIDC. The `bedrock-review` GitHub environment admits only the `main` and
 `develop` branches. The role trusts only this repository/environment and the
 `sts.amazonaws.com` audience. Its inline policy permits only `bedrock:InvokeModel`

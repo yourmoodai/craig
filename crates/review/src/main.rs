@@ -1,6 +1,6 @@
-use craig_review::ReviewResult;
+use savior_review::ReviewResult;
 #[cfg(unix)]
-use craig_review::{
+use savior_review::{
     store::{private_dir, profile_dir},
     worker::{Request, Worker},
 };
@@ -14,7 +14,7 @@ use std::{
 fn serve() -> ReviewResult<()> {
     use std::os::unix::{fs::PermissionsExt, net::UnixListener};
     let profile = profile_dir()?;
-    let directory = profile.join("craig");
+    let directory = profile.join("savior");
     private_dir(&directory)?;
     if directory.join("worker.lock").is_symlink() {
         return Err("unsafe_metrics_path".into());
@@ -71,7 +71,7 @@ fn serve() -> ReviewResult<()> {
                     Ok(value) => serde_json::json!({"version":1,"status":"ok","value":value}),
                     Err(code) => serde_json::json!({"version":1,"status":"error","code":code}),
                 };
-                let _ = stream.write_all(&craig_review::transport::response_bytes(&response));
+                let _ = stream.write_all(&savior_review::transport::response_bytes(&response));
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 std::thread::sleep(std::time::Duration::from_millis(25))
@@ -94,8 +94,8 @@ fn socket_path(profile: &std::path::Path) -> ReviewResult<std::path::PathBuf> {
     // A fixed short parent avoids sockaddr_un limits for deeply nested profiles.
     // SAFETY: geteuid has no preconditions and does not mutate process state.
     let uid = unsafe { libc::geteuid() };
-    let hash = craig_review::store::fingerprint(profile.as_os_str().as_encoded_bytes());
-    let directory = std::path::PathBuf::from(format!("/tmp/craig-{uid}-{hash}"));
+    let hash = savior_review::store::fingerprint(profile.as_os_str().as_encoded_bytes());
+    let directory = std::path::PathBuf::from(format!("/tmp/savior-{uid}-{hash}"));
     match std::fs::DirBuilder::new().mode(0o700).create(&directory) {
         Ok(()) => (),
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => (),
@@ -129,34 +129,34 @@ mod tests {
 }
 #[cfg(windows)]
 fn serve() -> ReviewResult<()> {
-    craig_review::windows::serve()
+    savior_review::windows::serve()
 }
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
     let result = match args.as_slice() {
         #[cfg(feature = "inspector")]
-        [command] if command == "inspect" => craig_review::inspector::serve(),
+        [command] if command == "inspect" => savior_review::inspector::serve(),
         #[cfg(feature = "inspector")]
-        [command, rest @ ..] if command == "traces" => craig_review::inspector::command(rest),
+        [command, rest @ ..] if command == "traces" => savior_review::inspector::command(rest),
         [command] if command == "serve" => serve(),
         [command, output] if command == "policy-fetch" => {
-            craig_review::policy::fetch(std::path::Path::new(output))
+            savior_review::policy::fetch(std::path::Path::new(output))
         }
         [command, corpus, output] if command == "policy-evaluate" => {
-            craig_review::policy::evaluate_file(
+            savior_review::policy::evaluate_file(
                 std::path::Path::new(corpus),
                 std::path::Path::new(output),
             )
         }
         [command, preset, directory, binary] if command == "judge-setup" => {
-            craig_review::presets::fetch(
+            savior_review::presets::fetch(
                 preset,
                 std::path::Path::new(directory),
                 std::path::Path::new(binary),
             )
         }
         [command, corpus, left, right, output] if command == "policy-compare" => {
-            craig_review::comparison::evaluate(
+            savior_review::comparison::evaluate(
                 std::path::Path::new(corpus),
                 std::path::Path::new(left),
                 std::path::Path::new(right),
@@ -166,7 +166,7 @@ fn main() {
         _ => Err("invalid_command".into()),
     };
     if let Err(code) = result {
-        eprintln!("craig-review: {code}");
+        eprintln!("savior-review: {code}");
         std::process::exit(1);
     }
 }

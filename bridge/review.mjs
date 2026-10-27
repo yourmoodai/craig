@@ -15,17 +15,17 @@ async function exchange(request, timeout=30000) {
   let unix_endpoint;
   if(process.platform!=='win32') {
     const uid=process.geteuid();
-    const directory='/tmp/craig-'+uid+'-'+createHash('sha256').update(profile).digest('hex');
+    const directory='/tmp/savior-'+uid+'-'+createHash('sha256').update(profile).digest('hex');
     const metadata=await lstat(directory);
     if(!metadata.isDirectory() || metadata.uid!==uid || (metadata.mode&0o777)!==0o700) throw Error('review_unavailable');
     unix_endpoint=join(directory,'s');
   }
-  const endpoint=process.platform==='win32' ? '\\\\.\\pipe\\craig-'+createHash('sha256').update(profile.replace(/^\\\\\?\\/, '').toLowerCase()).digest('hex') : unix_endpoint;
+  const endpoint=process.platform==='win32' ? '\\\\.\\pipe\\savior-'+createHash('sha256').update(profile.replace(/^\\\\\?\\/, '').toLowerCase()).digest('hex') : unix_endpoint;
   return exchange_at(endpoint,request,timeout);
 }
-const artifact_path=process.env.CRAIG_MODEL_DIR ? join(process.env.CRAIG_MODEL_DIR,process.env.CRAIG_DETECTOR==='lexical'?'decision.json':'manifest.json') : null;
+const artifact_path=process.env.SAVIOR_MODEL_DIR ? join(process.env.SAVIOR_MODEL_DIR,process.env.SAVIOR_DETECTOR==='lexical'?'decision.json':'manifest.json') : null;
 const artifact_hash=artifact_path ? await readFile(artifact_path).then(b=>createHash('sha256').update(b).digest('hex')).catch(()=>'') : '';
-const runtime_fingerprint=createHash('sha256').update(JSON.stringify(['CRAIG_MODEL_DIR','CRAIG_DETECTOR','CRAIG_POLICY','CRAIG_THRESHOLD','CRAIG_REPLACEMENT_STRATEGY','CRAIG_REPLACEMENT','CRAIG_JUDGE_CONFIG'].map(key=>process.env[key]||'').concat(artifact_hash))).digest('hex');
+const runtime_fingerprint=createHash('sha256').update(JSON.stringify(['SAVIOR_MODEL_DIR','SAVIOR_DETECTOR','SAVIOR_POLICY','SAVIOR_THRESHOLD','SAVIOR_REPLACEMENT_STRATEGY','SAVIOR_REPLACEMENT','SAVIOR_JUDGE_CONFIG'].map(key=>process.env[key]||'').concat(artifact_hash))).digest('hex');
 async function start(allow_mismatch=false) {
   const deadline=Date.now()+10000;
   let current;
@@ -100,7 +100,7 @@ async function main() {
   if(request.command==='scan')result=await scan(request.days);
   else if(request.command==='export_file') {
     const data=await exchange({command:'export'});
-    const path=join(profile,'craig',`metrics-${Date.now()}.json`);
+    const path=join(profile,'savior',`metrics-${Date.now()}.json`);
     await writeFile(path,JSON.stringify(data,null,2)+'\n',{mode:0o600,flag:'wx'});
     result={path};
   } else result=await exchange(request);

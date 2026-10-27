@@ -16,7 +16,7 @@ class ReviewPolicyTests(unittest.TestCase):
         case={'report':report,'head':'head','comments':[],'phase':'complete',**changes}
         harness='''
 const input=JSON.parse(process.argv[1]); const calls=[]; const failures=[];
-const context={repo:{owner:'yourmoodai',repo:'craig'},runId:42};
+const context={repo:{owner:'yourmoodai',repo:'savior'},runId:42};
 const core={notice:()=>{},setFailed:message=>failures.push(message)};
 let reads=0;
 const github={rest:{pulls:{listReviews:'reviews',createReview:async r=>calls.push({kind:'review',...r}),get:async()=>({data:{state:'open',head:{sha:input.staleAfterRead && reads++ ? 'new' : input.head}}})},issues:{listComments:'list',updateComment:async r=>calls.push({kind:'update',...r}),createComment:async r=>calls.push({kind:'create',...r})}},paginate:async method=>method==='reviews' ? (input.reviews||[]) : input.comments};
@@ -53,7 +53,7 @@ publish({github,context,core,head:'head',pr:1,report:input.report,phase:input.ph
         self.assertEqual(changed['calls'][0]['kind'],'update')
         self.assertEqual(changed['calls'][0]['comment_id'],8)
     def test_foreign_markers_are_not_owned(self):
-        comment={'id':8,'user':{'login':'someone','type':'User'},'body':'<!-- craig-adversarial-review -->'}
+        comment={'id':8,'user':{'login':'someone','type':'User'},'body':'<!-- savior-adversarial-review -->'}
         self.assertEqual(self.publish(comments=[comment])['calls'][0]['kind'],'create')
     def test_waiting_and_failed_phases_share_the_comment(self):
         result=self.publish(phase='waiting')

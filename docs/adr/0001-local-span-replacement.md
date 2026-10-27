@@ -4,7 +4,7 @@ Date: 2026-10-12
 
 ## Status
 
-Accepted. Craig's local transformation core is the product boundary. The Claude
+Accepted. Savior's local transformation core is the product boundary. The Claude
 Code mod is the current adapter; a transparent proxy is the planned next adapter.
 Release evidence belongs to [ADR 2](0002-release-and-quality-evidence.md).
 The blanket persistence prohibition below is superseded only for explicitly
@@ -17,15 +17,15 @@ consented local inspection by [ADR 4](0004-consented-local-traces.md).
 - **Draft** is the unsent text currently in the prompt box.
 - **Prompt input** is user-authored material prepared for an AI request.
 - **Submission** is the request a provider receives after local processing.
-- **Adapter** connects a host or transport to Craig's Rust core.
+- **Adapter** connects a host or transport to Savior's Rust core.
 - **Local transformation** is the user-directed replacement of selected text
   before submission.
 
-## What Craig controls
+## What Savior controls
 
-Craig gives a user a local choice about prompt input. When an adapter runs, the
+Savior gives a user a local choice about prompt input. When an adapter runs, the
 provider receives the transformed submission or receives nothing from that
-attempt. Craig does not claim authority over a host, a provider's terms, or an
+attempt. Savior does not claim authority over a host, a provider's terms, or an
 unsubmitted draft outside its own process.
 
 ```mermaid
@@ -61,7 +61,7 @@ flowchart LR
 
 The classifier can miss text or select harmless text. The current host may
 disable or bypass its adapter, and the planned proxy is not yet implemented.
-Those facts limit what Craig can claim about delivery, without changing the
+Those facts limit what Savior can claim about delivery, without changing the
 user's local-control intent.
 
 ## Consequence

@@ -26,7 +26,7 @@ export function render(snapshot) {
   const {quality:q,e2e:e,performance:p} = snapshot;
   const model = Object.hasOwn(snapshot.evidence.quality.identity.model,'head.safetensors') ? 'local BERT candidate' : 'pinned `mudes/en-base`';
   const lines = ['## Battle-tested, with receipts','',
-    'Craig’s replacement engine is checked for exact preservation outside selected spans. Detection is measured separately against public reference labels.', '',
+    'Savior’s replacement engine is checked for exact preservation outside selected spans. Detection is measured separately against public reference labels.', '',
     '| Check | Observed result |','| --- | --- |',
     `| Known-span replacement and abstention | ${e.correctness.passed}/${e.correctness.total} checks passed |`,
     `| Rust and Node CLI end-to-end checks | ${e.adapters.passed}/${e.adapters.total} checks passed |`,
@@ -39,7 +39,7 @@ export function render(snapshot) {
   const hostFailures = e.host.results.filter(r=>!['passed','not_requested'].includes(r.status));
   if(hostFailures.length) lines.push('', 'Installed-host failures: '+hostFailures.map(r=>`\`${escape(r.scenario)}\` / \`${escape(r.strategy)}\`: ${escape(r.reason??'reason unavailable')} at ${escape(r.last_stage??'phase unavailable')}`).join('; ')+'.');
   lines.push('',`Measured ${escape(snapshot.date.slice(0,10))} UTC on ${escape(snapshot.machine.cpu)} (${escape(snapshot.machine.platform)}, ${escape(snapshot.machine.arch)}), CPU FP32, ${model}.`,
-    'The external screen samples English cases by category and label; it is not a population accuracy estimate. HateCheck labels hate speech, which differs from Craig’s offensive-span policy.',
+    'The external screen samples English cases by category and label; it is not a population accuracy estimate. HateCheck labels hate speech, which differs from Savior’s offensive-span policy.',
     q.reviewed_span_examples ? `Reviewed span scoring covers ${q.reviewed_span_examples} strategy-case observations; see the evidence for denominators.` : 'Reviewed external replacement spans are unavailable. These classification figures do not establish successful removal of targeted abuse.', '');
   if(p.protocol!==2) lines.push('Historical pilot: native timing included a separate profiling inference before reporting. Worker timeouts may have discarded completed measurements. This pilot cannot resolve those failures.','');
   lines.push('| Resident rewrite fixture | Native maximum | Node-API maximum | Failed combinations |','| --- | ---: | ---: | ---: |');

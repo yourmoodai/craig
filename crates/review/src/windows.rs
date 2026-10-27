@@ -158,7 +158,7 @@ pub fn serve() -> ReviewResult<()> {
         System::{IO::*, Pipes::*},
     };
     let profile = profile_dir()?;
-    let directory = profile.join("craig");
+    let directory = profile.join("savior");
     private_dir(&directory)?;
     let lock_path = directory.join("worker.lock");
     if lock_path.is_symlink() {
@@ -177,7 +177,7 @@ pub fn serve() -> ReviewResult<()> {
         .trim_start_matches("\\\\?\\")
         .to_lowercase();
     let name = wide(&format!(
-        "\\\\.\\pipe\\craig-{}",
+        "\\\\.\\pipe\\savior-{}",
         fingerprint(normalized.as_bytes())
     ));
     let sd = descriptor()?;
@@ -324,7 +324,7 @@ mod transport_tests {
     fn pair() -> (OwnedHandle, std::fs::File) {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let name = format!(
-            "\\\\.\\pipe\\craig-write-test-{}-{}",
+            "\\\\.\\pipe\\savior-write-test-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         );

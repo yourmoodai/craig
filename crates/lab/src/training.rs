@@ -9,7 +9,7 @@ use candle_nn::{
     Linear, Optimizer, ParamsAdamW, VarBuilder, VarMap, linear,
     ops::{log_softmax, softmax_last_dim},
 };
-use craig::{
+use savior::{
     FixedMarker, MODEL_ID, MODEL_REVISION, ModelDetector, ModelManifest, Policy, Span,
     artifact_digest,
 };
@@ -262,7 +262,7 @@ pub fn train(
     crate::write_json(&output.join("manifest.json"), &manifest)?;
     let mut reloaded =
         ModelDetector::load_policy(output, policy).map_err(|_| "export_reload_failed")?;
-    use craig::Detector;
+    use savior::Detector;
     let mut maximum = 0.0_f32;
     for row in cached.iter().filter(|r| r.example.split == "validation") {
         let before = predictions(&head, row)?;

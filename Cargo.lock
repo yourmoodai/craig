@@ -761,91 +761,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "craig"
-version = "0.1.0"
-dependencies = [
- "candle-core",
- "candle-nn",
- "candle-transformers",
- "cc",
- "libc",
- "proptest",
- "pulldown-cmark",
- "regex",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror 2.0.21",
- "tokenizers",
- "unicode-segmentation",
-]
-
-[[package]]
-name = "craig-cli"
-version = "0.1.0"
-dependencies = [
- "craig",
- "fs2",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
-]
-
-[[package]]
-name = "craig-lab"
-version = "0.1.0"
-dependencies = [
- "candle-core",
- "candle-nn",
- "clap",
- "craig",
- "craig-review",
- "libc",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
-]
-
-[[package]]
-name = "craig-node"
-version = "0.1.0"
-dependencies = [
- "craig",
- "craig-review",
- "napi",
- "napi-build",
- "napi-derive",
- "serde_json",
-]
-
-[[package]]
-name = "craig-review"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "craig",
- "ctrlc",
- "duckdb",
- "fs2",
- "hmac",
- "libc",
- "rand 0.9.5",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "tiny_http",
- "windows-sys 0.61.2",
-]
-
-[[package]]
 name = "crc32fast"
 version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3144,6 +3059,91 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "savior"
+version = "0.1.0"
+dependencies = [
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
+ "cc",
+ "libc",
+ "proptest",
+ "pulldown-cmark",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokenizers",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "savior-cli"
+version = "0.1.0"
+dependencies = [
+ "fs2",
+ "reqwest",
+ "savior",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
+name = "savior-lab"
+version = "0.1.0"
+dependencies = [
+ "candle-core",
+ "candle-nn",
+ "clap",
+ "libc",
+ "reqwest",
+ "savior",
+ "savior-review",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
+name = "savior-node"
+version = "0.1.0"
+dependencies = [
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "savior",
+ "savior-review",
+ "serde_json",
+]
+
+[[package]]
+name = "savior-review"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "ctrlc",
+ "duckdb",
+ "fs2",
+ "hmac",
+ "libc",
+ "rand 0.9.5",
+ "reqwest",
+ "rusqlite",
+ "savior",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tiny_http",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

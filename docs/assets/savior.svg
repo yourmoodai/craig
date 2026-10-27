@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Savior</title>
+  <desc id="desc">A symmetrical golden sparkle with interlocking rays and a luminous center.</desc>
+  <defs>
+    <radialGradient id="gold">
+      <stop offset="0" stop-color="#fff8bc"/>
+      <stop offset=".5" stop-color="#ffdf52"/>
+      <stop offset="1" stop-color="#efaa16"/>
+    </radialGradient>
+  </defs>
+  <path fill="url(#gold)" stroke="#bd7b0c" stroke-width="3" stroke-linejoin="round" d="M256.000 24.000Q278.961 200.567 420.049 91.951Q311.433 233.039 488.000 256.000Q311.433 278.961 420.049 420.049Q278.961 311.433 256.000 488.000Q233.039 311.433 91.951 420.049Q200.567 278.961 24.000 256.000Q200.567 233.039 91.951 91.951Q233.039 200.567 256.000 24.000Z"/>
+  <g fill="none" stroke="#fff4aa" stroke-width="8" stroke-linejoin="round">
+    <path d="M256 116 396 256 256 396 116 256Z"/>
+    <path d="M157 157H355V355H157Z"/>
+  </g>
+  <path fill="#fffce2" d="M256.000 146.000Q260.592 244.913 333.782 178.218Q267.087 251.408 366.000 256.000Q267.087 260.592 333.782 333.782Q260.592 267.087 256.000 366.000Q251.408 267.087 178.218 333.782Q244.913 260.592 146.000 256.000Q244.913 251.408 178.218 178.218Q251.408 244.913 256.000 146.000Z"/>
+</svg>

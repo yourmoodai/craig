@@ -1,6 +1,6 @@
 # Benchmark data attribution
 
-Craig's source-code license does not replace the licenses on benchmark data.
+Savior's source-code license does not replace the licenses on benchmark data.
 `sources.json` pins upstream revisions, file digests, and attribution. Explicit
 setup retains the upstream license files alongside downloaded data.
 
@@ -15,7 +15,7 @@ setup retains the upstream license files alongside downloaded data.
   [Paper](https://aclanthology.org/2021.acl-long.4/) ·
   [CC BY 4.0 license](https://github.com/paul-rottger/hatecheck-data/blob/3490854f969111a32c55c05f0d9788b471337fa9/LICENSE).
 
-Craig changes the record format and adds identifiers, evaluation metadata, and
+Savior changes the record format and adds identifiers, evaluation metadata, and
 unreviewed annotation proposals. Original text and upstream labels remain
 unchanged. These adaptations do not imply endorsement by the original authors.
 

@@ -5,13 +5,13 @@ import {spawnSync} from 'node:child_process';
 import {tmpdir,cpus,loadavg} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 const require=createRequire(import.meta.url);
-const temporary=await realpath(await mkdtemp(join(tmpdir(),'craig-trace-profile-')));
+const temporary=await realpath(await mkdtemp(join(tmpdir(),'savior-trace-profile-')));
 await mkdir(join(temporary,'profile'));
 process.env.XDG_STATE_HOME=temporary;process.env.LOCALAPPDATA=temporary;process.env.CLAUDE_CONFIG_DIR=join(temporary,'profile');
-const binary=resolve('target/release/craig-review'+(process.platform==='win32'?'.exe':''));
+const binary=resolve('target/release/savior-review'+(process.platform==='win32'?'.exe':''));
 const command=(...args)=>{const r=spawnSync(binary,['traces',...args],{encoding:'utf8'});if(r.status!==0)throw Error(r.stderr);return JSON.parse(r.stdout);};
 try{
- const model=await require('../native/index.cjs').loadDetector({modelDir:resolve(process.env.CRAIG_MODEL_DIR??'.cache/models/mudes-en-base')});
+ const model=await require('../native/index.cjs').loadDetector({modelDir:resolve(process.env.SAVIOR_MODEL_DIR??'.cache/models/mudes-en-base')});
  const text='You idiot, keep the test and its instructions.';const measurements=[];
  for(const mode of ['disabled','metadata','full_text']){
   if(mode==='full_text')command('enable');

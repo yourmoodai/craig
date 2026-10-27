@@ -1,4 +1,4 @@
-# Contributing to craig
+# Contributing to savior
 
 Bug reports, design proposals, documentation corrections, tests, and code are
 welcome. Start with an issue so contributors and maintainers agree on the
@@ -6,7 +6,7 @@ problem before implementing a change.
 
 ## Issue acceptance
 
-Search [open and closed issues](https://github.com/yourmoodai/craig/issues?q=is%3Aissue)
+Search [open and closed issues](https://github.com/yourmoodai/savior/issues?q=is%3Aissue)
 before opening a proposal. Describe the problem, proposed behavior, a small
 example, and effects on privacy, latency, compatibility, or model quality.
 
@@ -34,7 +34,7 @@ without a response, one follow-up on the issue or PR is welcome.
 
 ## Design constraints
 
-Craig favors a narrow, inspectable boundary over a convenient fallback: prompt
+Savior favors a narrow, inspectable boundary over a convenient fallback: prompt
 input is transformed locally, unchanged text remains exact, and a processing
 failure returns control to the user rather than submitting its original.
 
@@ -89,7 +89,7 @@ Node bindings before exercising the adapter.
 npm ci
 npm run build
 npm run model:fetch
-export CRAIG_MODEL_DIR="$PWD/.cache/models/mudes-en-base"
+export SAVIOR_MODEL_DIR="$PWD/.cache/models/mudes-en-base"
 node bridge/cli.mjs doctor
 claude --plugin-dir "$PWD"
 npm run verify
@@ -155,7 +155,7 @@ tests. The generated release marketplace points at a checksummed ZIP; never
 point it at an unqualified candidate. Source archives are not installable
 release bundles.
 
-The protected `release` environment must provide `CRAIG_RELEASE_SIGNING_KEY`
+The protected `release` environment must provide `SAVIOR_RELEASE_SIGNING_KEY`
 as an Ed25519 private PEM. Provision it outside the repository; do not generate
 or publish a production identity as part of a development test. Non-tag builds
 use an ephemeral qualification key. The plugin carries its public key and

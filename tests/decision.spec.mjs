@@ -17,7 +17,7 @@ test('comparison rejects artifact mismatches and incomplete boundaries',()=>{
   a.report.runs[0].results[0].errors={processing_timeout:1};assert.equal(compareReports([a]).candidates[0].latency_status,'unmet');
 });
 test('experimental FFI retains offsets, protected behavior and explicit artifact validation',async()=>{
-  const dir=await mkdtemp(join(tmpdir(),'craig-decision-'));
+  const dir=await mkdtemp(join(tmpdir(),'savior-decision-'));
   const binding=createRequire(import.meta.url)(resolve('native/index.cjs'));
   const artifact={version:1,kind:'lexical',policy:'offensive_spans',features:'unicode_words_context2_char2to4_v1',threshold:0.5,corpus_sha256:'a'.repeat(64),epoch:0,labels_reviewed:false,weights:{idiot:0.9},transitions:[[0,0],[0,0]]};
   try{
@@ -42,8 +42,8 @@ test('experimental FFI retains offsets, protected behavior and explicit artifact
     const running=runtime.rewrite('x'.repeat(65530)+' idiot');
     assert.throws(()=>runtime.rewrite('You idiot.'),/busy/);await running;
     const {spawnSync}=await import('node:child_process');
-    const env={...process.env,CRAIG_DETECTOR:'lexical',CRAIG_MODEL_DIR:dir,CRAIG_POLICY:'offensive_spans',CRAIG_THRESHOLD:'0.5',CRAIG_REPLACEMENT:'ya ya ya',LOG_LEVEL:'silent'};
-    for(const [cmd,args] of [[process.execPath,['bridge/cli.mjs','rewrite']],['target/release/craig',['rewrite']]]){
+    const env={...process.env,SAVIOR_DETECTOR:'lexical',SAVIOR_MODEL_DIR:dir,SAVIOR_POLICY:'offensive_spans',SAVIOR_THRESHOLD:'0.5',SAVIOR_REPLACEMENT:'ya ya ya',LOG_LEVEL:'silent'};
+    for(const [cmd,args] of [[process.execPath,['bridge/cli.mjs','rewrite']],['target/release/savior',['rewrite']]]){
       const r=spawnSync(cmd,args,{env,input:JSON.stringify({version:1,text:'You moron, retain café.'}),encoding:'utf8'});
       assert.equal(r.status,0,r.stderr);assert.equal(JSON.parse(r.stdout).text,'You ya ya ya, retain café.');
       const blocked=spawnSync(cmd,args,{env,input:JSON.stringify({version:1,text:'Quote "moron".'}),encoding:'utf8'});
@@ -77,7 +77,7 @@ test('qualification requires complete coverage and never trusts cached summaries
 test('failed candidates remain incomplete and do not stop other experiments',async()=>{
   const {mkdir,readFile}=await import('node:fs/promises');
   const {spawnSync}=await import('node:child_process');
-  const dir=await mkdtemp(join(tmpdir(),'craig-decision-failures-'));
+  const dir=await mkdtemp(join(tmpdir(),'savior-decision-failures-'));
   try{
     for(const kind of ['lexical','crf']){await mkdir(join(dir,kind));await writeFile(join(dir,kind,'decision.json'),JSON.stringify({threshold:0.5}));}
     const runner=join(dir,'runner'),addon=join(dir,'fake.node'),output=join(dir,'reports');

@@ -1,5 +1,5 @@
 use crate::{LabResult, corpus::Example, fail};
-use craig::{
+use savior::{
     Detector, FixedMarker, ModelDetector, Policy, ReplacementStrategy, Span, apply_replacements,
 };
 use serde::{Deserialize, Serialize};
@@ -88,7 +88,7 @@ pub fn score(
 ) -> Outcome {
     let expected = apply_replacements(&e.text, &e.spans(policy), 0.5, strategy);
     let actual = apply_replacements(&e.text, spans, threshold, strategy);
-    let status = |r: &craig::Result<craig::RewriteResult>| match r {
+    let status = |r: &savior::Result<savior::RewriteResult>| match r {
         Ok(r) => {
             if r.spans.is_empty() {
                 "unchanged".into()
@@ -321,7 +321,7 @@ mod tests {
                 score: 1.0,
             }],
             0.5,
-            &craig::ReplacementMode::new(Some("omit"), None).unwrap(),
+            &savior::ReplacementMode::new(Some("omit"), None).unwrap(),
         );
         assert_eq!(result.output.as_deref(), Some("You , keep the test."));
         assert_eq!(result.metrics.deterministic_failures, 0);

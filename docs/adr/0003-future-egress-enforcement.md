@@ -9,7 +9,7 @@ egress enforcement.
 
 ## Purpose
 
-A transparent HTTP proxy would apply Craig's local transformation at the
+A transparent HTTP proxy would apply Savior's local transformation at the
 outbound request boundary instead of relying on a host-specific integration.
 It would let a supported AI client keep its own interface while the proxy
 extracts supported prompt fields, transforms them in Rust, and reconstructs the
@@ -52,7 +52,7 @@ it cannot become a silent original-text retry.
 Interception is not proof that all routes are intercepted. A stronger
 fail-closed egress claim would additionally need independent bypass resistance,
 authenticated privileged control, lifecycle containment, and platform-native
-testing. Until that evidence exists, Craig may describe a proxy as a planned
+testing. Until that evidence exists, Savior may describe a proxy as a planned
 adapter—not as universal network protection.
 
 ## Evidence before support

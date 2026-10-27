@@ -1,5 +1,5 @@
 [package]
-name = "craig-review"
+name = "savior-review"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -15,12 +15,12 @@ judge = ["dep:reqwest", "dep:ctrlc"]
 inspector = ["dep:duckdb", "dep:tiny_http"]
 
 [[bin]]
-name = "craig-review"
+name = "savior-review"
 path = "src/main.rs"
 required-features = ["judge"]
 
 [dependencies]
-craig.workspace = true
+savior.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10"

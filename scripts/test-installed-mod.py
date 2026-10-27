@@ -57,15 +57,15 @@ class Terminal:
             # Darwin can block close while the reader holds a pending PTY read.
             os.close(self.master)
 
-root = Path(os.environ.get("CRAIG_PLUGIN_ROOT", Path(__file__).resolve().parent.parent)).resolve()
-scenario = os.environ.get("CRAIG_HOST_SCENARIO", "success")
+root = Path(os.environ.get("SAVIOR_PLUGIN_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+scenario = os.environ.get("SAVIOR_HOST_SCENARIO", "success")
 if scenario not in ('success', 'protected', 'missing_model', 'processing_timeout', 'worker_exit'):
     raise SystemExit('invalid host scenario')
 original = "You `idiot`, do not delete the test." if scenario == 'protected' else "You idiot, do not delete the test."
-strategy = os.environ.get("CRAIG_REPLACEMENT_STRATEGY", "fixed_phrase")
+strategy = os.environ.get("SAVIOR_REPLACEMENT_STRATEGY", "fixed_phrase")
 if strategy not in ("fixed_phrase", "omit"):
     raise SystemExit("invalid replacement strategy")
-marker = "" if strategy == "omit" else os.environ.get("CRAIG_REPLACEMENT", "ya ya ya")
+marker = "" if strategy == "omit" else os.environ.get("SAVIOR_REPLACEMENT", "ya ya ya")
 replacement = f"You {marker}, do not delete the test."
 received = []
 host_started = time.monotonic()
@@ -127,20 +127,20 @@ class Provider(http.server.BaseHTTPRequestHandler):
 
 
 def main():
-    binary = os.environ.get("CRAIG_CLAUDE_BINARY") or shutil.which("claude")
-    model = os.environ.get("CRAIG_MODEL_DIR")
+    binary = os.environ.get("SAVIOR_CLAUDE_BINARY") or shutil.which("claude")
+    model = os.environ.get("SAVIOR_MODEL_DIR")
     if not binary or not model:
         print(json.dumps({'error':'host_prerequisite_missing'}), flush=True)
-        raise SystemExit("claude and CRAIG_MODEL_DIR are required")
+        raise SystemExit("claude and SAVIOR_MODEL_DIR are required")
     with open(binary, 'rb') as executable:
         if executable.read(2) == b'#!':
             print(json.dumps({'error':'host_wrapper_requires_native_binary'}), flush=True)
-            raise SystemExit('set CRAIG_CLAUDE_BINARY to the installed native executable; wrappers can override the isolated profile')
+            raise SystemExit('set SAVIOR_CLAUDE_BINARY to the installed native executable; wrappers can override the isolated profile')
         executable.seek(0)
         binary_hash = hashlib.sha256()
         for block in iter(lambda: executable.read(1024 * 1024), b''):  # 1 MiB
             binary_hash.update(block)
-    with tempfile.TemporaryDirectory(prefix="craig-host-") as directory:
+    with tempfile.TemporaryDirectory(prefix="savior-host-") as directory:
         home = Path(directory).resolve()
         profile = home / ".claude"
         profile.mkdir()
@@ -160,14 +160,14 @@ def main():
         (profile / ".claude.json").write_text(json.dumps(config))
         server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Provider)
         threading.Thread(target=server.serve_forever, daemon=True).start()
-        env = {"PATH": os.environ["PATH"], "HOME": str(home), "CLAUDE_CONFIG_DIR": str(profile), "TERM": "xterm-256color", "ANTHROPIC_API_KEY": "synthetic-local-key", "ANTHROPIC_BASE_URL": f"http://127.0.0.1:{server.server_port}", "CRAIG_MODEL_DIR": str(Path(model).resolve()), "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", "DISABLE_AUTOUPDATER": "1", "DISABLE_TELEMETRY": "1", "DISABLE_ERROR_REPORTING": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1", "ENABLE_CLAUDEAI_MCP_SERVERS": "false", "OTEL_SDK_DISABLED": "true"}
-        env["CRAIG_DETECTOR"] = os.environ.get("CRAIG_DETECTOR", "bert")
-        env["CRAIG_REPLACEMENT_STRATEGY"] = strategy
-        env['CRAIG_HOST_SCENARIO'] = scenario
+        env = {"PATH": os.environ["PATH"], "HOME": str(home), "CLAUDE_CONFIG_DIR": str(profile), "TERM": "xterm-256color", "ANTHROPIC_API_KEY": "synthetic-local-key", "ANTHROPIC_BASE_URL": f"http://127.0.0.1:{server.server_port}", "SAVIOR_MODEL_DIR": str(Path(model).resolve()), "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", "DISABLE_AUTOUPDATER": "1", "DISABLE_TELEMETRY": "1", "DISABLE_ERROR_REPORTING": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1", "ENABLE_CLAUDEAI_MCP_SERVERS": "false", "OTEL_SDK_DISABLED": "true"}
+        env["SAVIOR_DETECTOR"] = os.environ.get("SAVIOR_DETECTOR", "bert")
+        env["SAVIOR_REPLACEMENT_STRATEGY"] = strategy
+        env['SAVIOR_HOST_SCENARIO'] = scenario
         if scenario == 'missing_model':
-            env['CRAIG_MODEL_DIR'] = str(home / 'missing-model')
-        if "CRAIG_REPLACEMENT" in os.environ:
-            env["CRAIG_REPLACEMENT"] = os.environ["CRAIG_REPLACEMENT"]
+            env['SAVIOR_MODEL_DIR'] = str(home / 'missing-model')
+        if "SAVIOR_REPLACEMENT" in os.environ:
+            env["SAVIOR_REPLACEMENT"] = os.environ["SAVIOR_REPLACEMENT"]
         for key in ('SYSTEMROOT','WINDIR','COMSPEC','TEMP','TMP'):
             if key in os.environ: env[key]=os.environ[key]
         env['USERPROFILE']=str(home)
@@ -212,9 +212,9 @@ def main():
                     host_event('trusted')
                     stage='trusted';output=b'';deadline=time.monotonic()+45
                 elif stage in ('ready','trusted') and '❯'.encode() in visible and b'No,' not in visible:
-                    terminal.write(b'/craig')
+                    terminal.write(b'/savior')
                     stage='command';output=b'';deadline=time.monotonic()+10
-                elif stage=='command' and b'/craig' in visible:
+                elif stage=='command' and b'/savior' in visible:
                     terminal.write(b'\r')
                     host_event('pane')
                     stage='pane';output=b'';deadline=time.monotonic()+30
@@ -290,7 +290,7 @@ def main():
                     if metrics['summary']['live']['observations']!=1:
                         continue
                     assert metrics['summary']['live']['removed_characters']==5
-                    assert original.encode() not in (profile/'craig/metrics.sqlite3').read_bytes()
+                    assert original.encode() not in (profile/'savior/metrics.sqlite3').read_bytes()
                     assert original not in json.dumps(metrics)
                     host_event('completed', host_version=version.stdout.strip(),host_sha256=binary_hash.hexdigest(),submission_to_provider_ms=submission_ms,samples=1)
                     print('installed mod: UI opt-in, native assessment, text-free metrics and sanitized provider payload passed')

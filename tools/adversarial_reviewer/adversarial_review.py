@@ -69,7 +69,7 @@ Comments and docstrings do not require executable inputs; a wording change alone
 For syntax allegations, identify the actual interpreter and execution mode. Do not assume
 an evaluated command-line script has the same wrapper or bindings as a loaded module file.
 
-For Craig, detection and replacement belong in Rust. Preserve unmatched source text,
+For Savior, detection and replacement belong in Rust. Preserve unmatched source text,
 Unicode offsets, protected spans, and fail-closed submission. No original prompts or
 credentials may be logged, persisted, or sent to remote services by the runtime.
 If sanitization or replacement raises an exception, returning the original raw input
@@ -511,7 +511,7 @@ def review_diff(diff, files, *, mock=False, test_context="", strategy=None, dry_
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run adversarial code review for Craig.")
+    parser = argparse.ArgumentParser(description="Run adversarial code review for Savior.")
     parser.add_argument("--base", default="origin/main", help="Base git ref for diff")
     parser.add_argument("--target", default="HEAD", help="Target description")
     parser.add_argument("--head", default="HEAD", help="Exact commit to review")

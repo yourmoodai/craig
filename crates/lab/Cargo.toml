@@ -1,6 +1,6 @@
 [package]
-name = "craig-lab"
-default-run = "craig-lab"
+name = "savior-lab"
+default-run = "savior-lab"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,8 +12,8 @@ keywords = ["privacy", "local-inference", "offline", "open-source-models", "span
 categories = ["development-tools::testing", "text-processing"]
 
 [dependencies]
-craig = { path = "../core", features = ["training"] }
-craig-review = { path = "../review", features = ["judge"] }
+savior = { path = "../core", features = ["training"] }
+savior-review = { path = "../review", features = ["judge"] }
 serde.workspace = true
 serde_json.workspace = true
 candle-core = "0.11"
