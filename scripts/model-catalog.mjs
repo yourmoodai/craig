@@ -37,7 +37,7 @@ export function modelById(catalog, id) {
 }
 
 export function renderModelNotice(catalog) {
-  const lines = ['craig model artifacts', ''];
+  const lines = ['savior model artifacts', ''];
   for (const model of catalog.models) {
     lines.push(`${model.display_name} (${model.id})`,
       `Role: ${model.roles.join(', ')}.`,

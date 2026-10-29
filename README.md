@@ -1,8 +1,8 @@
-# Craig
+# Savior
 
-<img src="docs/assets/craig.png" width="180" alt="Craig wearing a blue hat">
+<img src="docs/assets/savior.png" width="180" alt="Savior golden sparkle">
 
-Craig replaces detected offensive language in your Claude Code prompts with `ya ya ya`, using a filter that runs on your computer.
+Savior replaces detected offensive language in your Claude Code prompts with `ya ya ya`, using a filter that runs on your computer.
 
 ## Inspect the receipts locally
 
@@ -36,7 +36,7 @@ about 480 MiB including the detector. A separate busy-machine run reached
 <!-- benchmark-results:start -->
 ## Battle-tested, with receipts
 
-Craig’s replacement engine is checked for exact preservation outside selected spans. Detection is measured separately against public reference labels.
+Savior’s replacement engine is checked for exact preservation outside selected spans. Detection is measured separately against public reference labels.
 
 | Check | Observed result |
 | --- | --- |
@@ -50,7 +50,7 @@ Craig’s replacement engine is checked for exact preservation outside selected 
 | Unmatched text: `omit` | 381/381 successful outputs preserved; 19 abstentions |
 
 Measured 2026-10-21 UTC on Apple M5 (darwin, arm64), CPU FP32, pinned `mudes/en-base`.
-The external screen samples English cases by category and label; it is not a population accuracy estimate. HateCheck labels hate speech, which differs from Craig’s offensive-span policy.
+The external screen samples English cases by category and label; it is not a population accuracy estimate. HateCheck labels hate speech, which differs from Savior’s offensive-span policy.
 Reviewed external replacement spans are unavailable. These classification figures do not establish successful removal of targeted abuse.
 
 | Resident rewrite fixture | Native maximum | Node-API maximum | Failed combinations |
@@ -92,16 +92,18 @@ You need Claude Code installed and a Mac with Apple silicon, or Windows/Linux on
 2. Paste these commands, one at a time:
 
    ```sh
-   claude plugin marketplace add https://github.com/yourmoodai/craig/releases/latest/download/marketplace.json
-   claude plugin install craig@yourmood.ai
+   claude plugin marketplace add https://github.com/yourmoodai/savior/releases/latest/download/marketplace.json
+   claude plugin install savior@yourmood.ai
    ```
 
-3. Open Claude Code, enable Craig if prompted, and type `/craig` to check that it is ready.
+3. Open Claude Code, enable Savior if prompted, and type `/savior` to check that it is ready.
 
 The first activation automatically downloads the matching platform runtime and
-the filter’s model (about 431 MB). Craig verifies a signed manifest and artifact
-hashes before running downloaded code. Wait until Craig is ready before submitting
-a prompt. If setup fails, open `/craig` to retry. No additional development tools
+the filter’s model (about 431 MB). Savior verifies a signed manifest and artifact
+hashes before running downloaded code. Wait until Savior is ready before submitting
+a prompt. If setup fails, open `/savior` to retry. No additional development tools
 are needed; the plugin includes its bootstrap Node runtime.
 
-[Get help](https://github.com/yourmoodai/craig/issues) · [Advanced usage](docs/usage.md)
+[Get help](https://github.com/yourmoodai/savior/issues) · [Advanced usage](docs/usage.md)
+
+[Moving from an earlier name](docs/migration.md) · [Vector brand asset](docs/assets/savior.svg)

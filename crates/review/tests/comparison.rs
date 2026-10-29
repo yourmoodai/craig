@@ -1,5 +1,5 @@
 #![cfg(feature = "judge")]
-use craig_review::{
+use savior_review::{
     assessment::{AbuseCategory, Alignment, ContextualAssessment},
     comparison::{dimensions, report},
     judge::{JudgeConfig, parse_response},
@@ -172,7 +172,7 @@ fn reference_agreement_is_distinct_from_policy_alignment() {
     data.rows[0].reviewed = true;
     data.rows[0].expected = Alignment::ConcernObserved;
     let evidence =
-        craig_review::policy::evidence(&data.rows, &[Alignment::ConcernObserved], &[true], true)
+        savior_review::policy::evidence(&data.rows, &[Alignment::ConcernObserved], &[true], true)
             .unwrap();
     assert_eq!(evidence["reference_label_agreement_status"], "pass");
     assert_eq!(evidence["replacement_correctness_status"], "pass");

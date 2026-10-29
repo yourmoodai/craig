@@ -1,4 +1,4 @@
-use craig_review::{
+use savior_review::{
     DAY_MS,
     assessment::{Alignment, LanguageAssessment},
     history::{ClaudeHistory, HistorySource, window},
@@ -51,7 +51,7 @@ fn manually_moved_metrics_retain_data_without_consent() {
     drop(store);
 
     // Moving a closed store preserves metrics without restoring consent.
-    let current = profile.path().join("craig");
+    let current = profile.path().join("savior");
     let retired = profile.path().join("metrics-backup");
     std::fs::rename(&current, &retired).unwrap();
     assert!(!current.exists());
@@ -118,7 +118,7 @@ fn consent_generation_prevents_late_writes_and_profiles_are_isolated() {
             .record(&id, &session, &row, consent.generation, now)
             .unwrap()
     );
-    let bytes = std::fs::read(a.path().join("craig/metrics.sqlite3")).unwrap();
+    let bytes = std::fs::read(a.path().join("savior/metrics.sqlite3")).unwrap();
     assert!(!String::from_utf8_lossy(&bytes).contains("synthetic-original"));
 }
 #[test]
@@ -171,7 +171,7 @@ fn retention_and_numeric_only_storage() {
     {
         use std::os::unix::fs::PermissionsExt;
         assert_eq!(
-            std::fs::metadata(dir.path().join("craig/metrics.sqlite3"))
+            std::fs::metadata(dir.path().join("savior/metrics.sqlite3"))
                 .unwrap()
                 .permissions()
                 .mode()
@@ -264,7 +264,7 @@ fn provisional_or_uncalibrated_policy_checks_remain_inconclusive() {
 #[cfg(feature = "judge")]
 #[test]
 fn worker_queue_is_bounded_and_cancel_clears_pending_text() {
-    use craig_review::worker::{Observation, Request, Worker};
+    use savior_review::worker::{Observation, Request, Worker};
     let dir = tempfile::tempdir().unwrap();
     let worker = Worker::new(dir.path()).unwrap();
     let result = worker
@@ -279,7 +279,7 @@ fn worker_queue_is_bounded_and_cancel_clears_pending_text() {
             id: format!("row-{i}"),
             session: "session".into(),
             generation,
-            timestamp_ms: craig_review::now_ms(),
+            timestamp_ms: savior_review::now_ms(),
             source: ObservationSource::History,
             original: "synthetic private prompt".into(),
             replacement: None,

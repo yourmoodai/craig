@@ -1,4 +1,4 @@
-use craig::{
+use savior::{
     Detector, ExecutionOptions, ModelDetector, Policy, ReplacementMode, apply_replacements, rewrite,
 };
 use serde::Deserialize;
@@ -10,10 +10,10 @@ use std::{
 
 enum Instance {
     Bert(Box<ModelDetector>),
-    Decision(craig::decision::DecisionDetector),
+    Decision(savior::decision::DecisionDetector),
 }
 impl Detector for Instance {
-    fn detect(&mut self, text: &str) -> craig::Result<Vec<craig::Span>> {
+    fn detect(&mut self, text: &str) -> savior::Result<Vec<savior::Span>> {
         match self {
             Self::Bert(d) => d.detect(text),
             Self::Decision(d) => d.detect(text),
@@ -21,7 +21,7 @@ impl Detector for Instance {
     }
 }
 impl Instance {
-    fn profile(&mut self, text: &str) -> (craig::Result<Vec<craig::Span>>, serde_json::Value) {
+    fn profile(&mut self, text: &str) -> (savior::Result<Vec<savior::Span>>, serde_json::Value) {
         match self {
             Self::Bert(d) => {
                 let (s, t) = d.detect_profiled_outcome(text);
@@ -140,7 +140,7 @@ pub fn run(allocations: Option<fn() -> (u64, u64)>) -> Result<(), Box<dyn std::e
         if request.backend != "cpu" || request.fp16 || request.batch != 1 {
             return Err("invalid_options".into());
         }
-        let d = craig::decision::DecisionDetector::load(&request.model, &request.detector)?;
+        let d = savior::decision::DecisionDetector::load(&request.model, &request.detector)?;
         let threshold = d.threshold();
         (Instance::Decision(d), threshold)
     };

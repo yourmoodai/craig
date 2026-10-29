@@ -1,4 +1,4 @@
-use craig_review::{
+use savior_review::{
     now_ms,
     traces::{Decision, RETENTION_MS, Trace, TraceStore, random_id},
 };
@@ -20,12 +20,12 @@ fn event() -> Trace {
         disposition: "processed".into(),
         code: None,
         decision: Some(Decision {
-            detected: vec![craig::Span {
+            detected: vec![savior::Span {
                 start: 5,
                 end: 10,
                 score: 0.9,
             }],
-            applied: vec![craig::Span {
+            applied: vec![savior::Span {
                 start: 5,
                 end: 10,
                 score: 0.9,
@@ -122,19 +122,19 @@ fn parquet_roundtrip_and_annotation_join() {
     let e = event();
     let id = e.id.clone();
     store.record(e, generation).unwrap();
-    let rows = craig_review::inspector::parquet_events(&store, i64::MAX, "").unwrap();
+    let rows = savior_review::inspector::parquet_events(&store, i64::MAX, "").unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["id"], id);
     assert_eq!(rows[0]["output"], "🌱 ya ya ya, keep this");
     store.annotate(&id,json!({"profanity":"pass","targeted_abuse":"unresolved","preservation":"pass","note":"synthetic"})).unwrap();
-    let updated = craig_review::inspector::parquet_events(&store, i64::MAX, "").unwrap();
+    let updated = savior_review::inspector::parquet_events(&store, i64::MAX, "").unwrap();
     assert_eq!(updated[0]["annotation"]["note"], "synthetic");
     assert_eq!(
         &std::fs::read(path.join("traces.parquet")).unwrap()[..4],
         b"PAR1"
     );
     assert!(
-        craig_review::inspector::parquet_events(&store, i64::MAX, "failed")
+        savior_review::inspector::parquet_events(&store, i64::MAX, "failed")
             .unwrap()
             .is_empty()
     );

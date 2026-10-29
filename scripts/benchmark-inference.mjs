@@ -76,7 +76,7 @@ export async function main(argv) {
   const requested=options.fixture?.split(',');if(requested?.some(id=>!all.some(f=>f.id===id)))throw Error('unknown_fixture');
   const fixtures=all.filter(f=>!requested||requested.includes(f.id)).map(f=>({id:f.id,text:fixtureText(f)}));
   options['timeout-ms']??=Math.min(2147483647,120000+fixtures.length*(options.samples+options.warmup+1)*1000);
-  const model=options.model??process.env.CRAIG_MODEL_DIR??'.cache/models/mudes-en-base';
+  const model=options.model??process.env.SAVIOR_MODEL_DIR??'.cache/models/mudes-en-base';
   const hash=b=>createHash('sha256').update(b).digest('hex');
   const report={version:3,detector:options.detector,boundary:'resident_rewrite',target_ms:options['target-ms'],target_statistic:'maximum',comparison:'strictly_less_than',threshold:0.5,policy:'offensive_spans',precision:options.precision,machine:{cpu:os.cpus()[0].model,logical_cpus:os.cpus().length,memory_bytes:os.totalmem(),os:os.release(),arch:os.arch(),load_average_start:os.loadavg()},threads:{rayon:process.env.RAYON_NUM_THREADS??'default',candle:process.env.CANDLE_NUM_THREADS??'default'},fixture_sha256:hash(fixtureBytes),model_sha256:hash(await readFile(resolve(model,options.detector==='bert'?'pytorch_model.bin':'decision.json'))),harness_sha256:hash(await readFile(fileURLToPath(import.meta.url))),runner_sha256:hash(await readFile(options.runner)),lock_sha256:hash(await readFile('Cargo.lock')),rustc:spawnSync('rustc',['--version'],{encoding:'utf8'}).stdout.trim(),node:process.version,runs:[],ffi_runs:[],errors:[],target_status:'unmet'};
   report.artifacts_sha256={};

@@ -36,9 +36,9 @@ mod native {
     use std::ffi::{CString, c_char, c_void};
 
     unsafe extern "C" {
-        fn craig_coreml_load(path: *const c_char, units: i32) -> *mut c_void;
-        fn craig_coreml_free(handle: *mut c_void);
-        fn craig_coreml_predict(
+        fn savior_coreml_load(path: *const c_char, units: i32) -> *mut c_void;
+        fn savior_coreml_free(handle: *mut c_void);
+        fn savior_coreml_predict(
             handle: *mut c_void,
             features: *const i32,
             batch: usize,
@@ -52,7 +52,7 @@ mod native {
     impl Drop for CoreMl {
         fn drop(&mut self) {
             // Safety: this is the sole owner of the retained bridge handle returned by load.
-            unsafe { craig_coreml_free(self.handle.as_ptr()) }
+            unsafe { savior_coreml_free(self.handle.as_ptr()) }
         }
     }
     #[derive(serde::Deserialize)]
@@ -128,7 +128,7 @@ mod native {
             .map_err(|_| Error::InvalidOptions)?;
             // Safety: load consumes a valid C string synchronously and retains its own model.
             let handle =
-                std::ptr::NonNull::new(unsafe { craig_coreml_load(path.as_ptr(), units as i32) })
+                std::ptr::NonNull::new(unsafe { savior_coreml_load(path.as_ptr(), units as i32) })
                     .ok_or(Error::ModelUnavailable)?;
             Ok(Self { handle, shapes })
         }
@@ -162,7 +162,7 @@ mod native {
             let mut logits = vec![0f32; count * 2];
             // Safety: dimensions bound both buffers; the bridge copies them synchronously.
             if unsafe {
-                craig_coreml_predict(
+                savior_coreml_predict(
                     self.handle.as_ptr(),
                     features.as_ptr(),
                     batch,

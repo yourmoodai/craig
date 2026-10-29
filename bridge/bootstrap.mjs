@@ -1,7 +1,7 @@
 import { createHash, createPublicKey, verify } from 'node:crypto';
 import { chmod, lstat, mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
-import { dirname, isAbsolute, join, resolve, parse, sep } from 'node:path';
+import { dirname, isAbsolute, join, parse, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
@@ -18,7 +18,7 @@ export function verify_manifest(bytes, signature, public_key, version, target) {
   if (manifest.schema !== 1 || manifest.version !== version || manifest.protocol !== 1) fail('incompatible_release');
   const files = manifest.targets?.[target];
   const suffix = target === 'win32-x64' ? '.exe' : '';
-  const expected = [`craig${suffix}`, `craig-review${suffix}`, 'craig.node'];
+  const expected = [`savior${suffix}`, `savior-review${suffix}`, 'savior.node'];
   if (!Array.isArray(files) || files.length !== expected.length) fail('invalid_release_manifest');
   for (const name of expected) {
     const entry = files.find(file => file.name === name);
@@ -98,7 +98,7 @@ export async function prepare_runtime(plugin_root = root, fetcher = fetch) {
   const manifest = verify_manifest(bytes, signature, key, release.version, target);
   const cache = process.platform === 'win32' ? process.env.LOCALAPPDATA : (process.env.XDG_CACHE_HOME || join(process.env.HOME || '', '.cache'));
   if (!cache || !isAbsolute(cache)) fail('invalid_cache_path');
-  const directory = join(cache, 'craig', 'releases', release.version, target, sha(bytes));
+  const directory = join(cache, 'savior', 'releases', release.version, target, sha(bytes));
   await private_directory(directory);
   const lock_path = join(directory, 'setup.lock');
   await regular(lock_path);
@@ -133,14 +133,14 @@ export async function prepare_runtime(plugin_root = root, fetcher = fetch) {
     await lock.writeFile(String(process.pid));
     for (const entry of manifest.targets[target]) {
       const path = join(directory, entry.name);
-      await download_file(`https://github.com/yourmoodai/craig/releases/download/v${release.version}/${entry.asset}`, path, entry, fetcher);
+      await download_file(`https://github.com/yourmoodai/savior/releases/download/v${release.version}/${entry.asset}`, path, entry, fetcher);
       await chmod(path, entry.name.endsWith('.node') ? 0o600 : 0o700);
     }
   } finally { await lock.close(); await unlink(lock_path); }
   return {status:'ready', runtime_dir:directory, manifest_sha256:sha(bytes)};
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (import.meta.main) {
   prepare_runtime().then(value => process.stdout.write(JSON.stringify(value)+'\n')).catch(error => {
     const known=['unsupported_platform','invalid_release_signature','incompatible_release','invalid_release_manifest','invalid_cache_path','unsafe_cache_path','private_cache_unavailable','setup_busy','download_failed','invalid_download_range','download_too_large','artifact_digest_mismatch'];
     process.stdout.write(JSON.stringify({status:'error', code:known.includes(error.message)?error.message:'runtime_setup_failed'})+'\n'); process.exitCode = 1;

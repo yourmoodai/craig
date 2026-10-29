@@ -1,7 +1,7 @@
 pub mod decision;
-use craig as core;
 use napi::{Task, bindgen_prelude::*};
 use napi_derive::napi;
+use savior as core;
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -90,11 +90,14 @@ pub struct Assess {
 }
 #[napi]
 impl Task for Assess {
-    type Output = (craig_review::assessment::LanguageAssessment, Option<String>);
+    type Output = (
+        savior_review::assessment::LanguageAssessment,
+        Option<String>,
+    );
     type JsValue = AssessedRewrite;
     fn compute(&mut self) -> Result<Self::Output> {
         let mut model = self.model.try_lock().map_err(|_| err(core::Error::Busy))?;
-        craig_review::assessment::assess(&mut *model, &self.text, self.threshold, &self.strategy)
+        savior_review::assessment::assess(&mut *model, &self.text, self.threshold, &self.strategy)
             .map_err(|code| Error::new(Status::GenericFailure, code))
     }
     fn resolve(&mut self, _: Env, (assessment, text): Self::Output) -> Result<Self::JsValue> {
@@ -198,7 +201,7 @@ pub struct Detector {
     model: Arc<Mutex<core::RuntimeDetector>>,
     threshold: f32,
     busy: Arc<AtomicBool>,
-    trace_context: Arc<craig_review::traces::TraceContext>,
+    trace_context: Arc<savior_review::traces::TraceContext>,
 }
 pub struct Load {
     options: Options,
@@ -264,7 +267,7 @@ impl Task for Load {
             .unwrap_or(model.threshold());
         let model_fingerprint = match &model {
             core::RuntimeDetector::Bert(model) => model.fingerprint().to_owned(),
-            core::RuntimeDetector::Lexical(model) => craig_review::store::fingerprint(
+            core::RuntimeDetector::Lexical(model) => savior_review::store::fingerprint(
                 &serde_json::to_vec(&model.artifact)
                     .map_err(|_| err(core::Error::ModelIncompatible))?,
             ),
@@ -273,7 +276,7 @@ impl Task for Load {
             model: Arc::new(Mutex::new(model)),
             threshold,
             busy: Arc::new(AtomicBool::new(false)),
-            trace_context: Arc::new(craig_review::traces::TraceContext {
+            trace_context: Arc::new(savior_review::traces::TraceContext {
                 model_fingerprint,
                 detector: self
                     .options
@@ -292,7 +295,7 @@ impl Task for Load {
 
 pub struct TracedRewrite {
     model: Arc<Mutex<core::RuntimeDetector>>,
-    context: Arc<craig_review::traces::TraceContext>,
+    context: Arc<savior_review::traces::TraceContext>,
     text: String,
     threshold: f32,
     strategy: core::ReplacementMode,
@@ -305,7 +308,7 @@ impl Task for TracedRewrite {
     type JsValue = String;
     fn compute(&mut self) -> Result<String> {
         let mut model = self.model.try_lock().map_err(|_| err(core::Error::Busy))?;
-        Ok(craig_review::traces::rewrite_traced(
+        Ok(savior_review::traces::rewrite_traced(
             &mut *model,
             &self.text,
             self.threshold,

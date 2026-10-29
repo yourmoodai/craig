@@ -29,7 +29,7 @@
     {
       "label": "test evaluation",
       "type": "shell",
-      "command": "cargo test -p craig-lab",
+      "command": "cargo test -p savior-lab",
       "problemMatcher": []
     },
     {

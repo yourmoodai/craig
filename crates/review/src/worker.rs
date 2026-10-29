@@ -8,7 +8,7 @@ use crate::{
         Consent, JudgeStatus, Metric, MetricsStore, ObservationSource, SqliteMetrics, fingerprint,
     },
 };
-use craig::{Policy, RuntimeDetector};
+use savior::{Policy, RuntimeDetector};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
@@ -71,7 +71,7 @@ pub struct Worker {
     policy: Policy,
     detector_kind: String,
     threshold: Option<f32>,
-    replacement: craig::ReplacementMode,
+    replacement: savior::ReplacementMode,
     model_fingerprint: String,
     runtime_fingerprint: String,
 }
@@ -80,12 +80,12 @@ fn lock<T>(mutex: &Mutex<T>) -> ReviewResult<std::sync::MutexGuard<'_, T>> {
 }
 impl Worker {
     pub fn new(profile: &Path) -> ReviewResult<Arc<Self>> {
-        let model = std::env::var_os("CRAIG_MODEL_DIR").map(PathBuf::from);
-        let policy = std::env::var("CRAIG_POLICY")
+        let model = std::env::var_os("SAVIOR_MODEL_DIR").map(PathBuf::from);
+        let policy = std::env::var("SAVIOR_POLICY")
             .unwrap_or_else(|_| "offensive_spans".into())
             .parse()
             .map_err(|_| "invalid_policy")?;
-        let threshold = std::env::var("CRAIG_THRESHOLD")
+        let threshold = std::env::var("SAVIOR_THRESHOLD")
             .ok()
             .map(|s| s.parse::<f32>().map_err(|_| "invalid_threshold"))
             .transpose()?;
@@ -93,13 +93,13 @@ impl Worker {
             return Err("invalid_threshold".into());
         }
         let replacement_strategy =
-            std::env::var("CRAIG_REPLACEMENT_STRATEGY").unwrap_or_else(|_| "fixed_phrase".into());
-        let replacement = craig::ReplacementMode::new(
+            std::env::var("SAVIOR_REPLACEMENT_STRATEGY").unwrap_or_else(|_| "fixed_phrase".into());
+        let replacement = savior::ReplacementMode::new(
             Some(&replacement_strategy),
-            std::env::var("CRAIG_REPLACEMENT").ok(),
+            std::env::var("SAVIOR_REPLACEMENT").ok(),
         )
         .map_err(|_| "invalid_options")?;
-        let detector_kind = std::env::var("CRAIG_DETECTOR").unwrap_or_else(|_| "bert".into());
+        let detector_kind = std::env::var("SAVIOR_DETECTOR").unwrap_or_else(|_| "bert".into());
         if !["bert", "lexical"].contains(&detector_kind.as_str()) {
             return Err("invalid_options".into());
         }
@@ -114,18 +114,18 @@ impl Worker {
                 .ok()
             })
             .map(|b| fingerprint(&b));
-        let model_fingerprint=fingerprint(json!({"detector":detector_kind,"base":craig::MODEL_REVISION,"head":head,"policy":policy,"threshold":threshold}).to_string().as_bytes());
+        let model_fingerprint=fingerprint(json!({"detector":detector_kind,"base":savior::MODEL_REVISION,"head":head,"policy":policy,"threshold":threshold}).to_string().as_bytes());
         let mut store = SqliteMetrics::open(profile)?;
         store.expire(crate::now_ms())?;
         store.cancel_pending(None)?;
         let mut settings: Vec<String> = [
-            "CRAIG_MODEL_DIR",
-            "CRAIG_DETECTOR",
-            "CRAIG_POLICY",
-            "CRAIG_THRESHOLD",
-            "CRAIG_REPLACEMENT_STRATEGY",
-            "CRAIG_REPLACEMENT",
-            "CRAIG_JUDGE_CONFIG",
+            "SAVIOR_MODEL_DIR",
+            "SAVIOR_DETECTOR",
+            "SAVIOR_POLICY",
+            "SAVIOR_THRESHOLD",
+            "SAVIOR_REPLACEMENT_STRATEGY",
+            "SAVIOR_REPLACEMENT",
+            "SAVIOR_JUDGE_CONFIG",
         ]
         .iter()
         .map(|key| std::env::var(key).unwrap_or_default())
@@ -144,7 +144,7 @@ impl Worker {
             active: Mutex::new(None),
             stopping: AtomicBool::new(false),
             model,
-            judge_config: std::env::var_os("CRAIG_JUDGE_CONFIG").map(PathBuf::from),
+            judge_config: std::env::var_os("SAVIOR_JUDGE_CONFIG").map(PathBuf::from),
             policy,
             detector_kind,
             threshold,
@@ -231,14 +231,14 @@ impl Worker {
         if !valid_id(&observation.id) || !valid_id(&observation.session) {
             return Err("invalid_observation".into());
         }
-        craig::validate_text(&observation.original).map_err(|_| "invalid_observation")?;
+        savior::validate_text(&observation.original).map_err(|_| "invalid_observation")?;
         if observation.context.len() > 4
             || observation.context.iter().map(String::len).sum::<usize>() > 16_384
         {
             return Err("context_too_large".into());
         } // 16 KiB
         if let Some(text) = &observation.replacement {
-            craig::validate_text(text).map_err(|_| "invalid_observation")?;
+            savior::validate_text(text).map_err(|_| "invalid_observation")?;
         }
         if observation.source == ObservationSource::History
             && !window(now, 5, observation.timestamp_ms)?

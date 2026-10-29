@@ -1,16 +1,16 @@
 {
-  "name": "craig",
-  "displayName": "Craig",
+  "name": "savior",
+  "displayName": "Savior",
   "version": "0.1.0",
   "description": "A local Claude Code mod that keeps a provider's tone policy out of your private draft.",
   "author": {
     "name": "Adam Williams",
     "url": "https://github.com/yourmoodai"
   },
-  "homepage": "https://github.com/yourmoodai/craig#readme",
-  "repository": "https://github.com/yourmoodai/craig",
-  "documentationUrl": "https://github.com/yourmoodai/craig#readme",
-  "supportUrl": "https://github.com/yourmoodai/craig/issues",
+  "homepage": "https://github.com/yourmoodai/savior#readme",
+  "repository": "https://github.com/yourmoodai/savior",
+  "documentationUrl": "https://github.com/yourmoodai/savior#readme",
+  "supportUrl": "https://github.com/yourmoodai/savior/issues",
   "license": "AGPL-3.0-or-later",
   "keywords": [
     "privacy",

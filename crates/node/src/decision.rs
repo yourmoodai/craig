@@ -1,5 +1,5 @@
 use super::*;
-use craig::decision::DecisionDetector;
+use savior::decision::DecisionDetector;
 
 #[napi(object)]
 pub struct ExperimentalOptions {

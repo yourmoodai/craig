@@ -13,7 +13,7 @@ class ReportingTests(unittest.TestCase):
     def report(self, **changes):
         result=dict(files=2, complete=True, disposition='APPROVE', findings=[], total_chunks=2, completed_chunks=2,
                     chunks=[dict(index=n, file=f'file{n}', complete=True, disposition='APPROVE', summary=f'behavior{n}') for n in [1,2]],
-                    excluded_assets=['docs/assets/craig.png'], summary='both chunks reviewed')
+                    excluded_assets=['docs/assets/savior.png'], summary='both chunks reviewed')
         result.update(changes)
         return result
 
@@ -21,7 +21,7 @@ class ReportingTests(unittest.TestCase):
         with patch('reporting.complete', return_value={'overview':OVERVIEW}) as model:
             report=finalize(self.report(), qualified=True)
         prompt=model.call_args.args[0][1]['content']
-        for text in ['behavior1', 'behavior2', 'docs/assets/craig.png']:
+        for text in ['behavior1', 'behavior2', 'docs/assets/savior.png']:
             self.assertIn(text,prompt)
         self.assertEqual(report['disposition'],'APPROVE')
         self.assertTrue(50 <= len(report['overview'].split()) <= 100)

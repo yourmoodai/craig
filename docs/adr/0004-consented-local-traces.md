@@ -11,7 +11,7 @@ inference, deterministic replacement, and no-original-fallback rules remain.
 
 ## Context
 
-A trace records what the detector selected, what Craig changed, and what the
+A trace records what the detector selected, what Savior changed, and what the
 adapter subsequently did. Counts alone cannot explain a disputed replacement;
 human inspection needs the original context and exact output. Those strings
 may contain secrets. Existing personal-review metrics consent permits no text
@@ -53,7 +53,7 @@ Claude history import is authorized by enabling capture.
 - Unsafe paths, invalid spans, and incompatible trace schemas are rejected.
 - Retention expires at seven days; storage is bounded within 256 MiB, with
   conservative capacity reservations that may evict earlier. Expiry runs on
-  capture and inspection, not while Craig is completely stopped.
+  capture and inspection, not while Savior is completely stopped.
 - Deletion disables capture and removes managed records, annotations, and
   projections. User exports and external backups are outside that deletion.
 - A forwarded record is adapter evidence, never proof of provider receipt or

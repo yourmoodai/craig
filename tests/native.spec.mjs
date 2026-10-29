@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { spawn, spawnSync } from 'node:child_process';
 const { applyReplacements, loadDetector } = createRequire(import.meta.url)('../native/index.cjs');
-test('craig ignores unrelated model environment variables', () => {
+test('savior ignores unrelated model environment variables', () => {
   const env = {...process.env, UNRELATED_MODEL_DIR:'/synthetic/unrelated-model', LOG_LEVEL:'silent'};
-  delete env.CRAIG_MODEL_DIR;
+  delete env.SAVIOR_MODEL_DIR;
   const result = spawnSync(process.execPath, ['bridge/cli.mjs','doctor'], {env, encoding:'utf8'});
   assert.equal(result.status, 1);
   assert.equal(JSON.parse(result.stdout).code, 'model_not_configured');
@@ -51,7 +51,7 @@ test('ffi validates explicit execution options before loading', async () => {
   }
 });
 test('bridge errors never echo original text', async () => {
-  const child = spawn(process.execPath, ['bridge/cli.mjs','rewrite'], {env:{...process.env,CRAIG_MODEL_DIR:'/missing',LOG_LEVEL:'silent'}});
+  const child = spawn(process.execPath, ['bridge/cli.mjs','rewrite'], {env:{...process.env,SAVIOR_MODEL_DIR:'/missing',LOG_LEVEL:'silent'}});
   let stdout='', stderr=''; child.stdout.on('data', x=>stdout+=x); child.stderr.on('data',x=>stderr+=x);
   child.stdin.end(JSON.stringify({version:1,text:'synthetic-secret-canary'}));
   const code = await new Promise(resolve=>child.on('close',resolve));

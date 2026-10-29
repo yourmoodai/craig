@@ -29,14 +29,14 @@ Full-text capture defaults off. Enable it through the command or the web app's
 confirmation before submitting prompts. Disabling stops new text capture;
 deletion separately disables capture and removes retained records. Exports may
 contain secrets and remain after deletion. Files have private permissions but
-are not encrypted. Operating-system backups are outside Craig's control.
+are not encrypted. Operating-system backups are outside Savior's control.
 
 ## Storage and interpretation
 
-On Unix, downloads use `$XDG_CACHE_HOME/craig` (default `~/.cache/craig`), and
-traces use `$XDG_STATE_HOME/craig/profiles/<opaque-id>` (default
-`~/.local/state/craig/profiles/<opaque-id>`). Windows uses private directories
-under `%LOCALAPPDATA%/craig`. `CLAUDE_CONFIG_DIR` selects the profile; otherwise
+On Unix, downloads use `$XDG_CACHE_HOME/savior` (default `~/.cache/savior`), and
+traces use `$XDG_STATE_HOME/savior/profiles/<opaque-id>` (default
+`~/.local/state/savior/profiles/<opaque-id>`). Windows uses private directories
+under `%LOCALAPPDATA%/savior`. `CLAUDE_CONFIG_DIR` selects the profile; otherwise
 the default `.claude` location identifies it. Absolute paths are required;
 symlinked storage paths are rejected.
 
@@ -76,8 +76,8 @@ npm run verify
 
 Both `inspect:e2e` and `inspect:profile` accept a new JSON output path after `--`
 to retain source-bound evidence. They refuse to overwrite an existing report.
-The native release binary also exposes `craig inspect` and `craig traces`; it
-delegates to the adjacent, verified `craig-review` executable.
+The native release binary also exposes `savior inspect` and `savior traces`; it
+delegates to the adjacent, verified `savior-review` executable.
 
 The browser check uses synthetic prompts, isolated state, and the current local
 model. It checks consent, exact Unicode edits, annotation, literal hostile markup,

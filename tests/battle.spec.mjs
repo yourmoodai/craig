@@ -59,17 +59,17 @@ test('corpus validates identity, licenses and Unicode annotation boundaries',()=
   assert.throws(()=>validate([{...row(),annotation:undefined}]),/invalid_annotation/);
 });
 test('fetch rejects corrupt cached data before import without networking',async()=>{
-  const dir=await mkdtemp(join(tmpdir(),'craig-corpus-test-'));
+  const dir=await mkdtemp(join(tmpdir(),'savior-corpus-test-'));
   await writeFile(join(dir,'manifest.json'),JSON.stringify({sources:[{id:'.',revision:'a'.repeat(40),files:[{path:'source.jsonl',sha256:digest('correct')}]}]}));
   await writeFile(join(dir,'source.jsonl'),'corrupt');
   await assert.rejects(fetchCorpus(dir,join(dir,'manifest.json')),/checksum_mismatch/);
   assert.equal(await readFile(join(dir,'source.jsonl'),'utf8'),'corrupt');
 });
 test('installed host refuses wrappers before they can redirect the isolated profile',async()=>{
-  const dir=await mkdtemp(join(tmpdir(),'craig-host-wrapper-test-'));
+  const dir=await mkdtemp(join(tmpdir(),'savior-host-wrapper-test-'));
   const wrapper=join(dir,'claude');
   await writeFile(wrapper,'#!/bin/sh\nexit 99\n',{mode:0o700});
-  const result=spawnSync('python3',['scripts/test-installed-mod.py'],{encoding:'utf8',env:{...process.env,CRAIG_CLAUDE_BINARY:wrapper,CRAIG_MODEL_DIR:'/synthetic/model'},timeout:10000});
+  const result=spawnSync('python3',['scripts/test-installed-mod.py'],{encoding:'utf8',env:{...process.env,SAVIOR_CLAUDE_BINARY:wrapper,SAVIOR_MODEL_DIR:'/synthetic/model'},timeout:10000});
   assert.equal(result.status,1);
   assert.equal(JSON.parse(result.stdout).error,'host_wrapper_requires_native_binary');
 });
@@ -121,7 +121,7 @@ test('performance decoding retains inference failures without treating them as t
   assert.throws(()=>decodeMeasurement(JSON.stringify(evidence),fixture,1,'fixed_phrase'),/strategy_mismatch/);
 });
 test('report command publishes failed coverage honestly and never overwrites evidence',async()=>{
-  const directory=await mkdtemp(join(tmpdir(),'craig-report-test-'));
+  const directory=await mkdtemp(join(tmpdir(),'savior-report-test-'));
   const identity={model:{'pytorch_model.bin':'synthetic'},machine:{cpu:'synthetic',platform:'test',arch:'test'},configuration:{}};
   const result={id:'one',track:'profanity',expected:true,predicted:false,strategies:{fixed_phrase:{status:'unchanged',preserved:true,parity:true}}};
   const q={version:1,kind:'quality',status:'completed',identity,selection:{selected:1},rows:[result],

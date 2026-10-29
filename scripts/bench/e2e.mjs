@@ -35,10 +35,10 @@ export async function e2e(config) {
       {id:'clean',request:{version:1,text:fixtures[0].text},expected:fixtures[0].text},
       {id:'protected',request:{version:1,text:'You `idiot`, do not delete the test.'},error:'protected_span_detected'},
       {id:'invalid_request',request:{version:9,text:'synthetic-secret-canary'},error:'invalid_request'},
-      {id:'invalid_configuration',request:{version:1,text:'synthetic-secret-canary'},error:'invalid_options',env:{CRAIG_REPLACEMENT_STRATEGY:'invalid'}},
-      {id:'missing_model',request:{version:1,text:'synthetic-secret-canary'},error:'model_unavailable',env:{CRAIG_MODEL_DIR:'.cache/missing-benchmark-model'}}
+      {id:'invalid_configuration',request:{version:1,text:'synthetic-secret-canary'},error:'invalid_options',env:{SAVIOR_REPLACEMENT_STRATEGY:'invalid'}},
+      {id:'missing_model',request:{version:1,text:'synthetic-secret-canary'},error:'model_unavailable',env:{SAVIOR_MODEL_DIR:'.cache/missing-benchmark-model'}}
     ];
-    for (const [adapter,command,args] of [['node_cli',process.execPath,['bridge/cli.mjs','rewrite']],['rust_cli',`target/${config.profile}/craig${process.platform==='win32'?'.exe':''}`,['rewrite']]]) {
+    for (const [adapter,command,args] of [['node_cli',process.execPath,['bridge/cli.mjs','rewrite']],['rust_cli',`target/${config.profile}/savior${process.platform==='win32'?'.exe':''}`,['rewrite']]]) {
       for (const test of cases) {
         const result = await child(command,args,{input:JSON.stringify(test.request),env:{...environment(config.model,replacement),...test.env},timeout:config['timeout-ms']});
         let body; try { body=JSON.parse(result.stdout); } catch {}
@@ -54,7 +54,7 @@ export async function e2e(config) {
       process.stderr.write(`installed host ${strategyName(replacement)} ${scenario}\n`);
       const stream = hostStream(scenario,replacement.strategy,event => appendFileSync(`${config.output}.host-events.jsonl`,
         JSON.stringify({...event,strategy_variant:strategyName(replacement)})+'\n',{mode:0o600}));
-      const result = await child('python3',['scripts/test-installed-mod.py'],{env:{...environment(config.model,replacement),CRAIG_HOST_SCENARIO:scenario},
+      const result = await child('python3',['scripts/test-installed-mod.py'],{env:{...environment(config.model,replacement),SAVIOR_HOST_SCENARIO:scenario},
         timeout:Math.max(config['timeout-ms'],180000),onLine:stream.line});
       const row = {scenario,strategy:strategyName(replacement),...stream.finish(result)};
       report.host.push(row);

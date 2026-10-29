@@ -340,7 +340,7 @@ class TestAdversarialReviewer(unittest.TestCase):
         self.assertEqual(len(report["omitted_binary_changes"]), 1)
 
     def test_documentation_images_are_explicitly_excluded(self):
-        for path, excluded in [('docs/assets/craig.png', True), ('native/runtime.png', False), ('docs/assets/../runtime.png', False), ('docs/assets/payload.exe', False)]:
+        for path, excluded in [('docs/assets/savior.png', True), ('native/runtime.png', False), ('docs/assets/../runtime.png', False), ('docs/assets/payload.exe', False)]:
             diff = f'diff --git a/a.rs b/a.rs\n+change\ndiff --git a/{path} b/{path}\nBinary files a/{path} and b/{path} differ\n'
             with patch('adversarial_review.run_model_reviewer', return_value=('APPROVE', [], 'checked')):
                 report=review_diff(diff, ['a.rs', path])

@@ -92,7 +92,7 @@ jobs:
           path: .cache/parts
       - run: python3 scripts/release/package.py assemble .cache/parts .cache/release/plugin
         env:
-          CRAIG_RELEASE_SIGNING_KEY: ${{ startsWith(github.ref, 'refs/tags/') && secrets.CRAIG_RELEASE_SIGNING_KEY || '' }}
+          SAVIOR_RELEASE_SIGNING_KEY: ${{ startsWith(github.ref, 'refs/tags/') && secrets.SAVIOR_RELEASE_SIGNING_KEY || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: release
@@ -153,7 +153,7 @@ jobs:
       - name: publish immutable assets
         env:
           GH_TOKEN: ${{ github.token }}
-          CRAIG_RELEASE_SIGNING_KEY: ${{ secrets.CRAIG_RELEASE_SIGNING_KEY }}
+          SAVIOR_RELEASE_SIGNING_KEY: ${{ secrets.SAVIOR_RELEASE_SIGNING_KEY }}
         run: python3 scripts/release/publish.py
   published-download:
     needs: publish
@@ -170,6 +170,6 @@ jobs:
       - name: download published plugin
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download ${{ github.ref_name }} --pattern 'craig-*.zip' --dir .cache/downloaded
+        run: gh release download ${{ github.ref_name }} --pattern 'savior-*.zip' --dir .cache/downloaded
       - name: qualify public signed downloads before marketplace promotion
         run: python scripts/release/smoke.py .cache/downloaded --download

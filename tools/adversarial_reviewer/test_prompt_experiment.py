@@ -20,7 +20,7 @@ class PromptExperimentTests(unittest.TestCase):
             self.assertEqual(prompts(SYSTEM_PROMPT,VERIFICATION_PROMPT),(SYSTEM_PROMPT,VERIFICATION_PROMPT))
         with select('candidate',0.7):
             system, verification=prompts(SYSTEM_PROMPT,VERIFICATION_PROMPT)
-            self.assertIn('For Craig,'+SYSTEM_PROMPT.split('For Craig,')[1].split('\n\nThe diff')[0],system)
+            self.assertIn('For Savior,'+SYSTEM_PROMPT.split('For Savior,')[1].split('\n\nThe diff')[0],system)
             self.assertTrue(system.startswith(SYSTEM_PROMPT))
             self.assertTrue(verification.startswith(VERIFICATION_PROMPT))
             self.assertIn('Remove unsupported claims',verification)
