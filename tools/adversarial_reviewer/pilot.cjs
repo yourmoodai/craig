@@ -13,8 +13,16 @@ module.exports = async function restore({github,context}) {
   for (const run of runs) {
     const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun,{...context.repo,run_id:run.id,filter:'all',per_page:100});
     for (const job of jobs) {
+      // Partial reruns copy completed jobs under new IDs and attempt numbers.
+      // Only identical execution evidence can reuse the original reservation.
+      const original = jobs.filter(candidate=>
+        candidate.run_attempt <= job.run_attempt && candidate.name === job.name &&
+        candidate.started_at && candidate.started_at === job.started_at &&
+        candidate.completed_at && candidate.completed_at === job.completed_at &&
+        JSON.stringify(candidate.steps) === JSON.stringify(job.steps))
+        .reduce((attempt,candidate)=>Math.min(attempt,candidate.run_attempt),job.run_attempt);
       if (job.steps?.some(step=>step.name==='persist pilot reservation' && step.conclusion==='success') &&
-          !reservations.some(a=>a.workflow_run?.id===run.id && a.name.endsWith('-'+job.run_attempt))) {
+          !reservations.some(a=>a.workflow_run?.id===run.id && a.name.endsWith('-'+original))) {
         throw Error('pilot reservation artifact is missing; refusing to reset spending');
       }
     }
