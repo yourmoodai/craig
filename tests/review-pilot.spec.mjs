@@ -36,6 +36,23 @@ test('pilot restores reconciliation, rejects uncertain or missing history',async
     await assert.rejects(restore(fixture({artifacts:[reserved]})),/unresolved/);
     await assert.rejects(restore(fixture({artifacts:[reserved,{...settled,expired:true}]})),/expired/);
     await assert.rejects(restore(fixture({jobs:[{run_attempt:1,steps:[{name:'persist pilot reservation',conclusion:'success'}]}]})),/missing/);
+    const original={id:20,name:'adversarial verdict',run_attempt:1,
+      started_at:'2026-10-22T16:51:16Z',completed_at:'2026-10-22T17:04:46Z',
+      steps:[{name:'persist pilot reservation',conclusion:'success',
+        started_at:'2026-10-22T16:51:59Z',completed_at:'2026-10-22T16:52:00Z'}]};
+    const carried={...original,id:21,run_attempt:2};
+    await restore(fixture({artifacts:[reserved,settled],jobs:[carried,original]}));
+    await assert.rejects(restore(fixture({artifacts:[reserved,settled],jobs:[carried]})),/missing/);
+    await assert.rejects(restore(fixture({jobs:[original,carried]})),/missing/);
+    await assert.rejects(restore(fixture({artifacts:[reserved,settled],jobs:[original,
+      {...carried,started_at:'2026-10-27T18:38:45Z'}]})),/missing/);
+    await assert.rejects(restore(fixture({artifacts:[reserved,settled],jobs:[original,
+      {...carried,steps:[{...original.steps[0],completed_at:'2026-10-27T18:39:00Z'}]}]})),/missing/);
+    await restore(fixture({artifacts:[reserved,settled,
+      {...reserved,id:12,name:prefix+'reserved-4-2'},
+      {...settled,id:13,name:prefix+'settled-4-2'}],
+      jobs:[original,{...carried,started_at:'2026-10-27T18:38:45Z'}]}));
+    assert.equal(fs.readFileSync('review-result/previous-ledgers/13.zip','utf8'),'ledger archive');
     fs.unlinkSync('review-result/previous-ledgers/11.zip');
     await restore(fixture({artifacts:[reserved,settled],runs:[{id:4,event:'pull_request',head_branch:'evil'}]}));
     assert.equal(fs.existsSync('review-result/previous-ledgers/11.zip'),false);
