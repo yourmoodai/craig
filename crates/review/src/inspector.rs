@@ -82,16 +82,15 @@ pub fn snapshot(store: &TraceStore) -> ReviewResult<()> {
         let _ = fs::remove_file(&partial);
         return result;
     }
-    fs::File::open(&partial)
+    // Windows requires write access to flush the completed snapshot to disk.
+    fs::OpenOptions::new()
+        .write(true)
+        .open(&partial)
         .and_then(|f| f.sync_all())
         .map_err(|_| "trace_store_unavailable")?;
     let destination = store.directory.join("traces.parquet");
     if destination.is_symlink() {
         return Err("unsafe_state_path".into());
-    }
-    #[cfg(windows)]
-    if destination.exists() {
-        fs::remove_file(&destination).map_err(|_| "trace_store_unavailable")?;
     }
     fs::rename(partial, destination).map_err(|_| "trace_store_unavailable")?;
     let mut options = fs::OpenOptions::new();
